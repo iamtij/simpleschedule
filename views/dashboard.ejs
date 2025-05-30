@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleSchedule - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">SimpleSchedule</h1>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-4"><%= user.email %></span>
+                    <a href="/auth/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Calendar -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div id="calendar"></div>
+        </div>
+
+        <!-- Availability Settings -->
+        <div class="bg-white rounded-lg shadow p-8 max-w-3xl mx-auto">
+            <h2 class="text-xl font-semibold mb-6">Availability Settings</h2>
+            <form id="availability-form">
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-4">Working Days</h3>
+                    <div class="space-y-4">
+                        <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3 border-b last:border-0">
+                                <div class="flex items-center w-full sm:w-1/3">
+                                    <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="w-4 h-4 mr-3">
+                                    <label for="day-<%= index %>" class="text-gray-700"><%= day %></label>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                                    <input type="time" class="work-start border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="09:00" disabled>
+                                    <span class="text-gray-500 px-2">to</span>
+                                    <input type="time" class="work-end border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="17:00" disabled>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Universal Break Time</h3>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3">
+                        <div class="flex items-center w-full sm:w-1/3">
+                            <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
+                            <label for="break-enabled" class="text-gray-700">Enable Break Time</label>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                            <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
+                            <span class="text-gray-500 px-2">to</span>
+                            <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    Save Settings
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t">
+                <h3 class="text-lg font-medium mb-4">Your Booking Link</h3>
+                <div class="flex items-center space-x-2">
+                    <input type="text" readonly value="/booking/<%= user.id %>" class="flex-1 border rounded-lg px-4 py-2 bg-gray-50 text-gray-600">
+                    <button onclick="copyBookingLink()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors">
+                        Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize FullCalendar
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: '/dashboard/bookings',
+                eventClick: function(info) {
+                    alert('Booking: ' + info.event.title);
+                }
+            });
+            calendar.render();
+
+            // Handle working days checkboxes
+            document.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const dayIndex = this.value;
+                    const timeInputs = this.closest('div.flex').nextElementSibling;
+                    const inputs = timeInputs.querySelectorAll('input[type="time"]');
+                    inputs.forEach(input => {
+                        input.disabled = !this.checked;
+                    });
+                });
+            });
+
+            // Handle universal break toggle
+            const breakEnabled = document.getElementById('break-enabled');
+            const breakStart = document.getElementById('break-start');
+            const breakEnd = document.getElementById('break-end');
+            
+            breakEnabled.addEventListener('change', function() {
+                breakStart.disabled = !this.checked;
+                breakEnd.disabled = !this.checked;
+            });
+
+            // Load availability settings
+            fetch('/dashboard/availability')
+                .then(response => response.json())
+                .then(data => {
+                    // Populate form with current settings
+                    data.availability.forEach(a => {
+                        const checkbox = document.getElementById(`day-${a.day_of_week}`);
+                        checkbox.checked = true;
+                        
+                        const timeInputs = checkbox.closest('div.flex').nextElementSibling;
+                        const workStart = timeInputs.querySelector('.work-start');
+                        const workEnd = timeInputs.querySelector('.work-end');
+                        workStart.disabled = false;
+                        workEnd.disabled = false;
+                        workStart.value = a.start_time;
+                        workEnd.value = a.end_time;
+                    });
+
+                    // Populate universal break time if any breaks exist
+                    if (data.breaks && data.breaks.length > 0) {
+                        const firstBreak = data.breaks[0];
+                        breakEnabled.checked = true;
+                        breakStart.disabled = false;
+                        breakEnd.disabled = false;
+                        breakStart.value = firstBreak.start_time;
+                        breakEnd.value = firstBreak.end_time;
+                    }
+                });
+
+            // Handle availability form submission
+            document.getElementById('availability-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const availability = [];
+                const breaks = [];
+                
+                document.querySelectorAll('input[name="working_days"]:checked').forEach(checkbox => {
+                    const dayIndex = checkbox.value;
+                    const timeInputs = checkbox.closest('div.flex').nextElementSibling;
+                    
+                    availability.push({
+                        day_of_week: parseInt(dayIndex),
+                        start_time: timeInputs.querySelector('.work-start').value,
+                        end_time: timeInputs.querySelector('.work-end').value
+                    });
+                });
+
+                // Add universal break time to all working days if enabled
+                if (breakEnabled.checked) {
+                    const breakStart = document.getElementById('break-start').value;
+                    const breakEnd = document.getElementById('break-end').value;
+                    
+                    document.querySelectorAll('input[name="working_days"]:checked').forEach(checkbox => {
+                        breaks.push({
+                            day_of_week: parseInt(checkbox.value),
+                            start_time: breakStart,
+                            end_time: breakEnd
+                        });
+                    });
+                }
+
+                fetch('/dashboard/availability', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ availability, breaks })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Settings saved successfully!');
+                    }
+                });
+            });
+        });
+
+        function copyBookingLink() {
+            const link = window.location.origin + '/booking/<%= user.id %>';
+            navigator.clipboard.writeText(link);
+            alert('Booking link copied to clipboard!');
+        }
+    </script>
+</body>
+</html> 

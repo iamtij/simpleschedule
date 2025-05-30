@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book an Appointment</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6">Book an Appointment</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Date and Time Selection -->
+                <div>
+                    <h2 class="text-lg font-semibold mb-4">Select Date & Time</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="date">
+                            Date
+                        </label>
+                        <input type="text" id="date-picker" class="w-full border rounded px-3 py-2" placeholder="Select date">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            Available Time Slots
+                        </label>
+                        <div id="time-slots" class="grid grid-cols-2 gap-2">
+                            <!-- Time slots will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Form -->
+                <div>
+                    <h2 class="text-lg font-semibold mb-4">Your Information</h2>
+                    
+                    <form id="booking-form" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">
+                                Full Name *
+                            </label>
+                            <input type="text" id="name" name="name" required
+                                class="w-full border rounded px-3 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
+                                Email *
+                            </label>
+                            <input type="email" id="email" name="email" required
+                                class="w-full border rounded px-3 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="phone">
+                                Phone Number
+                            </label>
+                            <input type="tel" id="phone" name="phone"
+                                class="w-full border rounded px-3 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">
+                                Notes
+                            </label>
+                            <textarea id="notes" name="notes" rows="3"
+                                class="w-full border rounded px-3 py-2"></textarea>
+                        </div>
+
+                        <button type="submit" 
+                            class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            Book Appointment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDate = null;
+        let selectedTime = null;
+
+        // Initialize date picker
+        flatpickr("#date-picker", {
+            minDate: "today",
+            onChange: function(selectedDates) {
+                if (selectedDates.length > 0) {
+                    selectedDate = selectedDates[0].toISOString().split('T')[0];
+                    loadTimeSlots();
+                }
+            }
+        });
+
+        // Load available time slots
+        function loadTimeSlots() {
+            fetch(`/booking/<%= user.id %>/availability?date=${selectedDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    const timeSlotsDiv = document.getElementById('time-slots');
+                    timeSlotsDiv.innerHTML = '';
+
+                    // Generate time slots based on availability
+                    data.availability.forEach(slot => {
+                        const startTime = new Date(`${selectedDate}T${slot.start_time}`);
+                        const endTime = new Date(`${selectedDate}T${slot.end_time}`);
+                        
+                        while (startTime < endTime) {
+                            const timeSlot = startTime.toTimeString().slice(0, 5);
+                            const isBooked = data.bookings.some(b => b.start_time === timeSlot);
+                            const isBreak = data.breaks.some(b => 
+                                timeSlot >= b.start_time && timeSlot < b.end_time
+                            );
+
+                            if (!isBooked && !isBreak) {
+                                const button = document.createElement('button');
+                                button.type = 'button';
+                                button.className = 'p-2 text-sm border rounded hover:bg-blue-100';
+                                button.textContent = timeSlot;
+                                button.onclick = () => selectTimeSlot(timeSlot);
+                                timeSlotsDiv.appendChild(button);
+                            }
+
+                            startTime.setMinutes(startTime.getMinutes() + 30);
+                        }
+                    });
+                });
+        }
+
+        // Handle time slot selection
+        function selectTimeSlot(time) {
+            selectedTime = time;
+            
+            // Update button styles
+            document.querySelectorAll('#time-slots button').forEach(btn => {
+                if (btn.textContent === time) {
+                    btn.classList.add('bg-blue-500', 'text-white');
+                } else {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                }
+            });
+        }
+
+        // Handle form submission
+        document.getElementById('booking-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!selectedDate || !selectedTime) {
+                alert('Please select a date and time');
+                return;
+            }
+
+            const formData = {
+                date: selectedDate,
+                start_time: selectedTime,
+                end_time: new Date(`${selectedDate}T${selectedTime}`)
+                    .setMinutes(new Date(`${selectedDate}T${selectedTime}`).getMinutes() + 30)
+                    .toTimeString()
+                    .slice(0, 5),
+                client_name: document.getElementById('name').value,
+                client_email: document.getElementById('email').value,
+                client_phone: document.getElementById('phone').value,
+                notes: document.getElementById('notes').value
+            };
+
+            fetch('/booking/<%= user.id %>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Booking confirmed!');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Failed to book appointment');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

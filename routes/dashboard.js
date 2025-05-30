@@ -1,0 +1,106 @@
+const express = require('express');
+const router = express.Router();
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./db/database.sqlite');
+
+// Middleware to check if user is logged in
+const requireLogin = (req, res, next) => {
+  if (!req.session.userId) {
+    return res.redirect('/');
+  }
+  next();
+};
+
+// Dashboard home
+router.get('/', requireLogin, (req, res) => {
+  db.get('SELECT * FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    if (err) {
+      return res.redirect('/');
+    }
+    db.all('SELECT * FROM bookings WHERE user_id = ? ORDER BY date, start_time', [req.session.userId], (err, bookings) => {
+      res.render('dashboard', { user, bookings: bookings || [] });
+    });
+  });
+});
+
+// Get availability
+router.get('/availability', requireLogin, (req, res) => {
+  db.all('SELECT * FROM availability WHERE user_id = ?', [req.session.userId], (err, availability) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch availability' });
+    }
+    db.all('SELECT * FROM breaks WHERE user_id = ?', [req.session.userId], (err, breaks) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch breaks' });
+      }
+      res.json({ availability, breaks });
+    });
+  });
+});
+
+// Update availability
+router.post('/availability', requireLogin, (req, res) => {
+  const { availability, breaks } = req.body;
+  
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    db.run('DELETE FROM availability WHERE user_id = ?', [req.session.userId], (err) => {
+      if (err) {
+        db.run('ROLLBACK');
+        return res.status(500).json({ error: 'Failed to update availability' });
+      }
+
+      db.run('DELETE FROM breaks WHERE user_id = ?', [req.session.userId], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to update availability' });
+        }
+
+        const availStmt = db.prepare('INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)');
+        const breakStmt = db.prepare('INSERT INTO breaks (user_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)');
+
+        try {
+          availability.forEach(a => {
+            availStmt.run(req.session.userId, a.day_of_week, a.start_time, a.end_time);
+          });
+
+          breaks.forEach(b => {
+            breakStmt.run(req.session.userId, b.day_of_week, b.start_time, b.end_time);
+          });
+
+          availStmt.finalize();
+          breakStmt.finalize();
+
+          db.run('COMMIT', (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Failed to update availability' });
+            }
+            res.json({ success: true });
+          });
+        } catch (error) {
+          db.run('ROLLBACK');
+          res.status(500).json({ error: 'Failed to update availability' });
+        }
+      });
+    });
+  });
+});
+
+// Get bookings
+router.get('/bookings', requireLogin, (req, res) => {
+  db.all(`
+    SELECT * FROM bookings 
+    WHERE user_id = ? 
+    AND date >= date('now')
+    ORDER BY date, start_time
+  `, [req.session.userId], (err, bookings) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch bookings' });
+    }
+    res.json(bookings);
+  });
+});
+
+module.exports = router; 
