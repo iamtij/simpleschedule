@@ -1,18 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const axios = require('axios');
 const config = require('../config');
-
-const db = new sqlite3.Database(path.join(__dirname, '../db/database.sqlite'), (err) => {
-  if (err) {
-    console.error('Error connecting to the database:', err);
-  } else {
-    console.log('Connected to the database');
-  }
-});
+const db = require('../db');
+const axios = require('axios');
 
 // Register page
 router.get('/register', (req, res) => {
@@ -70,14 +61,12 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists (email or username)
-    const existingUser = await new Promise((resolve, reject) => {
-      db.get('SELECT id FROM users WHERE email = ? OR username = ?', [email, username], (err, user) => {
-        if (err) reject(err);
-        else resolve(user);
-      });
-    });
-
-    if (existingUser) {
+    const existingUserResult = await db.query(
+      'SELECT id FROM users WHERE email = $1 OR username = $2',
+      [email, username]
+    );
+    
+    if (existingUserResult.rows.length > 0) {
       return res.render('register', { 
         error: 'Email or username already taken', 
         recaptchaSiteKey: config.recaptcha.siteKey 
@@ -88,18 +77,13 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user
-    const userId = await new Promise((resolve, reject) => {
-      db.run('INSERT INTO users (name, username, email, password) VALUES (?, ?, ?, ?)',
-        [name, username, email, hashedPassword],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this.lastID);
-        }
-      );
-    });
+    const result = await db.query(
+      'INSERT INTO users (name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+      [name, username, email, hashedPassword]
+    );
 
     // Set session and redirect
-    req.session.userId = userId;
+    req.session.userId = result.rows[0].id;
     return res.redirect('/dashboard');
 
   } catch (error) {
@@ -120,12 +104,8 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const user = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
-        if (err) reject(err);
-        else resolve(user);
-      });
-    });
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
 
     if (!user) {
       return res.render('login', { error: 'Invalid email or password' });
