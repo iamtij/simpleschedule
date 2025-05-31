@@ -6,6 +6,18 @@ const path = require('path');
 
 const app = express();
 
+// Production security headers
+if (config.env === 'production') {
+    app.set('trust proxy', 1); // Trust first proxy
+    app.use((req, res, next) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('X-XSS-Protection', '1; mode=block');
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        next();
+    });
+}
+
 // Make reCAPTCHA site key available to templates
 app.locals.recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
@@ -16,18 +28,22 @@ const sessionConfig = {
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: config.env === 'production',
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax'
+        secure: config.env === 'production', // Require HTTPS in production
+        httpOnly: true,                      // Prevent XSS
+        maxAge: 24 * 60 * 60 * 1000,        // 24 hours
+        sameSite: config.env === 'production' ? 'strict' : 'lax'
     },
-    name: 'isked.sid', // Custom session cookie name
+    name: 'isked.sid',                      // Custom session cookie name
+    proxy: config.env === 'production',      // Trust the reverse proxy
     store: new pgSession({
         conString: config.database.path,
         ssl: config.env === 'production' ? {
             rejectUnauthorized: false
         } : false,
         createTableIfMissing: true,
-        pruneSessionInterval: 60
+        pruneSessionInterval: 60,
+        // Clean up expired sessions
+        pruneSessionInterval: 24 * 60 // Once per day
     })
 };
 
@@ -38,9 +54,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '1mb' }));  // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));  // Limit form data size
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: config.env === 'production' ? '1d' : 0  // Cache static files in production
+}));
 
 // Add error handling middleware
 app.use((err, req, res, next) => {
@@ -87,14 +105,8 @@ app.use((err, req, res, next) => {
 // Export for Railway
 module.exports = app;
 
-// Only listen if not running on Railway
-if (config.env !== 'production') {
-    app.listen(config.port, () => {
-        console.log(`Server is running on port ${config.port}`);
-    });
-} else {
-    const port = process.env.PORT || 3000;
-    app.listen(port, '0.0.0.0', () => {
-        console.log(`Server is running on port ${port}`);
-    });
-} 
+// Start server
+const port = process.env.PORT || config.port;
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running in ${config.env} mode on port ${port}`);
+}); 
