@@ -146,11 +146,11 @@ router.post('/:username', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Insert the booking with the date as is - it's already in YYYY-MM-DD format
+        // Insert the booking
         const bookingResult = await db.query(
             `INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING *`,
+             RETURNING id, date::text, start_time::text, end_time::text, client_name, client_email, client_phone, notes`,
             [userId, date, start_time, end_time, client_name, client_email, client_phone, notes]
         );
 

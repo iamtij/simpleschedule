@@ -61,7 +61,16 @@
             </div>
 
             <div class="space-y-4">
-                <a href="https://calendar.google.com/calendar/event?action=TEMPLATE&text=<%= encodeURIComponent(`Appointment with ${host.name || host.username}`) %>&dates=<%= booking.date.replace(/-/g, '') %>T<%= booking.start_time.replace(/:/g, '') %>00/<%= booking.date.replace(/-/g, '') %>T<%= booking.end_time.replace(/:/g, '') %>00&details=<%= encodeURIComponent(`Client: ${booking.client_name}\nEmail: ${booking.client_email}${booking.client_phone ? '\nPhone: ' + booking.client_phone : ''}${booking.notes ? '\nNotes: ' + booking.notes : ''}`) %>" 
+                <% 
+                const formatDateForGCal = (date) => {
+                    return date ? date.replace(/-/g, '') : '';
+                };
+                const formatTimeForGCal = (time) => {
+                    return time ? time.replace(/:/g, '') : '';
+                };
+                const calendarUrl = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(`Appointment with ${host.name || host.username}`)}&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00&details=${encodeURIComponent(`Client: ${booking.client_name}\nEmail: ${booking.client_email}${booking.client_phone ? '\nPhone: ' + booking.client_phone : ''}${booking.notes ? '\nNotes: ' + booking.notes : ''}`)}`;
+                %>
+                <a href="<%= calendarUrl %>" 
                    target="_blank"
                    class="inline-block w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
                     Add to Google Calendar
