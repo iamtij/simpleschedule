@@ -6,20 +6,40 @@ const { Pool } = require('pg');
 async function runMigrations() {
     let pool;
     try {
-        // Create a new pool with a longer timeout
-        pool = new Pool({
+        console.log('Starting migrations...');
+        console.log('Environment:', config.env);
+        
+        // Create connection configuration
+        const connectionConfig = {
             connectionString: config.database.path,
             ssl: config.env === 'production' ? {
                 rejectUnauthorized: false
             } : false,
             connectionTimeoutMillis: 10000, // 10 seconds
             query_timeout: 10000 // 10 seconds
-        });
+        };
 
-        // Test the connection
-        console.log('Testing database connection...');
-        await pool.query('SELECT NOW()');
-        console.log('Database connection successful');
+        console.log('Attempting database connection...');
+        pool = new Pool(connectionConfig);
+
+        // Test the connection with retries
+        let connected = false;
+        let retries = 5;
+        while (!connected && retries > 0) {
+            try {
+                console.log(`Connection attempt ${6 - retries}/5...`);
+                await pool.query('SELECT NOW()');
+                connected = true;
+                console.log('Database connection successful');
+            } catch (err) {
+                retries--;
+                if (retries === 0) {
+                    throw err;
+                }
+                console.log(`Connection failed, retrying in 5 seconds... (${retries} attempts remaining)`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+        }
 
         // Create migrations table if it doesn't exist
         console.log('Creating migrations table if needed...');
@@ -97,7 +117,4 @@ async function runMigrations() {
 }
 
 // Run migrations
-console.log('Starting migrations...');
-console.log('Environment:', config.env);
-console.log('Database path:', config.database.path.replace(/:[^:@]+@/, ':***@')); // Hide password
 runMigrations(); 
