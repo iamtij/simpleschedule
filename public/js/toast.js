@@ -14,9 +14,10 @@ const toast = {
         this.init();
         
         const id = Math.random().toString(36).substr(2, 9);
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
+        const toastElement = document.createElement('div');
+        toastElement.id = `toast-${id}`;
+        toastElement.className = `toast ${type} animate-slide-in`;
+        toastElement.innerHTML = `
             <div class="toast-icon">
                 ${this.getIcon(type)}
             </div>
@@ -31,24 +32,33 @@ const toast = {
             </div>
         `;
         
-        this.container.appendChild(toast);
+        this.container.appendChild(toastElement);
         
         // Set timeout to remove the toast
-        this.timeouts[id] = setTimeout(() => {
-            this.hide(id);
-        }, duration);
+        if (duration > 0) {
+            this.timeouts[id] = setTimeout(() => {
+                this.hide(id);
+            }, duration);
+        }
         
         return id;
     },
     
     hide(id) {
-        const toast = this.container.children[id];
-        if (toast) {
-            toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        const toastElement = document.getElementById(`toast-${id}`);
+        if (toastElement) {
+            toastElement.classList.remove('animate-slide-in');
+            toastElement.classList.add('animate-slide-out');
+            
+            // Remove the element after animation
             setTimeout(() => {
-                toast.remove();
-                clearTimeout(this.timeouts[id]);
-                delete this.timeouts[id];
+                if (toastElement.parentNode) {
+                    toastElement.parentNode.removeChild(toastElement);
+                }
+                if (this.timeouts[id]) {
+                    clearTimeout(this.timeouts[id]);
+                    delete this.timeouts[id];
+                }
             }, 300);
         }
     },

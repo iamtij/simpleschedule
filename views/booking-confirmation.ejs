@@ -87,25 +87,36 @@
         // Function to create Google Calendar event URL
         function createGoogleCalendarUrl() {
             const booking = <%- JSON.stringify(booking) %>;
-            const dateStr = booking.date;
-            const startTime = booking.start_time;
-            const endTime = booking.end_time;
-
+            const host = <%- JSON.stringify(host) %>;
+            
             // Create start and end datetime strings
-            const startDateTime = new Date(`${dateStr}T${startTime}`);
-            const endDateTime = new Date(`${dateStr}T${endTime}`);
+            const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
+            const endDateTime = new Date(`${booking.date}T${booking.end_time}`);
 
-            // Format the dates for Google Calendar URL
+            // Format the dates for Google Calendar URL (ensuring UTC format)
             const start = startDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
             const end = endDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
-            // Create event details
+            // Create event details with rich formatting
+            const eventDetails = [
+                `Client: ${booking.client_name}`,
+                `Email: ${booking.client_email}`
+            ];
+            
+            if (booking.client_phone) {
+                eventDetails.push(`Phone: ${booking.client_phone}`);
+            }
+            
+            if (booking.notes) {
+                eventDetails.push(`Notes: ${booking.notes}`);
+            }
+
             const details = {
                 action: 'TEMPLATE',
-                text: 'Appointment',
-                details: `Appointment with ${booking.client_name}\n${booking.notes || ''}`,
-                location: '',
-                dates: `${start}/${end}`
+                text: `Appointment with ${host.name || host.username}`,
+                details: eventDetails.join('\n'),
+                dates: `${start}/${end}`,
+                sf: true
             };
 
             // Create the Google Calendar URL
@@ -117,8 +128,11 @@
             return `${baseUrl}?${queryString}`;
         }
 
-        // Set the Google Calendar link href
-        document.getElementById('google-calendar-link').href = createGoogleCalendarUrl();
+        // Set the Google Calendar link href when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const calendarLink = document.getElementById('google-calendar-link');
+            calendarLink.href = createGoogleCalendarUrl();
+        });
     </script>
 </body>
 </html> 
