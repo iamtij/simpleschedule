@@ -1,35 +1,47 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
+const config = require('./config');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
 
 // Make reCAPTCHA site key available to templates
 app.locals.recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Session configuration
+let sessionConfig = {
+    secret: config.session.secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: config.session.cookie
+};
+
+if (config.env === 'production') {
+    // Use PostgreSQL session store in production
+    const pgSession = require('connect-pg-simple')(session);
+    sessionConfig.store = new pgSession({
+        conString: config.database.path,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+} else {
+    // Use SQLite session store in development
+    const SQLiteStore = require('connect-sqlite3')(session);
+    sessionConfig.store = new SQLiteStore({ db: 'db/sessions.db' });
+}
+
+app.use(session(sessionConfig));
 
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session setup
-app.use(session({
-  store: new SQLiteStore({
-    db: 'sessions.db',
-    dir: './db'
-  }),
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
-}));
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -58,9 +70,13 @@ app.use((req, res) => {
 // Handle errors
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).render('error', { message: 'Something went wrong!' });
+  res.status(500).render('error', { 
+    message: config.env === 'production' 
+      ? 'Something went wrong!' 
+      : err.message 
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(config.port, () => {
+  console.log(`Server is running on port ${config.port}`);
 }); 

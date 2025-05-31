@@ -1,91 +1,83 @@
 # isked
 
-A modern scheduling application that allows small business owners to manage their availability and let clients book appointments through a simple interface.
+A modern scheduling application that makes it easy to manage appointments and bookings.
 
 ## Features
 
-- User authentication (signup/login)
+- User registration and authentication
 - Customizable availability settings
-  - Set working days and hours
-  - Define break times
-- Public booking page for clients
-- Calendar view of all bookings
-- 30-minute appointment slots
-- Shareable booking links
+- Booking management with calendar view
+- Client self-scheduling through unique booking links
+- Break time management
+- Toast notifications for better user feedback
 
-## Tech Stack
+## Production Deployment
 
-- Node.js & Express
-- SQLite database with better-sqlite3
-- EJS templating
-- Tailwind CSS for styling
-- FullCalendar.js for calendar view
-- Flatpickr for date picking
+### Prerequisites
 
-## Setup
+- Node.js >= 18.0.0
+- NPM or Yarn
+- PostgreSQL (for production) or SQLite (for development)
 
-1. Install dependencies:
-```bash
-npm install
-```
+### Environment Variables
 
-2. Initialize the database:
-```bash
-sqlite3 db/database.sqlite < db/schema.sql
-```
+Set the following environment variables:
 
-3. Start the server:
-```bash
-npm start
-```
-
-For development with auto-reload:
-```bash
-npm run dev
-```
-
-## Usage
-
-1. Create an account at `/signup`
-2. Log in and set your availability in the dashboard
-3. Share your booking link with clients
-4. View and manage appointments in the calendar
-
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-```
+```env
+NODE_ENV=production
 PORT=3000
-NODE_ENV=development
-SESSION_SECRET=your-secret-key
+DATABASE_URL=your_database_url
+SESSION_SECRET=your_session_secret
+RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
 ```
 
-## Project Structure
+### Deployment Options
 
-```
-/isked
-├── index.js           # Main application file
-├── /views            # EJS templates
-├── /routes          # Express routes
-├── /public          # Static assets
-└── /db              # Database files
-```
+1. **Heroku**
+   ```bash
+   heroku create your-app-name
+   heroku config:set NODE_ENV=production
+   heroku config:set SESSION_SECRET=your_session_secret
+   heroku config:set RECAPTCHA_SITE_KEY=your_site_key
+   heroku config:set RECAPTCHA_SECRET_KEY=your_secret_key
+   git push heroku main
+   ```
 
-## Security Considerations
+2. **Railway**
+   - Connect your GitHub repository
+   - Set environment variables in the dashboard
+   - Deploy from main branch
 
-- Passwords are hashed using bcrypt
-- Session management with express-session
-- SQL injection prevention with prepared statements
-- XSS protection through EJS escaping
-- reCAPTCHA integration for form protection
+3. **Manual Deployment**
+   ```bash
+   npm install --production
+   npm run migrate
+   npm start
+   ```
 
-## Contributing
+## Development
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/isked.git
+   cd isked
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   ```
+
+3. Run database migrations
+   ```bash
+   npm run migrate
+   ```
+
+4. Start development server
+   ```bash
+   npm run dev
+   ```
 
 ## License
 
