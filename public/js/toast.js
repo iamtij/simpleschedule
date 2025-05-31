@@ -1,6 +1,8 @@
 const toast = {
     container: null,
-    timeouts: {},
+    timeouts: new Map(),
+    animationEndHandlers: new Map(),
+    maxToasts: 5,
     
     init() {
         if (!this.container) {
@@ -26,44 +28,63 @@ const toast = {
                     this.hideAll();
                 }
             });
+
+            // Cleanup on page unload
+            window.addEventListener('unload', () => this.cleanup());
         }
     },
     
     show({ type = 'info', title, message, duration = 5000 }) {
         this.init();
         
-        const id = Math.random().toString(36).substr(2, 9);
+        // Generate unique ID
+        const id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+        // Check if we need to remove old toasts
+        const toasts = this.container.querySelectorAll('.toast');
+        if (toasts.length >= this.maxToasts) {
+            const oldestToast = toasts[0];
+            const oldestId = oldestToast.id.replace('toast-', '');
+            this.hide(oldestId);
+        }
+
         const toastElement = document.createElement('div');
         toastElement.id = `toast-${id}`;
         toastElement.className = `toast ${type}`;
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'polite');
         toastElement.innerHTML = `
             <div class="toast-icon">
                 ${this.getIcon(type)}
             </div>
             <div class="toast-content">
-                ${title ? `<div class="toast-title">${title}</div>` : ''}
-                ${message ? `<div class="toast-message">${message}</div>` : ''}
+                ${title ? `<div class="toast-title">${this.escapeHtml(title)}</div>` : ''}
+                ${message ? `<div class="toast-message">${this.escapeHtml(message)}</div>` : ''}
             </div>
-            <div class="toast-close">
+            <button type="button" class="toast-close" aria-label="Close notification">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
-            </div>
+            </button>
         `;
         
         // Add to DOM
         this.container.appendChild(toastElement);
         
-        // Trigger animation on next frame
+        // Force a reflow to ensure the animation works
+        toastElement.offsetHeight;
+        
+        // Trigger animation
         requestAnimationFrame(() => {
             toastElement.classList.add('animate-slide-in');
         });
         
         // Set timeout to remove the toast
         if (duration > 0) {
-            this.timeouts[id] = setTimeout(() => {
+            const timeout = setTimeout(() => {
                 this.hide(id);
             }, duration);
+            this.timeouts.set(id, timeout);
         }
         
         return id;
@@ -71,32 +92,66 @@ const toast = {
     
     hide(id) {
         const toastElement = document.getElementById(`toast-${id}`);
-        if (toastElement && !toastElement.classList.contains('animate-slide-out')) {
-            toastElement.classList.remove('animate-slide-in');
-            toastElement.classList.add('animate-slide-out');
-            
-            // Remove the element after animation
-            const cleanup = () => {
-                if (toastElement.parentNode) {
-                    toastElement.parentNode.removeChild(toastElement);
-                }
-                if (this.timeouts[id]) {
-                    clearTimeout(this.timeouts[id]);
-                    delete this.timeouts[id];
-                }
-                toastElement.removeEventListener('animationend', cleanup);
-            };
+        if (!toastElement || toastElement.classList.contains('animate-slide-out')) return;
 
-            toastElement.addEventListener('animationend', cleanup, { once: true });
+        toastElement.classList.remove('animate-slide-in');
+        toastElement.classList.add('animate-slide-out');
+        
+        // Clear any existing animation end handler
+        const existingHandler = this.animationEndHandlers.get(id);
+        if (existingHandler) {
+            toastElement.removeEventListener('animationend', existingHandler);
+            this.animationEndHandlers.delete(id);
         }
+        
+        // Add new animation end handler
+        const cleanup = () => {
+            if (toastElement.parentNode) {
+                toastElement.parentNode.removeChild(toastElement);
+            }
+            // Clear timeout if it exists
+            const timeout = this.timeouts.get(id);
+            if (timeout) {
+                clearTimeout(timeout);
+                this.timeouts.delete(id);
+            }
+            this.animationEndHandlers.delete(id);
+        };
+        
+        this.animationEndHandlers.set(id, cleanup);
+        toastElement.addEventListener('animationend', cleanup, { once: true });
     },
 
     hideAll() {
-        const toasts = this.container.querySelectorAll('.toast');
+        const toasts = Array.from(this.container.querySelectorAll('.toast'));
         toasts.forEach(toastElement => {
             const id = toastElement.id.replace('toast-', '');
             this.hide(id);
         });
+    },
+
+    cleanup() {
+        // Clear all timeouts
+        this.timeouts.forEach(timeout => clearTimeout(timeout));
+        this.timeouts.clear();
+        
+        // Remove all animation end handlers
+        this.animationEndHandlers.clear();
+        
+        // Remove all toasts immediately
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+    },
+
+    escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe;
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     },
     
     getIcon(type) {
