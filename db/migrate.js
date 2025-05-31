@@ -1,84 +1,73 @@
-const config = require('../config');
 const fs = require('fs').promises;
 const path = require('path');
+const config = require('../config');
+const db = require('./index');
+const sqlite3 = require('sqlite3').verbose();
 
-async function waitForDatabase(pool, maxRetries = 5) {
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            const client = await pool.connect();
-            await client.query('SELECT 1');
-            client.release();
-            return true;
-        } catch (err) {
-            console.log(`Database connection attempt ${i + 1}/${maxRetries} failed. Retrying in 5 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-    }
-    return false;
-}
-
-async function migrate() {
-    if (config.env === 'production') {
-        // PostgreSQL migration
-        const { Pool } = require('pg');
-        const pool = new Pool({
-            connectionString: config.database.path,
-            ssl: {
-                rejectUnauthorized: false
-            }
-        });
-
-        try {
-            console.log('Waiting for database to be ready...');
-            const isConnected = await waitForDatabase(pool);
-            if (!isConnected) {
-                throw new Error('Could not connect to database after multiple retries');
-            }
-
-            // Read and execute PostgreSQL schema
-            console.log('Running PostgreSQL migrations...');
-            const schemaSQL = await fs.readFile(path.join(__dirname, 'schema.postgres.sql'), 'utf8');
-            await pool.query(schemaSQL);
-            console.log('PostgreSQL migration completed successfully');
-        } catch (err) {
-            console.error('Error during PostgreSQL migration:', err);
-            throw err; // Let the error propagate
-        } finally {
-            await pool.end();
-        }
-    } else {
-        // SQLite migration
-        const sqlite3 = require('sqlite3').verbose();
-        const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'));
-
-        try {
-            const schemaSQL = await fs.readFile(path.join(__dirname, 'schema.sql'), 'utf8');
-            await new Promise((resolve, reject) => {
-                db.exec(schemaSQL, (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
-            console.log('SQLite migration completed successfully');
-        } catch (err) {
-            console.error('Error during SQLite migration:', err);
-            throw err; // Let the error propagate
-        } finally {
-            db.close();
-        }
-    }
-}
-
-// Run migrations with proper error handling
-migrate()
-    .then(() => {
-        console.log('All migrations completed successfully');
-        // Only exit in production to allow for development watch mode
+async function runMigrations() {
+    try {
+        // Create migrations table if it doesn't exist
         if (config.env === 'production') {
-            process.exit(0);
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL UNIQUE,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+        } else {
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
         }
-    })
-    .catch(err => {
-        console.error('Migration failed:', err);
+
+        // Get list of migration files
+        const migrationsDir = path.join(__dirname, '..', 'migrations');
+        const files = await fs.readdir(migrationsDir);
+        const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();
+
+        // Get executed migrations
+        const result = await db.query('SELECT name FROM migrations');
+        const executedMigrations = new Set(result.rows.map(r => r.name));
+
+        // Run pending migrations
+        for (const file of sqlFiles) {
+            if (!executedMigrations.has(file)) {
+                console.log(`Running migration: ${file}`);
+                
+                // Read and execute migration
+                const sql = await fs.readFile(path.join(migrationsDir, file), 'utf8');
+                
+                // Convert PostgreSQL syntax to SQLite if needed
+                const finalSql = config.env === 'production' ? sql : 
+                    sql.replace(/SERIAL/g, 'INTEGER')
+                       .replace(/TIMESTAMP DEFAULT CURRENT_TIMESTAMP/g, 'TIMESTAMP DEFAULT (datetime(\'now\'))');
+                
+                await db.query(finalSql);
+                
+                // Record migration
+                await db.query(
+                    'INSERT INTO migrations (name) VALUES ($1)',
+                    [file]
+                );
+                
+                console.log(`Completed migration: ${file}`);
+            }
+        }
+
+        console.log('All migrations completed successfully');
+        
+    } catch (error) {
+        console.error('Migration error:', error);
         process.exit(1);
-    }); 
+    } finally {
+        await db.end();
+    }
+}
+
+// Run migrations
+runMigrations(); 
