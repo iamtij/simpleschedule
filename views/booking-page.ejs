@@ -293,7 +293,25 @@
             })
             .then(response => {
                 if (!response.ok) {
-                    return response.json().then(data => Promise.reject(data.error));
+                    if (response.headers.get('content-type')?.includes('application/json')) {
+                        return response.json().then(data => Promise.reject(data.error));
+                    }
+                    return Promise.reject('Failed to book appointment');
+                }
+                // Handle HTML response
+                if (response.headers.get('content-type')?.includes('text/html')) {
+                    return response.text().then(html => {
+                        // Create a temporary div to parse the HTML
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        
+                        // Check if it's an error page
+                        if (tempDiv.querySelector('.error-message')) {
+                            throw new Error(tempDiv.querySelector('.error-message').textContent);
+                        }
+                        
+                        return html;
+                    });
                 }
                 return response.text();
             })
@@ -302,8 +320,11 @@
                 document.documentElement.innerHTML = html;
                 // Update the URL to reflect the confirmation state
                 window.history.pushState({}, '', window.location.pathname + '/confirmation');
+                // Scroll to top
+                window.scrollTo(0, 0);
             })
             .catch(error => {
+                console.error('Booking error:', error);
                 alert(error || 'Failed to book appointment');
             });
         });
