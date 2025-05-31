@@ -22,12 +22,8 @@ const toast = {
 
             // Add click-outside handler
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.toast-container')) {
-                    const toasts = this.container.querySelectorAll('.toast');
-                    toasts.forEach(toast => {
-                        const toastId = toast.id.replace('toast-', '');
-                        this.hide(toastId);
-                    });
+                if (!e.target.closest('.toast') && !e.target.closest('.toast-container')) {
+                    this.hideAll();
                 }
             });
         }
@@ -91,8 +87,16 @@ const toast = {
                 toastElement.removeEventListener('animationend', cleanup);
             };
 
-            toastElement.addEventListener('animationend', cleanup);
+            toastElement.addEventListener('animationend', cleanup, { once: true });
         }
+    },
+
+    hideAll() {
+        const toasts = this.container.querySelectorAll('.toast');
+        toasts.forEach(toastElement => {
+            const id = toastElement.id.replace('toast-', '');
+            this.hide(id);
+        });
     },
     
     getIcon(type) {

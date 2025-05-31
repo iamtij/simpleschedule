@@ -2,7 +2,7 @@
     position: fixed;
     top: 1rem;
     right: 1rem;
-    z-index: 50;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -21,6 +21,7 @@
     pointer-events: auto; /* Re-enable clicking for toast */
     transform: translateX(100%); /* Start off-screen */
     opacity: 0;
+    will-change: transform, opacity;
 }
 
 .toast.success {
@@ -60,10 +61,14 @@
     margin-left: 0.75rem;
     cursor: pointer;
     color: #9CA3AF;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
 }
 
 .toast-close:hover {
     color: #6B7280;
+    background-color: #F3F4F6;
 }
 
 /* Toast Animations */
