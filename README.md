@@ -1,6 +1,6 @@
-# SimpleSchedule
+# isked
 
-A Calendly-style scheduling application that allows small business owners to manage their availability and let clients book appointments through a simple interface.
+A modern scheduling application that allows small business owners to manage their availability and let clients book appointments through a simple interface.
 
 ## Features
 
@@ -63,7 +63,7 @@ SESSION_SECRET=your-secret-key
 ## Project Structure
 
 ```
-/SimpleSchedule
+/isked
 ├── index.js           # Main application file
 ├── /views            # EJS templates
 ├── /routes          # Express routes
@@ -77,6 +77,7 @@ SESSION_SECRET=your-secret-key
 - Session management with express-session
 - SQL injection prevention with prepared statements
 - XSS protection through EJS escaping
+- reCAPTCHA integration for form protection
 
 ## Contributing
 

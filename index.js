@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -5,6 +6,9 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Make reCAPTCHA site key available to templates
+app.locals.recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
 // Middleware
 app.use(express.json());
@@ -21,7 +25,7 @@ app.use(session({
     db: 'sessions.db',
     dir: './db'
   }),
-  secret: 'your-secret-key',
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: { secure: process.env.NODE_ENV === 'production' }

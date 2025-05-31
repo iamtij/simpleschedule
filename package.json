@@ -1,15 +1,17 @@
 {
-  "name": "simple-schedule",
+  "name": "isked",
   "version": "1.0.0",
-  "description": "A simple scheduling application",
+  "description": "A modern scheduling application",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
     "connect-sqlite3": "^0.9.13",
+    "dotenv": "^16.5.0",
     "ejs": "^3.1.9",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
@@ -18,4 +20,4 @@
   "devDependencies": {
     "nodemon": "^3.0.3"
   }
-} 
+}

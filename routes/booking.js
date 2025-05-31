@@ -35,8 +35,8 @@ function convertTo24Hour(time) {
 }
 
 // Get user's public booking page
-router.get('/:userId', async (req, res) => {
-  db.get('SELECT id, email FROM users WHERE id = ?', [req.params.userId], (err, user) => {
+router.get('/:username', async (req, res) => {
+  db.get('SELECT id, username, email FROM users WHERE username = ?', [req.params.username], (err, user) => {
     if (err || !user) {
       return res.status(404).render('error', { message: 'User not found' });
     }
@@ -45,133 +45,134 @@ router.get('/:userId', async (req, res) => {
 });
 
 // Get available time slots for a specific date
-router.get('/:userId/availability', (req, res) => {
+router.get('/:username/availability', (req, res) => {
   const { date } = req.query;
-  const userId = req.params.userId;
+  const username = req.params.username;
   
   if (!date) {
     return res.status(400).json({ error: 'Date is required' });
   }
   
-  // Convert the date to GMT+8 and get day of week
-  const gmt8Date = convertToGMT8(date + 'T00:00:00');
-  const dayOfWeek = gmt8Date.getDay();
-  console.log('Checking availability for:', { 
-    date,
-    gmt8Date: gmt8Date.toISOString(),
-    dayOfWeek,
-    userId 
-  });
-  
-  // Get user's availability for this day
-  db.all(`
-    SELECT start_time, end_time 
-    FROM availability 
-    WHERE user_id = ? AND day_of_week = ?
-  `, [userId, dayOfWeek], (err, availability) => {
-    if (err) {
-      console.error('Error fetching availability:', err);
-      return res.status(500).json({ error: 'Failed to fetch availability' });
+  // First get the user ID from username
+  db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+    if (err || !user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('Found availability:', availability);
-
-    // If no availability set for this day
-    if (!availability || availability.length === 0) {
-      console.log('No availability found for day:', dayOfWeek);
-      return res.json({ 
-        availability: [],
-        breaks: [],
-        bookings: []
-      });
-    }
-
-    // Get breaks for this day
+    // Convert the date to GMT+8 and get day of week
+    const gmt8Date = convertToGMT8(date + 'T00:00:00');
+    const dayOfWeek = gmt8Date.getDay();
+    console.log('Checking availability for:', { 
+      date,
+      gmt8Date: gmt8Date.toISOString(),
+      dayOfWeek,
+      username 
+    });
+    
+    // Get user's availability for this day
     db.all(`
       SELECT start_time, end_time 
-      FROM breaks 
+      FROM availability 
       WHERE user_id = ? AND day_of_week = ?
-    `, [userId, dayOfWeek], (err, breaks) => {
+    `, [user.id, dayOfWeek], (err, availability) => {
       if (err) {
-        console.error('Error fetching breaks:', err);
-        return res.status(500).json({ error: 'Failed to fetch breaks' });
+        console.error('Error fetching availability:', err);
+        return res.status(500).json({ error: 'Failed to fetch availability' });
       }
 
-      console.log('Found breaks:', breaks);
+      console.log('Found availability:', availability);
 
-      // Get existing bookings for this date
+      // If no availability set for this day
+      if (!availability || availability.length === 0) {
+        console.log('No availability found for day:', dayOfWeek);
+        return res.json({ 
+          availability: [],
+          breaks: [],
+          bookings: []
+        });
+      }
+
+      // Get breaks for this day
       db.all(`
         SELECT start_time, end_time 
-        FROM bookings 
-        WHERE user_id = ? AND date = ?
-        ORDER BY start_time
-      `, [userId, date], (err, bookings) => {
+        FROM breaks 
+        WHERE user_id = ? AND day_of_week = ?
+      `, [user.id, dayOfWeek], (err, breaks) => {
         if (err) {
-          console.error('Error fetching bookings:', err);
-          return res.status(500).json({ error: 'Failed to fetch bookings' });
+          return res.status(500).json({ error: 'Failed to fetch breaks' });
         }
 
-        console.log('Found bookings:', bookings);
+        // Get existing bookings for this date
+        db.all(`
+          SELECT start_time, end_time 
+          FROM bookings 
+          WHERE user_id = ? AND date = ?
+        `, [user.id, date], (err, bookings) => {
+          if (err) {
+            return res.status(500).json({ error: 'Failed to fetch bookings' });
+          }
 
-        const response = {
-          availability,
-          breaks,
-          bookings
-        };
-        console.log('Sending response:', response);
-        res.json(response);
+          res.json({ availability, breaks, bookings });
+        });
       });
     });
   });
 });
 
 // Create a new booking
-router.post('/:userId', (req, res) => {
+router.post('/:username', (req, res) => {
   const { date, start_time, end_time, client_name, client_email, client_phone, notes } = req.body;
-  const userId = req.params.userId;
+  const username = req.params.username;
   
-  // Validate required fields
-  if (!date || !start_time || !end_time || !client_name || !client_email) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // Convert times to AM/PM format for storage
-  const start_time_12h = convertTo12Hour(start_time);
-  const end_time_12h = convertTo12Hour(end_time);
-  
-  // Check if slot is available
-  db.get(`
-    SELECT id FROM bookings 
-    WHERE user_id = ? 
-    AND date = ? 
-    AND ((start_time <= ? AND end_time > ?) 
-    OR (start_time < ? AND end_time >= ?))
-  `, [userId, date, start_time_12h, start_time_12h, end_time_12h, end_time_12h], (err, existingBooking) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to check availability' });
+  // First get the user ID from username
+  db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+    if (err || !user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    if (existingBooking) {
-      return res.status(400).json({ error: 'Time slot is not available' });
+    // Validate required fields
+    if (!date || !start_time || !end_time || !client_name || !client_email) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Create booking with AM/PM times
-    db.run(`
-      INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [userId, date, start_time_12h, end_time_12h, client_name, client_email, client_phone || null, notes || null], function(err) {
+    // Convert times to AM/PM format for storage
+    const start_time_12h = convertTo12Hour(start_time);
+    const end_time_12h = convertTo12Hour(end_time);
+    
+    // Check if slot is available
+    db.get(`
+      SELECT id FROM bookings 
+      WHERE user_id = ? 
+      AND date = ? 
+      AND ((start_time <= ? AND end_time > ?) 
+      OR (start_time < ? AND end_time >= ?))
+    `, [user.id, date, start_time_12h, start_time_12h, end_time_12h, end_time_12h], (err, existingBooking) => {
       if (err) {
-        return res.status(500).json({ error: 'Failed to create booking' });
+        return res.status(500).json({ error: 'Failed to check availability' });
       }
 
-      // Get the created booking
-      db.get('SELECT * FROM bookings WHERE id = ?', [this.lastID], (err, booking) => {
+      if (existingBooking) {
+        return res.status(400).json({ error: 'Time slot is not available' });
+      }
+
+      // Create booking with AM/PM times
+      db.run(`
+        INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [user.id, date, start_time_12h, end_time_12h, client_name, client_email, client_phone || null, notes || null], function(err) {
         if (err) {
-          return res.status(500).json({ error: 'Failed to fetch booking details' });
+          return res.status(500).json({ error: 'Failed to create booking' });
         }
 
-        // Render the confirmation page
-        res.render('booking-confirmation', { booking });
+        // Get the created booking
+        db.get('SELECT * FROM bookings WHERE id = ?', [this.lastID], (err, booking) => {
+          if (err) {
+            return res.status(500).json({ error: 'Failed to fetch booking details' });
+          }
+
+          // Render the confirmation page
+          res.render('booking-confirmation', { booking });
+        });
       });
     });
   });

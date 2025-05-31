@@ -100,21 +100,42 @@ router.get('/bookings', requireLogin, (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch bookings' });
     }
 
-    // Format bookings for FullCalendar
-    const events = bookings.map(booking => ({
-      id: booking.id,
-      title: `${booking.client_name}`,
-      start: `${booking.date}T${booking.start_time.split(' ')[0]}`,
-      end: `${booking.date}T${booking.end_time.split(' ')[0]}`,
-      extendedProps: {
-        client_name: booking.client_name,
-        client_email: booking.client_email,
-        client_phone: booking.client_phone,
-        notes: booking.notes,
-        start_time: booking.start_time,
-        end_time: booking.end_time
+    // Helper function to convert 12-hour time to 24-hour format
+    function convertTo24Hour(time12h) {
+      const [time, period] = time12h.split(' ');
+      const [hours, minutes] = time.split(':');
+      let hour = parseInt(hours);
+      
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
       }
-    }));
+      
+      return `${hour.toString().padStart(2, '0')}:${minutes}`;
+    }
+
+    // Format bookings for FullCalendar
+    const events = bookings.map(booking => {
+      // Convert times to 24-hour format for the calendar
+      const start24 = convertTo24Hour(booking.start_time);
+      const end24 = convertTo24Hour(booking.end_time);
+
+      return {
+        id: booking.id,
+        title: `${booking.client_name}`,
+        start: `${booking.date}T${start24}`,
+        end: `${booking.date}T${end24}`,
+        extendedProps: {
+          client_name: booking.client_name,
+          client_email: booking.client_email,
+          client_phone: booking.client_phone,
+          notes: booking.notes,
+          start_time: booking.start_time,
+          end_time: booking.end_time
+        }
+      };
+    });
 
     res.json(events);
   });
@@ -127,6 +148,7 @@ router.delete('/bookings/:id', requireLogin, (req, res) => {
   // First check if the booking belongs to the logged-in user
   db.get('SELECT user_id FROM bookings WHERE id = ?', [bookingId], (err, booking) => {
     if (err) {
+      console.error('Error verifying booking:', err);
       return res.status(500).json({ error: 'Failed to verify booking' });
     }
     
@@ -141,11 +163,52 @@ router.delete('/bookings/:id', requireLogin, (req, res) => {
     // Delete the booking
     db.run('DELETE FROM bookings WHERE id = ?', [bookingId], (err) => {
       if (err) {
+        console.error('Error deleting booking:', err);
         return res.status(500).json({ error: 'Failed to delete booking' });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: 'Booking deleted successfully' });
     });
   });
+});
+
+// Update username
+router.post('/username', requireLogin, async (req, res) => {
+  const { username } = req.body;
+
+  // Validate username format
+  const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+  if (!usernameRegex.test(username)) {
+    return res.status(400).json({ 
+      error: 'Username can only contain letters, numbers, underscores and hyphens'
+    });
+  }
+
+  // Check if username is already taken
+  try {
+    const existingUser = await new Promise((resolve, reject) => {
+      db.get('SELECT id FROM users WHERE username = ? AND id != ?', [username, req.session.userId], (err, user) => {
+        if (err) reject(err);
+        else resolve(user);
+      });
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
+
+    // Update username
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE users SET username = ? WHERE id = ?', [username, req.session.userId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating username:', error);
+    res.status(500).json({ error: 'Failed to update username' });
+  }
 });
 
 module.exports = router; 

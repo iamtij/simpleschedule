@@ -214,7 +214,7 @@
 
             console.log('Loading slots for date:', selectedDate);
             
-            fetch(`/booking/<%= user.id %>/availability?date=${selectedDate}`)
+            fetch(`/booking/<%= user.username %>/availability?date=${selectedDate}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log('Availability data:', data);
@@ -292,7 +292,7 @@
                 notes: document.getElementById('notes').value
             };
 
-            fetch('/booking/<%= user.id %>', {
+            fetch('/booking/<%= user.username %>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
