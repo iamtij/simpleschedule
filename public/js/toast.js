@@ -1,5 +1,6 @@
 const toast = {
     container: null,
+    activeToasts: new Set(),
     
     init() {
         if (!this.container) {
@@ -23,57 +24,65 @@ const toast = {
                 ${title ? `<div class="toast-title">${this.escapeHtml(title)}</div>` : ''}
                 ${message ? `<div class="toast-message">${this.escapeHtml(message)}</div>` : ''}
             </div>
-            <button class="toast-close" aria-label="Close">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
+            <button class="toast-close" aria-label="Close">×</button>
         `;
-        
-        // Add to DOM
-        this.container.appendChild(toastEl);
-        
-        // Limit number of toasts
-        const maxToasts = 5;
-        while (this.container.children.length > maxToasts) {
-            this.container.removeChild(this.container.firstChild);
+
+        // Remove old toasts if too many
+        while (this.container.children.length >= 5) {
+            const oldToast = this.container.firstChild;
+            this.removeToast(oldToast);
         }
         
-        // Show toast
-        requestAnimationFrame(() => {
-            toastEl.classList.add('show');
-        });
+        // Add to DOM and track
+        this.container.appendChild(toastEl);
+        this.activeToasts.add(toastEl);
         
+        // Show toast with slight delay to ensure transition works
+        setTimeout(() => {
+            toastEl.classList.add('show');
+        }, 10);
+
         // Setup close button
         const closeBtn = toastEl.querySelector('.toast-close');
-        const close = () => {
-            toastEl.classList.remove('show');
+        closeBtn.addEventListener('click', () => this.removeToast(toastEl));
+
+        // Auto dismiss
+        if (duration > 0) {
             setTimeout(() => {
-                if (toastEl.parentNode) {
-                    toastEl.parentNode.removeChild(toastEl);
+                if (this.activeToasts.has(toastEl)) {
+                    this.removeToast(toastEl);
                 }
-            }, 300); // Match transition duration
-        };
-        
-        closeBtn.addEventListener('click', close);
-        
-        // Auto close
-        if (duration) {
-            setTimeout(close, duration);
+            }, duration);
         }
-        
-        // Click outside to close
-        const clickOutside = (e) => {
-            if (!toastEl.contains(e.target)) {
-                close();
-                document.removeEventListener('click', clickOutside);
+
+        // Click outside to dismiss
+        const handleClickOutside = (e) => {
+            if (!toastEl.contains(e.target) && this.activeToasts.has(toastEl)) {
+                this.removeToast(toastEl);
+                document.removeEventListener('click', handleClickOutside);
             }
         };
+
+        // Add click outside handler after a short delay
         setTimeout(() => {
-            document.addEventListener('click', clickOutside);
+            document.addEventListener('click', handleClickOutside);
         }, 100);
-        
+
         return toastEl;
+    },
+
+    removeToast(toastEl) {
+        if (!this.activeToasts.has(toastEl)) return;
+        
+        toastEl.classList.remove('show');
+        this.activeToasts.delete(toastEl);
+        
+        // Remove after transition
+        setTimeout(() => {
+            if (toastEl.parentNode === this.container) {
+                this.container.removeChild(toastEl);
+            }
+        }, 300);
     },
     
     escapeHtml(str) {
