@@ -6,6 +6,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    pointer-events: none; /* Allow clicking through the container */
 }
 
 .toast {
@@ -17,6 +18,9 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     min-width: 300px;
     max-width: 400px;
+    pointer-events: auto; /* Re-enable clicking for toast */
+    transform: translateX(100%); /* Start off-screen */
+    opacity: 0;
 }
 
 .toast.success {
@@ -63,14 +67,6 @@
 }
 
 /* Toast Animations */
-.animate-slide-in {
-    animation: slideIn 0.3s ease-out forwards;
-}
-
-.animate-slide-out {
-    animation: slideOut 0.3s ease-in forwards;
-}
-
 @keyframes slideIn {
     from {
         transform: translateX(100%);
@@ -91,4 +87,12 @@
         transform: translateX(100%);
         opacity: 0;
     }
+}
+
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-slide-out {
+    animation: slideOut 0.3s ease-in forwards;
 } 
