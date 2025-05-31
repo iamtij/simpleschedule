@@ -14,7 +14,12 @@ let sessionConfig = {
     secret: config.session.secret,
     resave: false,
     saveUninitialized: false,
-    cookie: config.session.cookie
+    cookie: {
+        secure: config.env === 'production',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
+    },
+    name: 'isked.sid' // Custom session cookie name
 };
 
 if (config.env === 'production') {
@@ -24,7 +29,9 @@ if (config.env === 'production') {
         conString: config.database.path,
         ssl: {
             rejectUnauthorized: false
-        }
+        },
+        createTableIfMissing: true,
+        pruneSessionInterval: 60
     });
 } else {
     // Use SQLite session store in development
@@ -43,6 +50,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({
+        error: config.env === 'production' ? 'Internal server error' : err.message
+    });
+});
+
 // Routes
 const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/booking');
@@ -55,28 +70,34 @@ app.use('/dashboard', dashboardRoutes);
 
 // Home route
 app.get('/', (req, res) => {
-  if (req.session.userId) {
-    res.redirect('/dashboard');
-  } else {
-    res.render('login', { error: null });
-  }
+    if (req.session.userId) {
+        res.redirect('/dashboard');
+    } else {
+        res.render('login', { error: null });
+    }
 });
 
 // Handle 404
 app.use((req, res) => {
-  res.status(404).render('error', { message: 'Page not found' });
+    res.status(404).render('error', { message: 'Page not found' });
 });
 
 // Handle errors
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).render('error', { 
-    message: config.env === 'production' 
-      ? 'Something went wrong!' 
-      : err.message 
-  });
+    console.error(err.stack);
+    res.status(500).render('error', { 
+        message: config.env === 'production' 
+            ? 'Something went wrong!' 
+            : err.message 
+    });
 });
 
-app.listen(config.port, () => {
-  console.log(`Server is running on port ${config.port}`);
-}); 
+// Export for Vercel
+module.exports = app;
+
+// Only listen if not running on Vercel
+if (config.env !== 'production') {
+    app.listen(config.port, () => {
+        console.log(`Server is running on port ${config.port}`);
+    });
+} 

@@ -6,22 +6,38 @@ let db;
 
 if (config.env === 'production') {
     // PostgreSQL for production
-    db = new Pool({
+    const pool = new Pool({
         connectionString: config.database.path,
         ssl: {
             rejectUnauthorized: false
         },
-        // Add connection pool settings for serverless
+        // Optimize for serverless
         max: 1,
-        connectionTimeoutMillis: 5000,
-        idleTimeoutMillis: 5000
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 10000
     });
 
-    // Test the connection
-    db.on('error', (err) => {
+    // Add error handler
+    pool.on('error', (err) => {
         console.error('Unexpected error on idle client', err);
-        process.exit(-1);
     });
+
+    // Wrap pool query for better error handling
+    db = {
+        query: async (text, params) => {
+            const client = await pool.connect();
+            try {
+                const result = await client.query(text, params);
+                return result;
+            } catch (err) {
+                console.error('Database query error:', err);
+                throw err;
+            } finally {
+                client.release();
+            }
+        },
+        end: () => pool.end()
+    };
 
     console.log('PostgreSQL pool initialized');
 } else {
@@ -34,15 +50,5 @@ if (config.env === 'production') {
         }
     });
 }
-
-// Helper function for PostgreSQL queries
-db.queryPromise = async (text, params) => {
-    const client = await db.connect();
-    try {
-        return await client.query(text, params);
-    } finally {
-        client.release();
-    }
-};
 
 module.exports = db; 

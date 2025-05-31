@@ -9,11 +9,14 @@
     "routes": [
         {
             "src": "/public/(.*)",
-            "dest": "/public/$1"
+            "dest": "/public/$1",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            }
         },
         {
             "src": "/(.*)",
-            "dest": "/index.js"
+            "dest": "/"
         }
     ],
     "env": {
