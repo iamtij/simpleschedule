@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Confirmed</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script>
-        // Helper function to format time to 12-hour with AM/PM
-        function formatTime(time) {
-            const [hours, minutes] = time.split(':');
-            const hour = parseInt(hours);
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            const hour12 = hour % 12 || 12;
-            return `${hour12}:${minutes} ${ampm}`;
-        }
-    </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="max-w-2xl mx-auto px-4 py-16">
@@ -71,7 +61,8 @@
             </div>
 
             <div class="space-y-4">
-                <a href="#" id="google-calendar-link" 
+                <a href="https://calendar.google.com/calendar/event?action=TEMPLATE&text=<%= encodeURIComponent(`Appointment with ${host.name || host.username}`) %>&dates=<%= booking.date.replace(/-/g, '') %>T<%= booking.start_time.replace(/:/g, '') %>00/<%= booking.date.replace(/-/g, '') %>T<%= booking.end_time.replace(/:/g, '') %>00&details=<%= encodeURIComponent(`Client: ${booking.client_name}\nEmail: ${booking.client_email}${booking.client_phone ? '\nPhone: ' + booking.client_phone : ''}${booking.notes ? '\nNotes: ' + booking.notes : ''}`) %>" 
+                   target="_blank"
                    class="inline-block w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
                     Add to Google Calendar
                 </a>
@@ -82,62 +73,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Function to create Google Calendar event URL
-        function createGoogleCalendarUrl() {
-            const booking = <%- JSON.stringify(booking) %>;
-            const host = <%- JSON.stringify(host) %>;
-            
-            // Create start and end datetime strings
-            const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
-            const endDateTime = new Date(`${booking.date}T${booking.end_time}`);
-
-            // Format dates to YYYYMMDDTHHMMSS format and add +08:00 for PH timezone
-            const formatDateForCalendar = (date) => {
-                return date.getFullYear() +
-                    String(date.getMonth() + 1).padStart(2, '0') +
-                    String(date.getDate()).padStart(2, '0') + 
-                    'T' +
-                    String(date.getHours()).padStart(2, '0') +
-                    String(date.getMinutes()).padStart(2, '0') +
-                    String(date.getSeconds()).padStart(2, '0') +
-                    '+0800'; // PH timezone offset
-            };
-
-            // Format the event details
-            const eventDetails = [
-                `Client: ${booking.client_name}`,
-                `Email: ${booking.client_email}`
-            ];
-            
-            if (booking.client_phone) {
-                eventDetails.push(`Phone: ${booking.client_phone}`);
-            }
-            
-            if (booking.notes) {
-                eventDetails.push(`Notes: ${booking.notes}`);
-            }
-
-            // Build the calendar URL with proper encoding
-            const params = new URLSearchParams({
-                action: 'TEMPLATE',
-                text: `Appointment with ${host.name || host.username}`,
-                dates: `${formatDateForCalendar(startDateTime)}/${formatDateForCalendar(endDateTime)}`,
-                details: eventDetails.join('\\n'),
-                sf: 'true',
-                output: 'xml'
-            });
-
-            return `https://calendar.google.com/calendar/render?${params.toString()}`;
-        }
-
-        // Set the Google Calendar link href and target when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            const calendarLink = document.getElementById('google-calendar-link');
-            calendarLink.href = createGoogleCalendarUrl();
-            calendarLink.target = '_blank'; // Open in new tab
-        });
-    </script>
 </body>
 </html> 

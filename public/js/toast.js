@@ -7,6 +7,29 @@ const toast = {
             this.container = document.createElement('div');
             this.container.className = 'toast-container';
             document.body.appendChild(this.container);
+
+            // Add click handler to container for event delegation
+            this.container.addEventListener('click', (e) => {
+                const closeButton = e.target.closest('.toast-close');
+                if (closeButton) {
+                    const toastElement = closeButton.closest('.toast');
+                    if (toastElement) {
+                        const toastId = toastElement.id.replace('toast-', '');
+                        this.hide(toastId);
+                    }
+                }
+            });
+
+            // Add click-outside handler
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.toast-container')) {
+                    const toasts = this.container.querySelectorAll('.toast');
+                    toasts.forEach(toast => {
+                        const toastId = toast.id.replace('toast-', '');
+                        this.hide(toastId);
+                    });
+                }
+            });
         }
     },
     
@@ -25,7 +48,7 @@ const toast = {
                 ${title ? `<div class="toast-title">${title}</div>` : ''}
                 ${message ? `<div class="toast-message">${message}</div>` : ''}
             </div>
-            <div class="toast-close" onclick="toast.hide('${id}')">
+            <div class="toast-close">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -52,12 +75,12 @@ const toast = {
     
     hide(id) {
         const toastElement = document.getElementById(`toast-${id}`);
-        if (toastElement) {
+        if (toastElement && !toastElement.classList.contains('animate-slide-out')) {
             toastElement.classList.remove('animate-slide-in');
             toastElement.classList.add('animate-slide-out');
             
             // Remove the element after animation
-            toastElement.addEventListener('animationend', () => {
+            const cleanup = () => {
                 if (toastElement.parentNode) {
                     toastElement.parentNode.removeChild(toastElement);
                 }
@@ -65,7 +88,10 @@ const toast = {
                     clearTimeout(this.timeouts[id]);
                     delete this.timeouts[id];
                 }
-            }, { once: true });
+                toastElement.removeEventListener('animationend', cleanup);
+            };
+
+            toastElement.addEventListener('animationend', cleanup);
         }
     },
     

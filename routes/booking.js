@@ -165,9 +165,10 @@ router.post('/:username', async (req, res) => {
         booking.formatted_end_time = formatTime(booking.end_time);
 
         // Render the confirmation page with booking and host details
-        res.render('booking-confirmation', { 
-            booking: booking,
-            host: hostResult.rows[0]
+        res.render('booking-confirmation', {
+            booking,
+            host: hostResult.rows[0],
+            calendarUrl: generateGoogleCalendarUrl(booking, hostResult.rows[0])
         });
     } catch (error) {
         console.error('Error:', error);
