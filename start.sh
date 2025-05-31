@@ -5,6 +5,10 @@ set -e
 
 echo "Starting application setup..."
 
+# Ensure PORT is set
+export PORT="${PORT:-3000}"
+echo "Using PORT: $PORT"
+
 # Function to test database connection
 test_connection() {
     node -e "
@@ -36,5 +40,5 @@ fi
 echo "Database is ready, running migrations..."
 node db/migrate.js
 
-echo "Starting application..."
+echo "Starting application on port $PORT..."
 exec node index.js 

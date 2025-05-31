@@ -92,12 +92,17 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Export for Vercel
+// Export for Railway
 module.exports = app;
 
-// Only listen if not running on Vercel
+// Only listen if not running on Railway
 if (config.env !== 'production') {
     app.listen(config.port, () => {
         console.log(`Server is running on port ${config.port}`);
+    });
+} else {
+    const port = process.env.PORT || 3000;
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`Server is running on port ${port}`);
     });
 } 
