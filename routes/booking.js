@@ -130,7 +130,7 @@ router.post('/:username', async (req, res) => {
     try {
         // First get the user ID from username
         const userResult = await db.query(
-            'SELECT id FROM users WHERE username = $1',
+            'SELECT id, name, email, username FROM users WHERE username = $1',
             [username]
         );
 
@@ -139,6 +139,7 @@ router.post('/:username', async (req, res) => {
         }
 
         const userId = userResult.rows[0].id;
+        const host = userResult.rows[0];
 
         // Validate required fields
         if (!date || !start_time || !end_time || !client_name || !client_email) {
@@ -153,12 +154,6 @@ router.post('/:username', async (req, res) => {
             [userId, date, start_time, end_time, client_name, client_email, client_phone, notes]
         );
 
-        // Get the host's information
-        const hostResult = await db.query(
-            'SELECT name, email, username FROM users WHERE id = $1',
-            [userId]
-        );
-
         // Format the booking times
         const booking = bookingResult.rows[0];
         booking.formatted_start_time = formatTime(booking.start_time);
@@ -167,12 +162,11 @@ router.post('/:username', async (req, res) => {
         // Render the confirmation page with booking and host details
         res.render('booking-confirmation', {
             booking,
-            host: hostResult.rows[0],
-            calendarUrl: generateGoogleCalendarUrl(booking, hostResult.rows[0])
+            host
         });
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).render('error', { message: 'Failed to create booking' });
+        console.error('Error creating booking:', error);
+        res.status(500).json({ error: 'Failed to create booking' });
     }
 });
 
