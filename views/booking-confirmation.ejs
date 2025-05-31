@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Confirmed</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+        // Helper function to format time to 12-hour with AM/PM
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+        }
+    </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="max-w-2xl mx-auto px-4 py-16">
@@ -24,11 +34,18 @@
                 <div class="space-y-3 text-left">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Date:</span>
-                        <span class="font-medium text-gray-800"><%= booking.date %></span>
+                        <span class="font-medium text-gray-800">
+                            <%= new Date(booking.date).toLocaleDateString('en-US', { 
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                            }) %>
+                        </span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Time:</span>
-                        <span class="font-medium text-gray-800"><%= booking.start_time %> - <%= booking.end_time %></span>
+                        <span class="font-medium text-gray-800"><%= booking.formatted_start_time %> - <%= booking.formatted_end_time %></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Name:</span>
@@ -58,7 +75,7 @@
                    class="inline-block w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
                     Add to Google Calendar
                 </a>
-                <a href="/booking/<%= booking.user_id %>" 
+                <a href="/booking/<%= host.username %>" 
                    class="inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors">
                     Book Another Appointment
                 </a>

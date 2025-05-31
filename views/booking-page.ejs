@@ -87,25 +87,18 @@
         let selectedDate = null;
         let selectedTime = null;
 
-        // Helper function to convert to GMT+8
-        function convertToGMT8(date) {
-            return new Date(date.getTime() + (8 * 60 * 60 * 1000));
-        }
-
         // Initialize date picker
         flatpickr("#date-picker", {
             minDate: "today",
             dateFormat: "Y-m-d",
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
-                    // Convert to GMT+8
-                    const gmt8Date = convertToGMT8(selectedDates[0]);
-                    selectedDate = gmt8Date.toISOString().split('T')[0];
-                    console.log('Selected date (GMT+8):', {
-                        original: selectedDates[0].toISOString(),
-                        gmt8: gmt8Date.toISOString(),
-                        selectedDate
-                    });
+                    const date = selectedDates[0];
+                    // Format the date as YYYY-MM-DD in local timezone
+                    selectedDate = date.getFullYear() + '-' + 
+                        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(date.getDate()).padStart(2, '0');
+                    console.log('Selected date (local):', selectedDate);
                     loadTimeSlots();
                 }
             }
@@ -114,20 +107,19 @@
         // Generate time slots in 1-hour intervals
         function generateTimeSlots(startTime, endTime, breaks, bookings) {
             const slots = [];
-            // Create dates in GMT+8
-            const baseDate = new Date(selectedDate + 'T00:00:00Z');
-            const start = new Date(baseDate.getTime() + (8 * 60 * 60 * 1000));
+            const baseDate = new Date(selectedDate);
+            const start = new Date(baseDate);
             start.setHours(parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]));
             
-            const end = new Date(baseDate.getTime() + (8 * 60 * 60 * 1000));
+            const end = new Date(baseDate);
             end.setHours(parseInt(endTime.split(':')[0]), parseInt(endTime.split(':')[1]));
             
-            console.log('Generating slots for GMT+8:', {
+            console.log('Generating slots:', {
                 selectedDate,
                 startTime,
                 endTime,
-                gmt8Start: start.toISOString(),
-                gmt8End: end.toISOString()
+                localStart: start.toLocaleString(),
+                localEnd: end.toLocaleString()
             });
 
             // Function to convert time to AM/PM format

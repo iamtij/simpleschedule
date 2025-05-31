@@ -251,8 +251,46 @@
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
-                events: '/dashboard/bookings',
+                events: function(info, successCallback, failureCallback) {
+                    fetch('/dashboard/bookings')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Failed to fetch events');
+                            }
+                            return response.json();
+                        })
+                        .then(events => {
+                            console.log('Raw events from server:', events);
+                            successCallback(events);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching events:', error);
+                            failureCallback(error);
+                        });
+                },
+                timeZone: 'Asia/Manila',
+                loading: function(isLoading) {
+                    console.log('Calendar loading:', isLoading);
+                },
+                eventSourceSuccess: function(content, xhr) {
+                    console.log('Event source data:', content);
+                    return content;
+                },
+                slotMinTime: '08:00:00',
+                slotMaxTime: '20:00:00',
+                allDaySlot: false,
+                slotDuration: '00:30:00',
+                initialDate: '2025-06-02',
+                displayEventTime: true,
+                displayEventEnd: true,
+                eventTimeFormat: {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    meridiem: 'short',
+                    hour12: true
+                },
                 eventContent: function(arg) {
+                    console.log('Rendering event:', arg.event);
                     const startTime = formatTimeShort(arg.event.extendedProps.start_time);
                     const endTime = formatTimeShort(arg.event.extendedProps.end_time);
                     
@@ -268,6 +306,13 @@
                     };
                 },
                 eventDidMount: function(info) {
+                    console.log('Event mounted:', {
+                        id: info.event.id,
+                        title: info.event.title,
+                        start: info.event.start,
+                        end: info.event.end,
+                        extendedProps: info.event.extendedProps
+                    });
                     // Add hover effect and styling to events
                     info.el.style.backgroundColor = '#4299e1';
                     info.el.style.borderColor = '#3182ce';
@@ -286,17 +331,17 @@
                     showBookingDetails(info.event);
                 },
                 dayMaxEvents: false, // Allow all events to be displayed
-                displayEventTime: false,
-                eventTimeFormat: {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    meridiem: 'short'
-                },
                 height: 'auto', // Adjust height automatically
                 contentHeight: 'auto',
                 expandRows: true, // Expand rows to fit all events
                 handleWindowResize: true,
-                windowResizeDelay: 200
+                windowResizeDelay: 200,
+                nowIndicator: true, // Show current time indicator
+                businessHours: {
+                    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+                    startTime: '09:00',
+                    endTime: '17:00'
+                }
             });
             calendarInstance.render();
 

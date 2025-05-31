@@ -2,28 +2,17 @@ const fs = require('fs').promises;
 const path = require('path');
 const config = require('../config');
 const db = require('./index');
-const sqlite3 = require('sqlite3').verbose();
 
 async function runMigrations() {
     try {
         // Create migrations table if it doesn't exist
-        if (config.env === 'production') {
-            await db.query(`
-                CREATE TABLE IF NOT EXISTS migrations (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL UNIQUE,
-                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-        } else {
-            await db.query(`
-                CREATE TABLE IF NOT EXISTS migrations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE,
-                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-        }
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS migrations (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
         // Get list of migration files
         const migrationsDir = path.join(__dirname, '..', 'migrations');
@@ -41,13 +30,7 @@ async function runMigrations() {
                 
                 // Read and execute migration
                 const sql = await fs.readFile(path.join(migrationsDir, file), 'utf8');
-                
-                // Convert PostgreSQL syntax to SQLite if needed
-                const finalSql = config.env === 'production' ? sql : 
-                    sql.replace(/SERIAL/g, 'INTEGER')
-                       .replace(/TIMESTAMP DEFAULT CURRENT_TIMESTAMP/g, 'TIMESTAMP DEFAULT (datetime(\'now\'))');
-                
-                await db.query(finalSql);
+                await db.query(sql);
                 
                 // Record migration
                 await db.query(

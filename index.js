@@ -10,7 +10,8 @@ const app = express();
 app.locals.recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
 // Session configuration
-let sessionConfig = {
+const pgSession = require('connect-pg-simple')(session);
+const sessionConfig = {
     secret: config.session.secret,
     resave: false,
     saveUninitialized: false,
@@ -19,25 +20,16 @@ let sessionConfig = {
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: 'lax'
     },
-    name: 'isked.sid' // Custom session cookie name
-};
-
-if (config.env === 'production') {
-    // Use PostgreSQL session store in production
-    const pgSession = require('connect-pg-simple')(session);
-    sessionConfig.store = new pgSession({
+    name: 'isked.sid', // Custom session cookie name
+    store: new pgSession({
         conString: config.database.path,
-        ssl: {
+        ssl: config.env === 'production' ? {
             rejectUnauthorized: false
-        },
+        } : false,
         createTableIfMissing: true,
         pruneSessionInterval: 60
-    });
-} else {
-    // Use SQLite session store in development
-    const SQLiteStore = require('connect-sqlite3')(session);
-    sessionConfig.store = new SQLiteStore({ db: 'db/sessions.db' });
-}
+    })
+};
 
 app.use(session(sessionConfig));
 
