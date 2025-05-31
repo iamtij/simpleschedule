@@ -93,11 +93,19 @@
             const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
             const endDateTime = new Date(`${booking.date}T${booking.end_time}`);
 
-            // Format the dates for Google Calendar URL (ensuring UTC format)
-            const start = startDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-            const end = endDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+            // Format dates to YYYYMMDDTHHMMSS format and add +08:00 for PH timezone
+            const formatDateForCalendar = (date) => {
+                return date.getFullYear() +
+                    String(date.getMonth() + 1).padStart(2, '0') +
+                    String(date.getDate()).padStart(2, '0') + 
+                    'T' +
+                    String(date.getHours()).padStart(2, '0') +
+                    String(date.getMinutes()).padStart(2, '0') +
+                    String(date.getSeconds()).padStart(2, '0') +
+                    '+0800'; // PH timezone offset
+            };
 
-            // Create event details with rich formatting
+            // Format the event details
             const eventDetails = [
                 `Client: ${booking.client_name}`,
                 `Email: ${booking.client_email}`
@@ -111,27 +119,24 @@
                 eventDetails.push(`Notes: ${booking.notes}`);
             }
 
-            const details = {
+            // Build the calendar URL with proper encoding
+            const params = new URLSearchParams({
                 action: 'TEMPLATE',
                 text: `Appointment with ${host.name || host.username}`,
-                details: eventDetails.join('\n'),
-                dates: `${start}/${end}`,
-                sf: true
-            };
+                dates: `${formatDateForCalendar(startDateTime)}/${formatDateForCalendar(endDateTime)}`,
+                details: eventDetails.join('\\n'),
+                sf: 'true',
+                output: 'xml'
+            });
 
-            // Create the Google Calendar URL
-            const baseUrl = 'https://calendar.google.com/calendar/render';
-            const queryString = Object.entries(details)
-                .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-                .join('&');
-
-            return `${baseUrl}?${queryString}`;
+            return `https://calendar.google.com/calendar/render?${params.toString()}`;
         }
 
-        // Set the Google Calendar link href when the page loads
+        // Set the Google Calendar link href and target when the page loads
         document.addEventListener('DOMContentLoaded', () => {
             const calendarLink = document.getElementById('google-calendar-link');
             calendarLink.href = createGoogleCalendarUrl();
+            calendarLink.target = '_blank'; // Open in new tab
         });
     </script>
 </body>
