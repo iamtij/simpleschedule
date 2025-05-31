@@ -1,2 +1,1 @@
-web: ./start.sh
-release: npm run migrate 
+web: ./start.sh 
