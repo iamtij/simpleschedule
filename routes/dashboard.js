@@ -99,7 +99,52 @@ router.get('/bookings', requireLogin, (req, res) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to fetch bookings' });
     }
-    res.json(bookings);
+
+    // Format bookings for FullCalendar
+    const events = bookings.map(booking => ({
+      id: booking.id,
+      title: `${booking.client_name}`,
+      start: `${booking.date}T${booking.start_time.split(' ')[0]}`,
+      end: `${booking.date}T${booking.end_time.split(' ')[0]}`,
+      extendedProps: {
+        client_name: booking.client_name,
+        client_email: booking.client_email,
+        client_phone: booking.client_phone,
+        notes: booking.notes,
+        start_time: booking.start_time,
+        end_time: booking.end_time
+      }
+    }));
+
+    res.json(events);
+  });
+});
+
+// Delete booking
+router.delete('/bookings/:id', requireLogin, (req, res) => {
+  const bookingId = req.params.id;
+  
+  // First check if the booking belongs to the logged-in user
+  db.get('SELECT user_id FROM bookings WHERE id = ?', [bookingId], (err, booking) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to verify booking' });
+    }
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.user_id !== req.session.userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this booking' });
+    }
+    
+    // Delete the booking
+    db.run('DELETE FROM bookings WHERE id = ?', [bookingId], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete booking' });
+      }
+      res.json({ success: true });
+    });
   });
 });
 

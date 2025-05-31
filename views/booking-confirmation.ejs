@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmed</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-16">
+        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div class="mb-8">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Appointment Confirmed!</h1>
+                <p class="text-gray-600">Your appointment has been successfully scheduled.</p>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-6 mb-8">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Appointment Details</h2>
+                <div class="space-y-3 text-left">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Date:</span>
+                        <span class="font-medium text-gray-800"><%= booking.date %></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Time:</span>
+                        <span class="font-medium text-gray-800"><%= booking.start_time %> - <%= booking.end_time %></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Name:</span>
+                        <span class="font-medium text-gray-800"><%= booking.client_name %></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Email:</span>
+                        <span class="font-medium text-gray-800"><%= booking.client_email %></span>
+                    </div>
+                    <% if (booking.client_phone) { %>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Phone:</span>
+                        <span class="font-medium text-gray-800"><%= booking.client_phone %></span>
+                    </div>
+                    <% } %>
+                    <% if (booking.notes) { %>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Notes:</span>
+                        <span class="font-medium text-gray-800"><%= booking.notes %></span>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <a href="#" id="google-calendar-link" 
+                   class="inline-block w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
+                    Add to Google Calendar
+                </a>
+                <a href="/booking/<%= booking.user_id %>" 
+                   class="inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors">
+                    Book Another Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to create Google Calendar event URL
+        function createGoogleCalendarUrl() {
+            const booking = <%- JSON.stringify(booking) %>;
+            const dateStr = booking.date;
+            const startTime = booking.start_time;
+            const endTime = booking.end_time;
+
+            // Create start and end datetime strings
+            const startDateTime = new Date(`${dateStr}T${startTime}`);
+            const endDateTime = new Date(`${dateStr}T${endTime}`);
+
+            // Format the dates for Google Calendar URL
+            const start = startDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+            const end = endDateTime.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+            // Create event details
+            const details = {
+                action: 'TEMPLATE',
+                text: 'Appointment',
+                details: `Appointment with ${booking.client_name}\n${booking.notes || ''}`,
+                location: '',
+                dates: `${start}/${end}`
+            };
+
+            // Create the Google Calendar URL
+            const baseUrl = 'https://calendar.google.com/calendar/render';
+            const queryString = Object.entries(details)
+                .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+                .join('&');
+
+            return `${baseUrl}?${queryString}`;
+        }
+
+        // Set the Google Calendar link href
+        document.getElementById('google-calendar-link').href = createGoogleCalendarUrl();
+    </script>
+</body>
+</html> 
