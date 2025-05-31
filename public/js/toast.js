@@ -1,173 +1,101 @@
 const toast = {
     container: null,
-    timeouts: new Map(),
-    animationEndHandlers: new Map(),
-    maxToasts: 5,
     
     init() {
         if (!this.container) {
             this.container = document.createElement('div');
             this.container.className = 'toast-container';
             document.body.appendChild(this.container);
-
-            // Add click handler to container for event delegation
-            this.container.addEventListener('click', (e) => {
-                const closeButton = e.target.closest('.toast-close');
-                if (closeButton) {
-                    const toastElement = closeButton.closest('.toast');
-                    if (toastElement) {
-                        const toastId = toastElement.id.replace('toast-', '');
-                        this.hide(toastId);
-                    }
-                }
-            });
-
-            // Add click-outside handler
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.toast') && !e.target.closest('.toast-container')) {
-                    this.hideAll();
-                }
-            });
-
-            // Cleanup on page unload
-            window.addEventListener('unload', () => this.cleanup());
         }
     },
     
     show({ type = 'info', title, message, duration = 5000 }) {
         this.init();
         
-        // Generate unique ID
-        const id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        // Create toast element
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast ${type}`;
         
-        // Check if we need to remove old toasts
-        const toasts = this.container.querySelectorAll('.toast');
-        if (toasts.length >= this.maxToasts) {
-            const oldestToast = toasts[0];
-            const oldestId = oldestToast.id.replace('toast-', '');
-            this.hide(oldestId);
-        }
-
-        const toastElement = document.createElement('div');
-        toastElement.id = `toast-${id}`;
-        toastElement.className = `toast ${type}`;
-        toastElement.setAttribute('role', 'alert');
-        toastElement.setAttribute('aria-live', 'polite');
-        toastElement.innerHTML = `
-            <div class="toast-icon">
-                ${this.getIcon(type)}
-            </div>
+        // Create content
+        toastEl.innerHTML = `
+            <div class="toast-icon">${this.getIcon(type)}</div>
             <div class="toast-content">
                 ${title ? `<div class="toast-title">${this.escapeHtml(title)}</div>` : ''}
                 ${message ? `<div class="toast-message">${this.escapeHtml(message)}</div>` : ''}
             </div>
-            <button type="button" class="toast-close" aria-label="Close notification">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <button class="toast-close" aria-label="Close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </button>
         `;
         
         // Add to DOM
-        this.container.appendChild(toastElement);
+        this.container.appendChild(toastEl);
         
-        // Force a reflow to ensure the animation works
-        toastElement.offsetHeight;
+        // Limit number of toasts
+        const maxToasts = 5;
+        while (this.container.children.length > maxToasts) {
+            this.container.removeChild(this.container.firstChild);
+        }
         
-        // Trigger animation
+        // Show toast
         requestAnimationFrame(() => {
-            toastElement.classList.add('animate-slide-in');
+            toastEl.classList.add('show');
         });
         
-        // Set timeout to remove the toast
-        if (duration > 0) {
-            const timeout = setTimeout(() => {
-                this.hide(id);
-            }, duration);
-            this.timeouts.set(id, timeout);
-        }
-        
-        return id;
-    },
-    
-    hide(id) {
-        const toastElement = document.getElementById(`toast-${id}`);
-        if (!toastElement || toastElement.classList.contains('animate-slide-out')) return;
-
-        toastElement.classList.remove('animate-slide-in');
-        toastElement.classList.add('animate-slide-out');
-        
-        // Clear any existing animation end handler
-        const existingHandler = this.animationEndHandlers.get(id);
-        if (existingHandler) {
-            toastElement.removeEventListener('animationend', existingHandler);
-            this.animationEndHandlers.delete(id);
-        }
-        
-        // Add new animation end handler
-        const cleanup = () => {
-            if (toastElement.parentNode) {
-                toastElement.parentNode.removeChild(toastElement);
-            }
-            // Clear timeout if it exists
-            const timeout = this.timeouts.get(id);
-            if (timeout) {
-                clearTimeout(timeout);
-                this.timeouts.delete(id);
-            }
-            this.animationEndHandlers.delete(id);
+        // Setup close button
+        const closeBtn = toastEl.querySelector('.toast-close');
+        const close = () => {
+            toastEl.classList.remove('show');
+            setTimeout(() => {
+                if (toastEl.parentNode) {
+                    toastEl.parentNode.removeChild(toastEl);
+                }
+            }, 300); // Match transition duration
         };
         
-        this.animationEndHandlers.set(id, cleanup);
-        toastElement.addEventListener('animationend', cleanup, { once: true });
-    },
-
-    hideAll() {
-        const toasts = Array.from(this.container.querySelectorAll('.toast'));
-        toasts.forEach(toastElement => {
-            const id = toastElement.id.replace('toast-', '');
-            this.hide(id);
-        });
-    },
-
-    cleanup() {
-        // Clear all timeouts
-        this.timeouts.forEach(timeout => clearTimeout(timeout));
-        this.timeouts.clear();
+        closeBtn.addEventListener('click', close);
         
-        // Remove all animation end handlers
-        this.animationEndHandlers.clear();
-        
-        // Remove all toasts immediately
-        if (this.container) {
-            this.container.innerHTML = '';
+        // Auto close
+        if (duration) {
+            setTimeout(close, duration);
         }
+        
+        // Click outside to close
+        const clickOutside = (e) => {
+            if (!toastEl.contains(e.target)) {
+                close();
+                document.removeEventListener('click', clickOutside);
+            }
+        };
+        setTimeout(() => {
+            document.addEventListener('click', clickOutside);
+        }, 100);
+        
+        return toastEl;
     },
-
-    escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') return unsafe;
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    
+    escapeHtml(str) {
+        if (typeof str !== 'string') return str;
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     },
     
     getIcon(type) {
         switch (type) {
             case 'success':
-                return `<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e">
+                    <path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>`;
             case 'error':
-                return `<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>`;
-            case 'info':
             default:
-                return `<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6">
+                    <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>`;
         }
     }
