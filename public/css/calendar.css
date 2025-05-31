@@ -2,7 +2,7 @@
 .calendar-container {
     max-width: 100%;
     margin: 0 auto;
-    padding: 16px;
+    padding: 20px;
     background: white;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -13,35 +13,51 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 12px;
+    margin-bottom: 24px;
+    gap: 16px;
 }
 
 .calendar-title {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 600;
     color: #1f2937;
+    flex-shrink: 0;
+}
+
+/* Navigation Controls */
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
 }
 
 .calendar-nav {
     display: flex;
-    gap: 8px;
+    gap: 4px;
+    background: #f3f4f6;
+    padding: 4px;
+    border-radius: 8px;
 }
 
 .calendar-nav button {
-    padding: 8px 12px;
+    padding: 8px 16px;
     border: none;
-    background: #e5e7eb;
+    background: transparent;
     color: #374151;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.2s;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calendar-nav button:hover {
-    background: #d1d5db;
+    background: #e5e7eb;
 }
 
 .calendar-nav button.today {
@@ -56,21 +72,23 @@
 /* View Toggle */
 .view-toggle {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     background: #f3f4f6;
     padding: 4px;
     border-radius: 8px;
 }
 
 .view-toggle button {
-    padding: 6px 12px;
+    padding: 8px 16px;
     border: none;
     background: transparent;
     color: #6b7280;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     transition: all 0.2s;
+    min-width: 70px;
 }
 
 .view-toggle button.active {
@@ -83,47 +101,54 @@
 .calendar-grid {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 2px;
+    border-spacing: 4px;
 }
 
 .calendar-grid th {
-    padding: 8px;
+    padding: 12px 8px;
     text-align: center;
     font-weight: 600;
-    color: #6b7280;
+    color: #4b5563;
     font-size: 14px;
+    text-transform: uppercase;
 }
 
 .calendar-grid td {
     padding: 0;
     text-align: center;
     vertical-align: top;
-    height: 100px;
+    height: 120px;
     border-radius: 8px;
     background: #f9fafb;
     position: relative;
+    border: 1px solid #e5e7eb;
 }
 
 .calendar-grid td.today {
     background: #eff6ff;
+    border-color: #93c5fd;
 }
 
 .calendar-grid td.other-month {
     background: #f3f4f6;
     color: #9ca3af;
+    border-color: #e5e7eb;
 }
 
 /* Date Number */
 .date-number {
     position: absolute;
-    top: 4px;
-    left: 4px;
-    font-size: 14px;
+    top: 8px;
+    left: 8px;
+    font-size: 16px;
+    font-weight: 500;
     color: #374151;
-    padding: 4px;
-    min-width: 24px;
-    text-align: center;
-    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 
 .today .date-number {
@@ -131,94 +156,124 @@
     color: white;
 }
 
+.other-month .date-number {
+    color: #9ca3af;
+}
+
 /* Events Container */
 .events-container {
-    padding-top: 32px;
-    padding-left: 4px;
-    padding-right: 4px;
-    height: calc(100% - 32px);
+    padding-top: 44px;
+    padding-left: 8px;
+    padding-right: 8px;
+    height: calc(100% - 44px);
     overflow: hidden;
 }
 
 .event {
-    margin: 2px;
-    padding: 4px 8px;
+    margin: 2px 0;
+    padding: 6px 8px;
     background: #3b82f6;
     color: white;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
+    font-weight: 500;
 }
 
 .event:hover {
     background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile Optimizations */
-@media (max-width: 639px) {
+@media (max-width: 768px) {
     .calendar-container {
-        padding: 12px;
+        padding: 16px;
         border-radius: 0;
         box-shadow: none;
     }
 
     .calendar-header {
-        margin-bottom: 16px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 20px;
     }
 
     .calendar-title {
-        font-size: 20px;
+        font-size: 24px;
+        text-align: center;
+    }
+
+    .calendar-controls {
+        flex-direction: column;
+        gap: 12px;
+        margin-left: 0;
+    }
+
+    .calendar-nav,
+    .view-toggle {
+        width: 100%;
+        justify-content: center;
     }
 
     .calendar-grid th {
-        padding: 4px;
+        padding: 8px 4px;
         font-size: 12px;
+    }
+
+    .calendar-grid td {
+        height: 100px;
+    }
+
+    .date-number {
+        top: 4px;
+        left: 4px;
+        font-size: 14px;
+        width: 28px;
+        height: 28px;
+    }
+
+    .events-container {
+        padding-top: 36px;
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .event {
+        padding: 4px 6px;
+        font-size: 12px;
+        margin: 1px 0;
+    }
+}
+
+/* Small Mobile Optimizations */
+@media (max-width: 480px) {
+    .calendar-container {
+        padding: 12px;
     }
 
     .calendar-grid td {
         height: 80px;
     }
 
-    .date-number {
-        font-size: 12px;
-        min-width: 20px;
+    .calendar-grid th {
+        font-size: 0;
     }
 
-    .events-container {
-        padding-top: 28px;
+    .calendar-grid th::first-letter {
+        font-size: 14px;
+        font-weight: 600;
     }
 
-    .event {
-        padding: 2px 6px;
-        font-size: 11px;
-    }
-
-    /* Hide weekday names on very small screens */
-    @media (max-width: 360px) {
-        .calendar-grid th {
-            font-size: 0;
-        }
-        .calendar-grid th::first-letter {
-            font-size: 12px;
-        }
-    }
-}
-
-/* Improved touch targets for mobile */
-@media (max-width: 639px) {
-    .calendar-nav button,
     .view-toggle button {
-        padding: 10px 16px;
-        min-height: 44px;
-    }
-
-    .event {
-        min-height: 32px;
-        display: flex;
-        align-items: center;
+        min-width: auto;
+        flex: 1;
     }
 } 
