@@ -156,50 +156,50 @@
 <body class="bg-gray-100">
     <!-- Booking Details Modal -->
     <div id="booking-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 modal-overlay hidden z-50">
-        <div class="relative top-20 mx-auto p-6 border w-[480px] shadow-lg rounded-lg bg-white modal-content">
+        <div class="relative top-20 mx-auto p-6 border w-[420px] shadow-lg rounded-lg bg-white modal-content">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-semibold text-gray-800">Booking Details</h3>
+                <h3 class="text-xl font-semibold text-gray-800">Booking Details</h3>
                 <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
-            <div class="space-y-6" id="booking-details">
+            <div class="space-y-4" id="booking-details">
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-lg">Date:</span>
-                    <span class="text-lg font-medium booking-date"></span>
+                    <span class="text-gray-600">Date:</span>
+                    <span class="font-medium booking-date"></span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-lg">Time:</span>
-                    <span class="text-lg font-medium booking-time"></span>
+                    <span class="text-gray-600">Time:</span>
+                    <span class="font-medium booking-time"></span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-lg">Client:</span>
-                    <span class="text-lg font-medium booking-client"></span>
+                    <span class="text-gray-600">Client:</span>
+                    <span class="font-medium booking-client"></span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-lg">Email:</span>
-                    <span class="text-lg font-medium booking-email"></span>
+                    <span class="text-gray-600">Email:</span>
+                    <span class="font-medium booking-email break-all"></span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-lg">Phone:</span>
-                    <span class="text-lg font-medium booking-phone"></span>
+                    <span class="text-gray-600">Phone:</span>
+                    <span class="font-medium booking-phone"></span>
                 </div>
                 <div class="space-y-2">
-                    <label class="block text-gray-600 text-lg" for="booking-notes">Notes:</label>
+                    <label class="block text-gray-600" for="booking-notes">Notes:</label>
                     <textarea id="booking-notes" rows="3" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Add notes about this booking..."></textarea>
                 </div>
             </div>
-            <div class="mt-8 flex justify-between items-center">
+            <div class="mt-6 flex justify-between items-center">
                 <button onclick="closeBookingModal()" 
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors">
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
                     Back to Dashboard
                 </button>
                 <button onclick="deleteBooking()" 
-                    class="bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
+                    class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                     Delete Booking
                 </button>
             </div>
@@ -695,16 +695,28 @@
             modal.classList.remove('hidden');
             modal.style.display = 'block';
 
-            // Add auto-save for notes
-            const notesTextarea = document.getElementById('booking-notes');
-            let saveTimeout;
-            
-            notesTextarea.addEventListener('input', function() {
-                clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(() => {
-                    updateBookingNotes(currentBookingId, this.value);
-                }, 500);
+            // Add click outside to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeBookingModal();
+                }
             });
+
+            // Remove any existing input event listeners
+            const notesTextarea = document.getElementById('booking-notes');
+            notesTextarea.removeEventListener('input', handleNotesInput);
+            
+            // Add auto-save for notes
+            notesTextarea.addEventListener('input', handleNotesInput);
+        }
+
+        // Separate function for handling notes input to avoid duplicate listeners
+        let saveTimeout;
+        function handleNotesInput() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                updateBookingNotes(currentBookingId, this.value);
+            }, 500);
         }
 
         function updateBookingNotes(bookingId, notes) {
@@ -724,6 +736,7 @@
                     }
                     loadUpcomingBookings();
                     
+                    // Show single success notification
                     toast.show({
                         type: 'success',
                         title: 'Success',
@@ -747,6 +760,11 @@
             modal.classList.add('hidden');
             modal.style.display = 'none';
             currentBookingId = null;
+
+            // Remove event listeners
+            const notesTextarea = document.getElementById('booking-notes');
+            notesTextarea.removeEventListener('input', handleNotesInput);
+            modal.removeEventListener('click', closeBookingModal);
         }
 
         function deleteBooking() {
