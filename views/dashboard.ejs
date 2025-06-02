@@ -288,12 +288,6 @@
                         Save Changes
                     </button>
 
-                    <!-- Back to Dashboard - Secondary Action -->
-                    <button onclick="closeBookingModal()" 
-                        class="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 sm:py-2.5 px-4 rounded-lg transition-colors order-2">
-                        Back to Dashboard
-                    </button>
-
                     <!-- Delete Booking - Danger Action -->
                     <button onclick="deleteBooking()" 
                         class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-medium py-3 sm:py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 order-3">
@@ -844,6 +838,13 @@
                 hour12: true 
             });
             document.querySelector('.last-updated').textContent = `Last updated: ${timeStr}`;
+
+            // Show success toast
+            toast.show({
+                type: 'success',
+                title: 'Changes Saved',
+                message: 'Booking notes have been updated successfully'
+            });
         }
 
         function updateBookingNotes(bookingId, notes) {
@@ -862,19 +863,6 @@
                         calendarInstance.refetchEvents();
                     }
                     loadUpcomingBookings();
-                    
-                    // Show success indicator
-                    const saveButton = document.querySelector('button[onclick="saveBookingNotes()"]');
-                    const originalContent = saveButton.innerHTML;
-                    saveButton.innerHTML = `
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Saved!
-                    `;
-                    setTimeout(() => {
-                        saveButton.innerHTML = originalContent;
-                    }, 1500);
                 } else {
                     throw new Error(data.error || 'Failed to update notes');
                 }
