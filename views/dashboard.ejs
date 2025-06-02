@@ -147,23 +147,16 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .modal-content {
-                width: 90%;
-                margin-left: auto;
-                margin-right: auto;
-            }
-        }
-
-        @media (min-width: 641px) {
-            .modal-content {
-                min-width: 420px;
+                max-width: 90% !important;
+                min-width: unset !important;
+                margin: 0 auto;
             }
         }
 
         /* Smooth transitions */
         .modal-content {
-            transition: transform 0.2s ease-out;
             transform: scale(0.95);
         }
 
@@ -174,76 +167,72 @@
 </head>
 <body class="bg-gray-100">
     <!-- Booking Details Modal -->
-    <div id="booking-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm modal-overlay hidden z-50">
-        <div class="min-h-screen px-4 text-center">
-            <span class="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-            
-            <div class="relative inline-block w-full max-w-[600px] my-8 text-left align-middle bg-white rounded-xl shadow-2xl modal-content">
-                <!-- Header -->
-                <div class="flex justify-between items-center p-6 border-b">
-                    <h3 class="text-xl font-semibold text-gray-800">Booking Details</h3>
-                    <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+    <div id="booking-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm modal-overlay hidden z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-[50%] min-w-[420px] bg-white rounded-xl shadow-2xl modal-content transform transition-transform duration-200 scale-95">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-xl font-semibold text-gray-800">Booking Details</h3>
+                <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6">
+                <div class="lg:grid lg:grid-cols-12 lg:gap-6">
+                    <!-- Main Content (Left) -->
+                    <div class="lg:col-span-8">
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <label class="block text-gray-600" for="booking-notes">Notes:</label>
+                                <textarea id="booking-notes" rows="4" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                    placeholder="Add notes about this booking..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar (Right) -->
+                    <div class="lg:col-span-4 mt-6 lg:mt-0">
+                        <div class="bg-gray-50 rounded-lg p-4 space-y-4">
+                            <div>
+                                <span class="text-sm text-gray-500">Date</span>
+                                <div class="font-medium booking-date"></div>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Time</span>
+                                <div class="font-medium booking-time"></div>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Client</span>
+                                <div class="font-medium booking-client"></div>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Email</span>
+                                <div class="font-medium booking-email break-all"></div>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Phone</span>
+                                <div class="font-medium booking-phone"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="border-t p-6">
+                <div class="flex justify-between items-center gap-4">
+                    <button onclick="closeBookingModal()" 
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 px-4 rounded-lg transition-colors">
+                        Back to Dashboard
                     </button>
-                </div>
-
-                <!-- Content -->
-                <div class="p-6">
-                    <div class="lg:grid lg:grid-cols-12 lg:gap-6">
-                        <!-- Main Content (Left) -->
-                        <div class="lg:col-span-8">
-                            <div class="space-y-4">
-                                <div class="space-y-2">
-                                    <label class="block text-gray-600" for="booking-notes">Notes:</label>
-                                    <textarea id="booking-notes" rows="4" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                        placeholder="Add notes about this booking..."></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Sidebar (Right) -->
-                        <div class="lg:col-span-4 mt-6 lg:mt-0">
-                            <div class="bg-gray-50 rounded-lg p-4 space-y-4">
-                                <div>
-                                    <span class="text-sm text-gray-500">Date</span>
-                                    <div class="font-medium booking-date"></div>
-                                </div>
-                                <div>
-                                    <span class="text-sm text-gray-500">Time</span>
-                                    <div class="font-medium booking-time"></div>
-                                </div>
-                                <div>
-                                    <span class="text-sm text-gray-500">Client</span>
-                                    <div class="font-medium booking-client"></div>
-                                </div>
-                                <div>
-                                    <span class="text-sm text-gray-500">Email</span>
-                                    <div class="font-medium booking-email break-all"></div>
-                                </div>
-                                <div>
-                                    <span class="text-sm text-gray-500">Phone</span>
-                                    <div class="font-medium booking-phone"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="border-t p-6">
-                    <div class="flex justify-between items-center gap-4">
-                        <button onclick="closeBookingModal()" 
-                            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 px-4 rounded-lg transition-colors">
-                            Back to Dashboard
-                        </button>
-                        <button onclick="deleteBooking()" 
-                            class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors">
-                            Delete Booking
-                        </button>
-                    </div>
+                    <button onclick="deleteBooking()" 
+                        class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors">
+                        Delete Booking
+                    </button>
                 </div>
             </div>
         </div>
@@ -734,14 +723,14 @@
             document.querySelector('.booking-phone').textContent = details.client_phone || '—';
             document.getElementById('booking-notes').value = details.notes || '';
             
-            // Show modal and add backdrop blur
+            // Show modal
             const modal = document.getElementById('booking-modal');
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
             
             // Add click outside to close
             modal.addEventListener('click', function(e) {
-                if (e.target === modal || e.target.classList.contains('modal-overlay')) {
+                if (e.target === modal) {
                     closeBookingModal();
                 }
             });
