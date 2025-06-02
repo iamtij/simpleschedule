@@ -221,39 +221,24 @@
 
             console.log('Loading slots for date:', selectedDate);
             
-            fetch(`/booking/<%= user.username %>/availability?date=${selectedDate}`)
+            fetch(`/booking/<%= user.username %>/slots?date=${selectedDate}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Availability data:', data);
+                    console.log('Available slots:', data);
                     
-                    if (!data.availability || data.availability.length === 0) {
+                    if (!data.slots || data.slots.length === 0) {
                         noSlotsMsg.textContent = 'No appointments available on this day.';
                         noSlotsMsg.classList.remove('hidden');
                         return;
                     }
 
-                    const slots = generateTimeSlots(
-                        data.availability[0].start_time,
-                        data.availability[0].end_time,
-                        data.breaks,
-                        data.bookings
-                    );
-
-                    console.log('Generated slots:', slots);
-
-                    if (slots.length === 0) {
-                        noSlotsMsg.textContent = 'No available time slots for this date.';
-                        noSlotsMsg.classList.remove('hidden');
-                        return;
-                    }
-
                     noSlotsMsg.classList.add('hidden');
-                    slots.forEach(slot => {
+                    data.slots.forEach(slot => {
                         const button = document.createElement('button');
                         button.type = 'button';
                         button.className = 'p-3 text-sm border rounded-lg hover:bg-blue-50 transition-colors';
-                        button.textContent = slot.display;
-                        button.onclick = () => selectTimeSlot(slot.start, slot.end);
+                        button.textContent = formatTime(slot.start_time);
+                        button.onclick = () => selectTimeSlot(slot.start_time, slot.end_time);
                         timeSlotsDiv.appendChild(button);
                     });
                 })
@@ -299,48 +284,53 @@
                 notes: document.getElementById('notes').value
             };
 
+            console.log('Submitting booking:', formData);
+
             fetch('/booking/<%= user.username %>', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/html,application/json'
                 },
                 body: JSON.stringify(formData)
             })
             .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
                 if (!response.ok) {
-                    if (response.headers.get('content-type')?.includes('application/json')) {
-                        return response.json().then(data => Promise.reject(data.error));
-                    }
-                    return Promise.reject('Failed to book appointment');
-                }
-                // Handle HTML response
-                if (response.headers.get('content-type')?.includes('text/html')) {
-                    return response.text().then(html => {
-                        // Create a temporary div to parse the HTML
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        
-                        // Check if it's an error page
-                        if (tempDiv.querySelector('.error-message')) {
-                            throw new Error(tempDiv.querySelector('.error-message').textContent);
+                    return response.text().then(text => {
+                        console.error('Error response:', text);
+                        try {
+                            const json = JSON.parse(text);
+                            throw new Error(json.error || 'Failed to book appointment');
+                        } catch (e) {
+                            throw new Error(text || 'Failed to book appointment');
                         }
-                        
-                        return html;
                     });
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
                 }
                 return response.text();
             })
-            .then(html => {
-                // Replace the current page with the confirmation page
-                document.documentElement.innerHTML = html;
-                // Update the URL to reflect the confirmation state
-                window.history.pushState({}, '', window.location.pathname + '/confirmation');
-                // Scroll to top
-                window.scrollTo(0, 0);
+            .then(result => {
+                console.log('Booking result:', result);
+                if (typeof result === 'string') {
+                    // Handle HTML response
+                    document.documentElement.innerHTML = result;
+                    window.history.pushState({}, '', window.location.pathname + '/confirmation');
+                    window.scrollTo(0, 0);
+                } else {
+                    // Handle JSON response
+                    window.location.href = window.location.pathname + '/confirmation';
+                }
             })
             .catch(error => {
                 console.error('Booking error:', error);
-                alert(error || 'Failed to book appointment');
+                alert(error.message || 'Failed to book appointment. Please try again.');
             });
         });
     </script>

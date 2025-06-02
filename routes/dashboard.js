@@ -46,19 +46,31 @@ router.get('/', requireLogin, async (req, res) => {
 // Get availability
 router.get('/availability', requireLogin, async (req, res) => {
   try {
+    const userId = req.session.userId;
+
+    // Get user's buffer minutes
+    const userResult = await db.query(
+      'SELECT buffer_minutes FROM users WHERE id = $1',
+      [userId]
+    );
+    const bufferMinutes = userResult.rows[0]?.buffer_minutes || 0;
+
+    // Get availability
     const availabilityResult = await db.query(
-      'SELECT * FROM availability WHERE user_id = $1',
-      [req.session.userId]
+      'SELECT day_of_week, start_time, end_time FROM availability WHERE user_id = $1 ORDER BY day_of_week',
+      [userId]
     );
 
+    // Get breaks
     const breaksResult = await db.query(
-      'SELECT * FROM breaks WHERE user_id = $1',
-      [req.session.userId]
+      'SELECT day_of_week, start_time, end_time FROM breaks WHERE user_id = $1 ORDER BY day_of_week',
+      [userId]
     );
 
     res.json({
       availability: availabilityResult.rows,
-      breaks: breaksResult.rows
+      breaks: breaksResult.rows,
+      buffer_minutes: bufferMinutes
     });
   } catch (error) {
     console.error('Error fetching availability:', error);
@@ -68,37 +80,50 @@ router.get('/availability', requireLogin, async (req, res) => {
 
 // Update availability
 router.post('/availability', requireLogin, async (req, res) => {
-  const { availability, breaks } = req.body;
+  const userId = req.session.userId;
+  const { availability, breaks, buffer_minutes } = req.body;
   
   try {
+    // Start a transaction
     await db.query('BEGIN');
 
-    // Delete existing records
-    await db.query('DELETE FROM availability WHERE user_id = $1', [req.session.userId]);
-    await db.query('DELETE FROM breaks WHERE user_id = $1', [req.session.userId]);
+    // Update buffer_minutes in users table
+    await db.query(
+      'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
+      [buffer_minutes, userId]
+    );
 
-    // Insert new availability records
+    // Delete existing availability
+    await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
+    
+    // Insert new availability
     for (const a of availability) {
       await db.query(
         'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-        [req.session.userId, a.day_of_week, a.start_time, a.end_time]
+        [userId, a.day_of_week, a.start_time, a.end_time]
       );
     }
 
-    // Insert new break records
+    // Delete existing breaks
+    await db.query('DELETE FROM breaks WHERE user_id = $1', [userId]);
+    
+    // Insert new breaks
     for (const b of breaks) {
       await db.query(
         'INSERT INTO breaks (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-        [req.session.userId, b.day_of_week, b.start_time, b.end_time]
+        [userId, b.day_of_week, b.start_time, b.end_time]
       );
     }
 
+    // Commit transaction
     await db.query('COMMIT');
+    
     res.json({ success: true });
   } catch (error) {
+    // Rollback in case of error
     await db.query('ROLLBACK');
     console.error('Error updating availability:', error);
-    res.status(500).json({ error: 'Failed to update availability' });
+    res.status(500).json({ success: false, error: 'Failed to update availability' });
   }
 });
 

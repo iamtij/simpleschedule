@@ -128,6 +128,17 @@ router.post('/:username', async (req, res) => {
     const { date, start_time, end_time, client_name, client_email, client_phone, notes } = req.body;
     const username = req.params.username;
     
+    console.log('Received booking request:', {
+        username,
+        date,
+        start_time,
+        end_time,
+        client_name,
+        client_email,
+        client_phone,
+        notes
+    });
+    
     try {
         // First get the user ID from username
         const userResult = await db.query(
@@ -136,6 +147,7 @@ router.post('/:username', async (req, res) => {
         );
 
         if (!userResult.rows[0]) {
+            console.error('User not found:', username);
             return res.status(404).json({ error: 'User not found' });
         }
 
@@ -144,7 +156,26 @@ router.post('/:username', async (req, res) => {
 
         // Validate required fields
         if (!date || !start_time || !end_time || !client_name || !client_email) {
+            console.error('Missing required fields:', { date, start_time, end_time, client_name, client_email });
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Check if the slot is still available
+        const conflictCheck = await db.query(
+            `SELECT id FROM bookings 
+             WHERE user_id = $1 
+             AND date = $2 
+             AND (
+                 (start_time <= $3 AND end_time > $3) OR
+                 (start_time < $4 AND end_time >= $4) OR
+                 (start_time >= $3 AND end_time <= $4)
+             )`,
+            [userId, date, start_time, end_time]
+        );
+
+        if (conflictCheck.rows.length > 0) {
+            console.error('Time slot no longer available:', { date, start_time, end_time });
+            return res.status(409).json({ error: 'This time slot is no longer available' });
         }
 
         // Insert the booking
@@ -160,12 +191,15 @@ router.post('/:username', async (req, res) => {
         booking.formatted_start_time = formatTime(booking.start_time);
         booking.formatted_end_time = formatTime(booking.end_time);
 
+        console.log('Booking created:', booking);
+
         // Send confirmation emails
         try {
             await Promise.all([
                 mailService.sendClientConfirmation(booking, host),
                 mailService.sendHostNotification(booking, host)
             ]);
+            console.log('Confirmation emails sent');
         } catch (emailError) {
             console.error('Failed to send confirmation emails:', emailError);
             // Don't fail the booking if emails fail
@@ -178,8 +212,137 @@ router.post('/:username', async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating booking:', error);
-        res.status(500).json({ error: 'Failed to create booking' });
+        res.status(500).json({ error: 'Failed to create booking: ' + error.message });
     }
 });
+
+router.get('/:username/slots', async (req, res) => {
+    try {
+        // Get user by username
+        const userResult = await db.query(
+            'SELECT id, buffer_minutes FROM users WHERE username = $1',
+            [req.params.username]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
+        const date = req.query.date;
+        
+        if (!date) {
+            return res.status(400).json({ error: 'Date is required' });
+        }
+
+        // Get day of week (0-6, where 0 is Sunday)
+        const dayOfWeek = new Date(date).getDay();
+
+        // Get availability for the day
+        const availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
+            [userId, dayOfWeek]
+        );
+
+        if (availabilityResult.rows.length === 0) {
+            return res.json({ slots: [] });
+        }
+
+        // Get breaks for the day
+        const breaksResult = await db.query(
+            'SELECT start_time, end_time FROM breaks WHERE user_id = $1 AND day_of_week = $2',
+            [userId, dayOfWeek]
+        );
+
+        // Get existing bookings for the date
+        const bookingsResult = await db.query(
+            'SELECT start_time, end_time FROM bookings WHERE user_id = $1 AND date = $2',
+            [userId, date]
+        );
+
+        // Generate available time slots
+        const availability = availabilityResult.rows[0];
+        const breaks = breaksResult.rows;
+        const bookings = bookingsResult.rows;
+
+        // Convert times to minutes since midnight for easier calculation
+        const workStart = timeToMinutes(availability.start_time);
+        const workEnd = timeToMinutes(availability.end_time);
+        
+        // Create array of slots with meeting length (60 min) + buffer time
+        const slots = [];
+        const meetingLength = 60; // 60-minute meeting
+        const bufferTime = bufferMinutes || 15; // Default to 15 if not set
+        const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
+
+        // For debugging
+        console.log('Generating slots:', {
+            workStart: minutesToTime(workStart),
+            workEnd: minutesToTime(workEnd),
+            totalInterval,
+            bufferTime
+        });
+
+        // Generate slots with proper intervals
+        for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
+            const slotStart = time;
+            const slotEnd = time + meetingLength;
+            const nextSlotStart = time + totalInterval;
+            
+            // For debugging
+            console.log('Evaluating slot:', {
+                start: minutesToTime(slotStart),
+                end: minutesToTime(slotEnd),
+                nextStart: minutesToTime(nextSlotStart)
+            });
+
+            // Check if slot overlaps with any breaks
+            const overlapsBreak = breaks.some(b => {
+                const breakStart = timeToMinutes(b.start_time);
+                const breakEnd = timeToMinutes(b.end_time);
+                return (slotStart < breakEnd && slotEnd > breakStart);
+            });
+            
+            // Check if slot overlaps with any bookings
+            const overlapsBooking = bookings.some(b => {
+                const bookingStart = timeToMinutes(b.start_time);
+                const bookingEnd = timeToMinutes(b.end_time);
+                return (slotStart < bookingEnd && slotEnd > bookingStart);
+            });
+            
+            // Only check if the actual meeting fits within working hours
+            const fitsInWorkingHours = slotEnd <= workEnd;
+            
+            if (!overlapsBreak && !overlapsBooking && fitsInWorkingHours) {
+                slots.push({
+                    start_time: minutesToTime(slotStart),
+                    end_time: minutesToTime(slotEnd)
+                });
+            }
+        }
+
+        // For debugging
+        console.log('Generated slots:', slots.map(s => s.start_time));
+
+        res.json({ slots });
+    } catch (error) {
+        console.error('Error getting available slots:', error);
+        res.status(500).json({ error: 'Failed to get available slots' });
+    }
+});
+
+// Helper function to convert time string (HH:MM) to minutes since midnight
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Helper function to convert minutes since midnight to time string (HH:MM)
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
 
 module.exports = router; 
