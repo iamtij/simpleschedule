@@ -773,18 +773,12 @@
                         calendarInstance.refetchEvents();
                     }
                     loadUpcomingBookings();
-                    
-                    // Show single success notification
-                    toast.show({
-                        type: 'success',
-                        title: 'Success',
-                        message: 'Notes updated successfully'
-                    });
                 } else {
                     throw new Error(data.error || 'Failed to update notes');
                 }
             })
             .catch(error => {
+                console.error('Error updating notes:', error);
                 toast.show({
                     type: 'error',
                     title: 'Error',
