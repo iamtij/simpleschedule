@@ -153,6 +153,21 @@
                 });
             }
 
+            // Function to check if a time slot is at least 15 minutes ahead of current time
+            function isTimeSlotValid(slotTime) {
+                const now = new Date();
+                const slotDate = new Date(slotTime);
+                
+                // If the slot is for a future date, it's always valid
+                if (slotDate.toDateString() !== now.toDateString()) {
+                    return true;
+                }
+                
+                // Calculate the difference in minutes
+                const diffInMinutes = (slotDate - now) / (1000 * 60);
+                return diffInMinutes >= 15;
+            }
+
             // Function to convert AM/PM time to 24-hour format
             function convertTo24Hour(time) {
                 const [timeStr, period] = time.split(' ');
@@ -175,7 +190,7 @@
                 slotEnd.setHours(slotEnd.getHours() + 1);
                 const slotEndStr = slotEnd.toTimeString().slice(0, 5);
 
-                if (!isBreakTime(start) && !isBooked(start)) {
+                if (!isBreakTime(start) && !isBooked(start) && isTimeSlotValid(start)) {
                     slots.push({
                         start: timeStr,
                         end: slotEndStr,
