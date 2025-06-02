@@ -1213,7 +1213,7 @@
                         row.className = 'hover:bg-gray-50';
                         row.innerHTML = `
                             <td class="px-4 py-3 text-sm text-gray-900">
-                                ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">
                                 ${formatTimeShort(booking.start_time)}
