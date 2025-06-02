@@ -214,4 +214,51 @@ router.post('/username', requireLogin, async (req, res) => {
   }
 });
 
+// Get upcoming bookings
+router.get('/bookings/upcoming', requireLogin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT * FROM bookings 
+      WHERE user_id = $1 
+      AND date >= CURRENT_DATE
+      ORDER BY date, start_time
+      LIMIT 5
+    `, [req.session.userId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching upcoming bookings:', error);
+    res.status(500).json({ error: 'Failed to fetch upcoming bookings' });
+  }
+});
+
+// Update booking notes
+router.patch('/bookings/:id/notes', requireLogin, async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body;
+
+  try {
+    // First verify the booking belongs to the user
+    const bookingCheck = await db.query(
+      'SELECT id FROM bookings WHERE id = $1 AND user_id = $2',
+      [id, req.session.userId]
+    );
+
+    if (bookingCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Update the notes
+    await db.query(
+      'UPDATE bookings SET notes = $1 WHERE id = $2',
+      [notes, id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating booking notes:', error);
+    res.status(500).json({ error: 'Failed to update booking notes' });
+  }
+});
+
 module.exports = router; 
