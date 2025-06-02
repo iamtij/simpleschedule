@@ -17,6 +17,8 @@
     "ejs": "3.1.9",
     "express": "4.18.3",
     "express-session": "1.18.0",
+    "form-data": "4.0.1",
+    "mailgun.js": "11.1.0",
     "pg": "8.11.3"
   },
   "devDependencies": {

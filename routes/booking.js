@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const mailService = require('../services/mail');
 
 // Helper function to convert time to AM/PM format
 function convertTo12Hour(time) {
@@ -158,6 +159,17 @@ router.post('/:username', async (req, res) => {
         const booking = bookingResult.rows[0];
         booking.formatted_start_time = formatTime(booking.start_time);
         booking.formatted_end_time = formatTime(booking.end_time);
+
+        // Send confirmation emails
+        try {
+            await Promise.all([
+                mailService.sendClientConfirmation(booking, host),
+                mailService.sendHostNotification(booking, host)
+            ]);
+        } catch (emailError) {
+            console.error('Failed to send confirmation emails:', emailError);
+            // Don't fail the booking if emails fail
+        }
 
         // Render the confirmation page with booking and host details
         res.render('booking-confirmation', {
