@@ -64,7 +64,7 @@ router.get('/users/data', requireAdmin, async (req, res) => {
     let params = [];
 
     if (search) {
-        where.push('(COALESCE(full_name, name) ILIKE $' + (params.length + 1) + ' OR email ILIKE $' + (params.length + 1) + ')');
+        where.push('(full_name ILIKE $' + (params.length + 1) + ' OR email ILIKE $' + (params.length + 1) + ')');
         params.push(`%${search}%`);
     }
     if (status === 'active') {
@@ -78,14 +78,14 @@ router.get('/users/data', requireAdmin, async (req, res) => {
         const users = await db.query(
             `SELECT 
                 id, 
-                COALESCE(full_name, name) as name,
+                full_name as name,
                 email, 
                 status,
                 created_at,
                 last_login,
                 is_admin 
              FROM users ${whereClause} 
-             ORDER BY COALESCE(full_name, name) ASC 
+             ORDER BY full_name ASC 
              LIMIT $${params.length + 1} 
              OFFSET $${params.length + 2}`,
             [...params, limit, offset]
@@ -324,15 +324,15 @@ router.get('/coupons/:id/usage', async (req, res) => {
 // Update user
 router.put('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
-    const { name, email, status } = req.body;
+    const { full_name, email, status } = req.body;
     
     try {
         // Convert status string to boolean
         const statusBool = status === 'active';
         
         await db.query(
-            'UPDATE users SET name = $1, email = $2, status = $3 WHERE id = $4',
-            [name, email, statusBool, userId]
+            'UPDATE users SET full_name = $1, email = $2, status = $3 WHERE id = $4',
+            [full_name, email, statusBool, userId]
         );
         res.json({ success: true });
     } catch (error) {
