@@ -138,6 +138,12 @@ router.post('/login', async (req, res) => {
       return res.render('login', { error: 'Invalid email or password' });
     }
 
+    // Check if user account is inactive
+    if (!user.status) {
+      console.log('Inactive account');
+      return res.render('login', { error: 'Your account is inactive. Please contact support.' });
+    }
+
     console.log('Comparing passwords...');
     const validPassword = await bcrypt.compare(password, user.password);
     console.log('Password validation result:', validPassword);
