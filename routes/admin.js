@@ -296,10 +296,14 @@ router.get('/coupons/:id/usage', async (req, res) => {
                    COUNT(DISTINCT cu.id) as actual_uses,
                    json_agg(json_build_object(
                        'user_id', u.id,
-                       'name', u.name,
+                       'name', COALESCE(u.display_name, u.full_name),
                        'email', u.email,
                        'used_at', cu.used_at
-                   ) ORDER BY cu.used_at DESC) FILTER (WHERE u.id IS NOT NULL) as usage_details
+                   ) ORDER BY cu.used_at DESC) FILTER (WHERE u.id IS NOT NULL) as usage_details,
+                   CASE 
+                       WHEN c.status = true THEN 'active'
+                       ELSE 'inactive'
+                   END as status
             FROM coupons c
             LEFT JOIN coupon_usage cu ON c.id = cu.coupon_id
             LEFT JOIN users u ON cu.user_id = u.id
@@ -346,9 +350,34 @@ router.delete('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
     
     try {
+        // Start a transaction
+        await db.query('BEGIN');
+
+        // Delete user's bookings
+        await db.query('DELETE FROM bookings WHERE user_id = $1', [userId]);
+        
+        // Delete user's availability settings
+        await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
+        
+        // Delete user's breaks
+        await db.query('DELETE FROM breaks WHERE user_id = $1', [userId]);
+
+        // Delete user's coupon usage
+        await db.query('DELETE FROM coupon_usage WHERE user_id = $1', [userId]);
+        
+        // Update coupons created by this user (set created_by to NULL)
+        await db.query('UPDATE coupons SET created_by = NULL WHERE created_by = $1', [userId]);
+        
+        // Delete the user
         await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        // Commit the transaction
+        await db.query('COMMIT');
+        
         res.json({ success: true });
     } catch (error) {
+        // Rollback in case of error
+        await db.query('ROLLBACK');
         console.error('Error deleting user:', error);
         res.status(500).json({ error: 'Failed to delete user' });
     }
