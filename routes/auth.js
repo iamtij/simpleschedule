@@ -22,11 +22,11 @@ router.get('/login', (req, res) => {
 
 // Register POST
 router.post('/register', async (req, res) => {
-  const { name, username, email, password, 'confirm-password': confirmPassword, 'coupon-code': couponCode } = req.body;
+  const { name: full_name, username, email, password, 'confirm-password': confirmPassword, 'coupon-code': couponCode } = req.body;
   
   try {
     // Validate required fields
-    if (!name || !username || !email || !password || !confirmPassword || !couponCode) {
+    if (!full_name || !username || !email || !password || !confirmPassword || !couponCode) {
       return res.render('register', { error: 'All fields are required' });
     }
 
@@ -71,8 +71,8 @@ router.post('/register', async (req, res) => {
 
       // Insert new user
       const result = await client.query(
-        'INSERT INTO users (name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
-        [name, username, email, hashedPassword]
+        'INSERT INTO users (full_name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+        [full_name, username, email, hashedPassword]
       );
 
       // Record coupon usage
@@ -91,7 +91,7 @@ router.post('/register', async (req, res) => {
       // Send welcome email
       try {
         await mailService.sendWelcomeEmail({
-          name: name,
+          name: full_name,
           email: email
         });
       } catch (emailError) {
