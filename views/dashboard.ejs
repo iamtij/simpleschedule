@@ -1351,18 +1351,35 @@
         function showUsernameModal() {
             const modal = document.getElementById('username-modal');
             modal.classList.remove('hidden');
-            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Add click outside to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeUsernameModal();
+                }
+            });
+
+            // Focus the input field
+            document.getElementById('new-username').value = '';
+            document.getElementById('new-username').focus();
         }
 
         function closeUsernameModal() {
             const modal = document.getElementById('username-modal');
             modal.classList.add('hidden');
-            modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
 
         document.getElementById('username-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const newUsername = document.getElementById('new-username').value;
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.textContent = 'Saving...';
             
             fetch('/dashboard/username', {
                 method: 'POST',
@@ -1374,7 +1391,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    closeUsernameModal();
                     toast.show({
                         type: 'success',
                         title: 'Success',
@@ -1392,6 +1408,11 @@
                     title: 'Error',
                     message: error.message || 'Failed to update username'
                 });
+            })
+            .finally(() => {
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
             });
         });
 
