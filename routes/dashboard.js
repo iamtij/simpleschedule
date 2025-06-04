@@ -293,7 +293,7 @@ router.patch('/bookings/:id/notes', requireLogin, async (req, res) => {
 router.get('/account', requireLogin, async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, email, full_name FROM users WHERE id = $1',
+      'SELECT id, email, full_name, display_name FROM users WHERE id = $1',
       [req.session.userId]
     );
     

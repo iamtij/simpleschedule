@@ -1506,7 +1506,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    closeAccountSettings();
                     toast.show({
                         type: 'success',
                         title: 'Success',
