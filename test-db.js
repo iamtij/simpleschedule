@@ -1,13 +1,12 @@
 const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');
+const config = require('./config');
 
 async function testConnection() {
     const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: {
-            rejectUnauthorized: false
-        }
+        connectionString: config.database.path,
+        ssl: config.database.ssl
     });
 
     try {

@@ -73,12 +73,14 @@ const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/booking');
 const dashboardRoutes = require('./routes/dashboard');
 const testRoutes = require('./routes/test');
+const adminRoutes = require('./routes/admin');
 
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/booking', bookingRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/test', testRoutes);
+app.use('/admin', adminRoutes);
 
 // Home route
 app.get('/', (req, res) => {

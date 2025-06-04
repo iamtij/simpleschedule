@@ -5,7 +5,14 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status BOOLEAN DEFAULT TRUE,
+    is_admin BOOLEAN DEFAULT FALSE,
+    buffer_minutes INTEGER DEFAULT 0,
+    reset_token TEXT,
+    reset_token_expiry TIMESTAMP,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Availability table
@@ -15,7 +22,8 @@ CREATE TABLE IF NOT EXISTS availability (
     day_of_week INTEGER NOT NULL, -- 0 = Sunday, 6 = Saturday
     start_time TEXT NOT NULL,     -- Format: HH:MM
     end_time TEXT NOT NULL,       -- Format: HH:MM
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Breaks table
@@ -25,7 +33,8 @@ CREATE TABLE IF NOT EXISTS breaks (
     day_of_week INTEGER NOT NULL,
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Bookings table
@@ -39,8 +48,10 @@ CREATE TABLE IF NOT EXISTS bookings (
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
     notes TEXT,
+    status TEXT DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Sessions table for connect-pg-simple
@@ -51,4 +62,29 @@ CREATE TABLE IF NOT EXISTS "session" (
     CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
 );
 
-CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire"); 
+-- Create indexes
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+CREATE INDEX IF NOT EXISTS "IDX_bookings_user_id" ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS "IDX_bookings_date" ON bookings(date);
+CREATE INDEX IF NOT EXISTS "IDX_availability_user_id" ON availability(user_id);
+CREATE INDEX IF NOT EXISTS "IDX_breaks_user_id" ON breaks(user_id);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add triggers for updated_at
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_bookings_updated_at
+    BEFORE UPDATE ON bookings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column(); 

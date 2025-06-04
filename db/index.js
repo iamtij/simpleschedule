@@ -4,9 +4,7 @@ const { Pool } = require('pg');
 // PostgreSQL configuration
 const pool = new Pool({
     connectionString: config.database.path,
-    ssl: config.env === 'production' ? {
-        rejectUnauthorized: false
-    } : false,
+    ssl: config.database.ssl,
     // Production optimizations
     ...(config.env === 'production' ? {
         max: 20,                         // Maximum number of clients in the pool
@@ -49,7 +47,8 @@ const db = {
             client.release();
         }
     },
-    end: () => pool.end()
+    end: () => pool.end(),
+    pool: pool  // Export the pool instance
 };
 
 console.log(`PostgreSQL pool initialized for ${config.env} environment with max ${pool.options.max} connections`);

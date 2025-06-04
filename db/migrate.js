@@ -73,25 +73,22 @@ async function runMigrations() {
                 console.log('Reading migration file:', filePath);
                 const sql = await fs.readFile(filePath, 'utf8');
                 
-                // Split SQL into individual statements
-                const statements = sql.split(';').filter(stmt => stmt.trim());
-                
-                // Execute each statement separately
-                for (let i = 0; i < statements.length; i++) {
-                    const stmt = statements[i].trim();
-                    if (stmt) {
-                        console.log(`Executing statement ${i + 1}/${statements.length}`);
-                        await pool.query(stmt);
-                    }
+                try {
+                    // Execute the entire migration file as one statement
+                    console.log('Executing migration...');
+                    await pool.query(sql);
+                    
+                    // Record migration
+                    await pool.query(
+                        'INSERT INTO migrations (name) VALUES ($1)',
+                        [file]
+                    );
+                    
+                    console.log(`Completed migration: ${file}`);
+                } catch (error) {
+                    console.error(`Error executing migration ${file}:`, error);
+                    throw error;
                 }
-                
-                // Record migration
-                await pool.query(
-                    'INSERT INTO migrations (name) VALUES ($1)',
-                    [file]
-                );
-                
-                console.log(`Completed migration: ${file}`);
             } else {
                 console.log(`Skipping already executed migration: ${file}`);
             }

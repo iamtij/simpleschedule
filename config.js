@@ -4,7 +4,8 @@ module.exports = {
     env: process.env.NODE_ENV || 'development',
     port: process.env.PORT || 3000,
     database: {
-        path: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+        path: process.env.DATABASE_URL || `postgresql://isked:isked_dev@localhost:5432/isked_dev`,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     },
     session: {
         secret: process.env.SESSION_SECRET || 'your-secret-key'

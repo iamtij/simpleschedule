@@ -129,6 +129,132 @@ ${this._generateGoogleCalendarLink(booking, host)}`,
         }
     }
 
+    async sendPasswordResetEmail(email, resetToken) {
+        if (!this.enabled) {
+            console.log('Email disabled: Would have sent password reset email to', email);
+            return null;
+        }
+
+        try {
+            const resetLink = `${process.env.APP_URL || 'https://isked.app'}/auth/reset-password/${resetToken}`;
+            
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [email],
+                subject: 'Reset Your Password - isked',
+                text: `Hello,
+
+You have requested to reset your password for your isked account.
+
+Please click the link below to reset your password:
+${resetLink}
+
+This link will expire in 1 hour.
+
+If you did not request this password reset, please ignore this email.
+
+Best regards,
+The isked Team`,
+            });
+            console.log('Password reset email sent:', result);
+            return result;
+        } catch (error) {
+            console.error('Failed to send password reset email:', error);
+            throw error;
+        }
+    }
+
+    async sendWelcomeEmail(user) {
+        if (!this.enabled) {
+            console.log('Email disabled: Would have sent welcome email to', user.email);
+            return null;
+        }
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [user.email],
+                subject: 'Welcome to isked! 🎉',
+                text: `Hello ${user.name},
+
+Welcome to isked! We're excited to have you on board.
+
+Your account has been successfully created and you can now:
+- Create and manage your schedule
+- Accept bookings from clients
+- Customize your availability
+- And much more!
+
+Get started by visiting your dashboard:
+${process.env.APP_URL || 'https://isked.app'}/dashboard
+
+If you have any questions or need assistance, feel free to reply to this email.
+
+Best regards,
+The isked Team`,
+                html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .button { 
+            display: inline-block; 
+            padding: 12px 24px; 
+            background-color: #3b82f6; 
+            color: #ffffff !important; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            margin: 20px 0;
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .footer { margin-top: 30px; font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to isked! 🎉</h1>
+        </div>
+        
+        <p>Hello ${user.name},</p>
+        
+        <p>Welcome to isked! We're excited to have you on board.</p>
+        
+        <p>Your account has been successfully created and you can now:</p>
+        <ul>
+            <li>Create and manage your schedule</li>
+            <li>Accept bookings from clients</li>
+            <li>Customize your availability</li>
+            <li>And much more!</li>
+        </ul>
+        
+        <p style="text-align: center;">
+            <a href="${process.env.APP_URL || 'https://isked.app'}/dashboard" class="button" style="color: #ffffff !important;">
+                Visit Your Dashboard
+            </a>
+        </p>
+        
+        <p>If you have any questions or need assistance, feel free to reply to this email.</p>
+        
+        <div class="footer">
+            <p>Best regards,<br>The isked Team</p>
+        </div>
+    </div>
+</body>
+</html>`
+            });
+            console.log('Welcome email sent:', result);
+            return result;
+        } catch (error) {
+            console.error('Failed to send welcome email:', error);
+            throw error;
+        }
+    }
+
     _generateGoogleCalendarLink(booking, host) {
         const formatDateForGCal = (date) => date.replace(/-/g, '');
         const formatTimeForGCal = (time) => time.replace(/:/g, '');

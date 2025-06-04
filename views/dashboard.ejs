@@ -685,6 +685,7 @@
     <script>
         let currentBookingId = null;
         let calendarInstance = null;
+        let justSwitchedToDay = false;
 
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize FullCalendar
@@ -788,7 +789,7 @@
                 },
                 allDaySlot: false,
                 slotDuration: '00:30:00',
-                initialDate: '2025-06-02',
+                initialDate: new Date(),
                 displayEventTime: true,
                 displayEventEnd: true,
                 eventDidMount: function(info) {
@@ -808,9 +809,40 @@
                     daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
                     startTime: '09:00',
                     endTime: '17:00'
-                }
+                },
+                datesSet: function(info) {
+                    if (info.view.type === 'timeGridDay') {
+                        const today = new Date();
+                        if (
+                            info.start.getDate() !== today.getDate() ||
+                            info.start.getMonth() !== today.getMonth() ||
+                            info.start.getFullYear() !== today.getFullYear()
+                        ) {
+                            if (!justSwitchedToDay) {
+                                justSwitchedToDay = true;
+                                calendarInstance.gotoDate(today);
+                            }
+                        } else {
+                            justSwitchedToDay = false;
+                        }
+                    } else {
+                        justSwitchedToDay = false;
+                    }
+                },
             });
             calendarInstance.render();
+
+            // Attach handler initially
+            attachDayButtonHandler();
+
+            // Observe toolbar for changes and re-attach handler if needed
+            const toolbar = document.querySelector('.fc-header-toolbar');
+            if (toolbar) {
+                const observer = new MutationObserver(() => {
+                    attachDayButtonHandler();
+                });
+                observer.observe(toolbar, { childList: true, subtree: true });
+            }
 
             // Handle working days checkboxes
             document.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
@@ -1430,6 +1462,23 @@
                 closeAccountSettings();
             }
         });
+
+        function attachDayButtonHandler() {
+            const dayBtn = document.querySelector('.fc-timeGridDay-button');
+            if (dayBtn && !dayBtn.classList.contains('isked-day-handler')) {
+                dayBtn.classList.add('isked-day-handler');
+                dayBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const today = new Date();
+                    console.log('Day button clicked: switching to today', today);
+                    calendarInstance.gotoDate(today);
+                    calendarInstance.changeView('timeGridDay');
+                    setTimeout(() => {
+                        console.log('Calendar current date after changeView:', calendarInstance.getDate());
+                    }, 100);
+                });
+            }
+        }
     </script>
 </body>
 </html> 

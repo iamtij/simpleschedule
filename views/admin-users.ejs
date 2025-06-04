@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - User Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold mb-6">User Management</h1>
+        <!-- Filters -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+            <input id="search" type="text" placeholder="Search by name or email" class="border rounded px-3 py-2 w-full sm:w-64">
+            <select id="status-filter" class="border rounded px-3 py-2 w-full sm:w-48">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <!-- User Table -->
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Email</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Last Login</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body" class="divide-y divide-gray-200">
+                    <!-- Users will be loaded here by JS -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        <div class="flex justify-between items-center mt-6">
+            <button id="prev-page" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Previous</button>
+            <span id="pagination-info" class="text-gray-600"></span>
+            <button id="next-page" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+        </div>
+    </div>
+    <script src="/js/admin-users.js"></script>
+</body>
+</html> 
