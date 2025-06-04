@@ -549,6 +549,25 @@
                         </div>
                         <p class="mt-1 text-sm text-gray-500">Email address cannot be changed</p>
                     </div>
+
+                    <!-- Booking Link Section -->
+                    <div class="mt-6 pt-6 border-t">
+                        <h3 class="text-lg font-medium mb-4">Your Booking Link</h3>
+                        <div class="flex flex-col space-y-4">
+                            <div class="flex items-center space-x-2">
+                                <input type="text" readonly value="isked.app/booking/<%= user.username %>" class="flex-1 border rounded-lg px-4 py-2 bg-gray-50 text-gray-600">
+                                <button onclick="copyBookingLink()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors">
+                                    Copy
+                                </button>
+                            </div>
+                            <div>
+                                <button onclick="showUsernameModal()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    Change Username
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end space-x-2 pt-4">
                         <button type="button" onclick="closeAccountSettings()"
                             class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
@@ -661,23 +680,6 @@
                     Save Settings
                 </button>
             </form>
-
-            <div class="mt-8 pt-6 border-t">
-                <h3 class="text-lg font-medium mb-4">Your Booking Link</h3>
-                <div class="flex flex-col space-y-4">
-                    <div class="flex items-center space-x-2">
-                        <input type="text" readonly value="isked.app/booking/<%= user.username %>" class="flex-1 border rounded-lg px-4 py-2 bg-gray-50 text-gray-600">
-                        <button onclick="copyBookingLink()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors">
-                            Copy
-                        </button>
-                    </div>
-                    <div>
-                        <button onclick="showUsernameModal()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                            Change Username
-                        </button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -1241,18 +1243,69 @@
 
         function copyBookingLink() {
             const link = document.querySelector('input[readonly]').value;
+            
+            // Fallback function for older browsers
+            const fallbackCopy = () => {
+                const textArea = document.createElement('textarea');
+                textArea.value = link;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    return true;
+                } catch (err) {
+                    document.body.removeChild(textArea);
+                    return false;
+                }
+            };
+
+            // Try the modern API first, fall back to execCommand if not available
+            if (!navigator.clipboard) {
+                const success = fallbackCopy();
+                if (success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Success',
+                        message: 'Booking link copied to clipboard!'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to copy booking link'
+                    });
+                }
+                return;
+            }
+
             navigator.clipboard.writeText(link).then(() => {
                 toast.show({
                     type: 'success',
                     title: 'Success',
                     message: 'Booking link copied to clipboard!'
                 });
-            }).catch(() => {
-                toast.show({
-                    type: 'error',
-                    title: 'Error',
-                    message: 'Failed to copy booking link'
-                });
+            }).catch((error) => {
+                console.error('Clipboard error:', error);
+                // Try fallback if modern API fails
+                const success = fallbackCopy();
+                if (success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Success',
+                        message: 'Booking link copied to clipboard!'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to copy booking link'
+                    });
+                }
             });
         }
 
