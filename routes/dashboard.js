@@ -200,13 +200,13 @@ router.delete('/bookings/:id', requireLogin, async (req, res) => {
 
 // Update username
 router.post('/username', requireLogin, async (req, res) => {
-  const { username } = req.body;
+  const { username, checkOnly } = req.body;
 
   // Validate username format
-  const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+  const usernameRegex = /^[a-z0-9_-]+$/;
   if (!usernameRegex.test(username)) {
     return res.status(400).json({ 
-      error: 'Username can only contain letters, numbers, underscores and hyphens'
+      error: 'Username can only contain lowercase letters, numbers, underscores and hyphens'
     });
   }
 
@@ -218,7 +218,12 @@ router.post('/username', requireLogin, async (req, res) => {
     );
 
     if (existingUserResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Username already taken' });
+      return res.json({ available: false, error: 'Username already taken' });
+    }
+
+    // If only checking availability, return here
+    if (checkOnly) {
+      return res.json({ available: true });
     }
 
     // Update username
