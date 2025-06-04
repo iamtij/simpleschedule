@@ -1,4 +1,4 @@
--- Update coupon list query to use full_name instead of name
+-- Update coupon list query to use full_name instead of name and handle status conversion
 CREATE OR REPLACE FUNCTION get_coupon_list() RETURNS TABLE (
     id INTEGER,
     code VARCHAR,

@@ -101,7 +101,12 @@ class Coupon {
 
     static async list(filters = {}) {
         let query = `
-            SELECT * FROM get_coupon_list()
+            SELECT *, 
+                   CASE 
+                       WHEN status = true THEN 'active'
+                       ELSE 'inactive'
+                   END as status
+            FROM get_coupon_list()
             WHERE 1=1
         `;
 
@@ -111,7 +116,7 @@ class Coupon {
 
         if (filters.status) {
             whereConditions.push(`status = $${paramCount}`);
-            params.push(filters.status);
+            params.push(filters.status === 'active');
             paramCount++;
         }
 
@@ -143,9 +148,16 @@ class Coupon {
 
         Object.keys(updates).forEach(field => {
             if (validFields.includes(field) && updates[field] !== undefined) {
-                setFields.push(`${field} = $${paramCount}`);
-                values.push(updates[field]);
-                paramCount++;
+                // Convert status string to boolean
+                if (field === 'status') {
+                    setFields.push(`${field} = $${paramCount}`);
+                    values.push(updates[field] === 'active');
+                    paramCount++;
+                } else {
+                    setFields.push(`${field} = $${paramCount}`);
+                    values.push(updates[field]);
+                    paramCount++;
+                }
             }
         });
 
@@ -156,11 +168,20 @@ class Coupon {
             UPDATE coupons 
             SET ${setFields.join(', ')}
             WHERE id = $${paramCount}
-            RETURNING *
+            RETURNING *,
+                     CASE 
+                         WHEN status = true THEN 'active'
+                         ELSE 'inactive'
+                     END as status_text
         `;
 
         const result = await db.query(query, values);
-        return result.rows[0];
+        const coupon = result.rows[0];
+        if (coupon) {
+            coupon.status = coupon.status_text;
+            delete coupon.status_text;
+        }
+        return coupon;
     }
 
     static async delete(id) {
