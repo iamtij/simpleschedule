@@ -13,8 +13,6 @@ const requireLogin = (req, res, next) => {
 // Dashboard home
 router.get('/', requireLogin, async (req, res) => {
   try {
-    console.log('Session user ID:', req.session.userId);
-    
     // Get user data
     const userResult = await db.query(
       'SELECT id, email, username, full_name, display_name, has_set_availability, has_set_display_name, has_shared_link, has_dismissed_checklist FROM users WHERE id = $1',
@@ -24,14 +22,12 @@ router.get('/', requireLogin, async (req, res) => {
       return res.redirect('/');
     }
     const user = userResult.rows[0];
-    console.log('Found user:', { id: user.id, email: user.email, full_name: user.full_name });
 
     // Get bookings
     const bookingsResult = await db.query(
       'SELECT * FROM bookings WHERE user_id = $1 ORDER BY date, start_time',
       [req.session.userId]
     );
-    console.log('Found bookings:', bookingsResult.rows.length);
     
     res.render('dashboard', { 
       user, 
@@ -130,16 +126,13 @@ router.post('/availability', requireLogin, async (req, res) => {
 // Get bookings
 router.get('/bookings', requireLogin, async (req, res) => {
   try {
-    console.log('Fetching bookings for user:', req.session.userId);
-    
+    // Get bookings
     const result = await db.query(`
       SELECT * FROM bookings 
       WHERE user_id = $1 
       AND date >= CURRENT_DATE
       ORDER BY date, start_time
     `, [req.session.userId]);
-
-    console.log('Found calendar bookings:', result.rows.length);
 
     // Format bookings for FullCalendar
     const events = result.rows.map(booking => {
@@ -170,7 +163,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
       };
     });
 
-    console.log('Formatted events:', events.length);
     res.json(events);
   } catch (error) {
     console.error('Error fetching bookings:', error);

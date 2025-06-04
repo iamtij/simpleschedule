@@ -10,7 +10,7 @@ const mg = mailgun.client({
 class MailService {
     constructor() {
         if (!process.env.MAILGUN_DOMAIN || !process.env.MAILGUN_API_KEY) {
-            console.warn('Mailgun configuration missing. Email functionality will be disabled.');
+            // console.warn('Mailgun configuration missing. Email functionality will be disabled.');
             this.enabled = false;
         } else {
             this.enabled = true;
@@ -20,7 +20,7 @@ class MailService {
 
     async sendTestEmail(to) {
         if (!this.enabled) {
-            console.log('Email disabled: Would have sent test email to', to);
+            // console.log('Email disabled: Would have sent test email to', to);
             return null;
         }
 
@@ -31,7 +31,7 @@ class MailService {
                 subject: 'Test Email from isked',
                 text: 'This is a test email from your scheduling application - isked.',
             });
-            console.log('Test email sent:', result);
+            // console.log('Test email sent:', result);
             return result;
         } catch (error) {
             console.error('Failed to send test email:', error);
@@ -41,7 +41,7 @@ class MailService {
 
     async sendClientConfirmation(booking, host) {
         if (!this.enabled) {
-            console.log('Email disabled: Would have sent client confirmation to', booking.client_email);
+            // console.log('Email disabled: Would have sent client confirmation to', booking.client_email);
             return null;
         }
 
@@ -74,7 +74,7 @@ ${booking.notes ? `Notes: ${booking.notes}
 You can add this appointment to your calendar using this link:
 ${this._generateGoogleCalendarLink(booking, host)}`,
             });
-            console.log('Client confirmation email sent:', result);
+            // console.log('Client confirmation email sent:', result);
             return result;
         } catch (error) {
             console.error('Failed to send client confirmation:', error);
@@ -84,7 +84,7 @@ ${this._generateGoogleCalendarLink(booking, host)}`,
 
     async sendHostNotification(booking, host) {
         if (!this.enabled) {
-            console.log('Email disabled: Would have sent host notification to', host.email);
+            // console.log('Email disabled: Would have sent host notification to', host.email);
             return null;
         }
 
@@ -121,7 +121,7 @@ ${process.env.APP_URL || 'https://isked.app'}/dashboard
 Add to your calendar:
 ${this._generateGoogleCalendarLink(booking, host)}`,
             });
-            console.log('Host notification email sent:', result);
+            // console.log('Host notification email sent:', result);
             return result;
         } catch (error) {
             console.error('Failed to send host notification:', error);
@@ -131,7 +131,7 @@ ${this._generateGoogleCalendarLink(booking, host)}`,
 
     async sendPasswordResetEmail(email, resetToken) {
         if (!this.enabled) {
-            console.log('Email disabled: Would have sent password reset email to', email);
+            // console.log('Email disabled: Would have sent password reset email to', email);
             return null;
         }
 
@@ -156,7 +156,7 @@ If you did not request this password reset, please ignore this email.
 Best regards,
 The isked Team`,
             });
-            console.log('Password reset email sent:', result);
+            // console.log('Password reset email sent:', result);
             return result;
         } catch (error) {
             console.error('Failed to send password reset email:', error);
@@ -166,7 +166,7 @@ The isked Team`,
 
     async sendWelcomeEmail(user) {
         if (!this.enabled) {
-            console.log('Email disabled: Would have sent welcome email to', user.email);
+            // console.log('Email disabled: Would have sent welcome email to', user.email);
             return null;
         }
 
@@ -247,7 +247,7 @@ The isked Team`,
 </body>
 </html>`
             });
-            console.log('Welcome email sent:', result);
+            // console.log('Welcome email sent:', result);
             return result;
         } catch (error) {
             console.error('Failed to send welcome email:', error);

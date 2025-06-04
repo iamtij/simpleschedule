@@ -111,6 +111,5 @@ module.exports = app;
 
 // Start server
 const port = process.env.PORT || config.port;
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server is running in ${config.env} mode on port ${port}`);
-}); 
+app.listen(port, '0.0.0.0');
+    // console.log(`Server is running in ${config.env} mode on port ${port}`); 

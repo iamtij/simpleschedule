@@ -79,11 +79,6 @@ router.get('/:username/availability', async (req, res) => {
         // Create date object in local timezone
         const localDate = new Date(date + 'T00:00:00');
         const dayOfWeek = localDate.getDay();
-        console.log('Checking availability for:', { 
-            date,
-            dayOfWeek,
-            localDate: localDate.toLocaleString()
-        });
         
         // Get user's availability for this day
         const availabilityResult = await db.query(
@@ -128,92 +123,73 @@ router.post('/:username', async (req, res) => {
     const { date, start_time, end_time, client_name, client_email, client_phone, notes } = req.body;
     const username = req.params.username;
     
-    console.log('Received booking request:', {
-        username,
-        date,
-        start_time,
-        end_time,
-        client_name,
-        client_email,
-        client_phone,
-        notes
-    });
-    
-    try {
-        // First get the user ID from username
-        const userResult = await db.query(
-            'SELECT id, full_name, email, username FROM users WHERE username = $1',
-            [username]
-        );
+    // Get the user ID from username
+    const userResult = await db.query(
+        'SELECT id, full_name, email, username FROM users WHERE username = $1',
+        [username]
+    );
 
-        if (!userResult.rows[0]) {
-            console.error('User not found:', username);
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        const userId = userResult.rows[0].id;
-        const host = userResult.rows[0];
-
-        // Validate required fields
-        if (!date || !start_time || !end_time || !client_name || !client_email) {
-            console.error('Missing required fields:', { date, start_time, end_time, client_name, client_email });
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        // Check if the slot is still available
-        const conflictCheck = await db.query(
-            `SELECT id FROM bookings 
-             WHERE user_id = $1 
-             AND date = $2 
-             AND (
-                 (start_time <= $3 AND end_time > $3) OR
-                 (start_time < $4 AND end_time >= $4) OR
-                 (start_time >= $3 AND end_time <= $4)
-             )`,
-            [userId, date, start_time, end_time]
-        );
-
-        if (conflictCheck.rows.length > 0) {
-            console.error('Time slot no longer available:', { date, start_time, end_time });
-            return res.status(409).json({ error: 'This time slot is no longer available' });
-        }
-
-        // Insert the booking
-        const bookingResult = await db.query(
-            `INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id, date::text, start_time::text, end_time::text, client_name, client_email, client_phone, notes`,
-            [userId, date, start_time, end_time, client_name, client_email, client_phone, notes]
-        );
-
-        // Format the booking times
-        const booking = bookingResult.rows[0];
-        booking.formatted_start_time = formatTime(booking.start_time);
-        booking.formatted_end_time = formatTime(booking.end_time);
-
-        console.log('Booking created:', booking);
-
-        // Send confirmation emails
-        try {
-            await Promise.all([
-                mailService.sendClientConfirmation(booking, host),
-                mailService.sendHostNotification(booking, host)
-            ]);
-            console.log('Confirmation emails sent');
-        } catch (emailError) {
-            console.error('Failed to send confirmation emails:', emailError);
-            // Don't fail the booking if emails fail
-        }
-
-        // Render the confirmation page with booking and host details
-        res.render('booking-confirmation', {
-            booking,
-            host
-        });
-    } catch (error) {
-        console.error('Error creating booking:', error);
-        res.status(500).json({ error: 'Failed to create booking: ' + error.message });
+    if (!userResult.rows[0]) {
+        console.error('User not found:', username);
+        return res.status(404).json({ error: 'User not found' });
     }
+
+    const userId = userResult.rows[0].id;
+    const host = userResult.rows[0];
+
+    // Validate required fields
+    if (!date || !start_time || !end_time || !client_name || !client_email) {
+        console.error('Missing required fields:', { date, start_time, end_time, client_name, client_email });
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check if the slot is still available
+    const conflictCheck = await db.query(
+        `SELECT id FROM bookings 
+         WHERE user_id = $1 
+         AND date = $2 
+         AND (
+             (start_time <= $3 AND end_time > $3) OR
+             (start_time < $4 AND end_time >= $4) OR
+             (start_time >= $3 AND end_time <= $4)
+         )`,
+        [userId, date, start_time, end_time]
+    );
+
+    if (conflictCheck.rows.length > 0) {
+        console.error('Time slot no longer available:', { date, start_time, end_time });
+        return res.status(409).json({ error: 'This time slot is no longer available' });
+    }
+
+    // Insert the booking
+    const bookingResult = await db.query(
+        `INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, date::text, start_time::text, end_time::text, client_name, client_email, client_phone, notes`,
+        [userId, date, start_time, end_time, client_name, client_email, client_phone, notes]
+    );
+
+    // Format the booking times
+    const booking = bookingResult.rows[0];
+    booking.formatted_start_time = formatTime(booking.start_time);
+    booking.formatted_end_time = formatTime(booking.end_time);
+
+    // Send confirmation emails
+    try {
+        await Promise.all([
+            mailService.sendClientConfirmation(booking, host),
+            mailService.sendHostNotification(booking, host)
+        ]);
+    } catch (emailError) {
+        console.error('Failed to send confirmation emails:', emailError);
+        // Don't fail the booking if emails fail
+    }
+
+    // Render the confirmation page with booking and host details
+    res.render('booking-confirmation', {
+        booking,
+        host
+    });
 });
 
 router.get('/:username/slots', async (req, res) => {
@@ -276,27 +252,12 @@ router.get('/:username/slots', async (req, res) => {
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
-        // For debugging
-        console.log('Generating slots:', {
-            workStart: minutesToTime(workStart),
-            workEnd: minutesToTime(workEnd),
-            totalInterval,
-            bufferTime
-        });
-
         // Generate slots with proper intervals
         for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
             const slotStart = time;
             const slotEnd = time + meetingLength;
             const nextSlotStart = time + totalInterval;
             
-            // For debugging
-            console.log('Evaluating slot:', {
-                start: minutesToTime(slotStart),
-                end: minutesToTime(slotEnd),
-                nextStart: minutesToTime(nextSlotStart)
-            });
-
             // Check if slot overlaps with any breaks
             const overlapsBreak = breaks.some(b => {
                 const breakStart = timeToMinutes(b.start_time);
@@ -321,9 +282,6 @@ router.get('/:username/slots', async (req, res) => {
                 });
             }
         }
-
-        // For debugging
-        console.log('Generated slots:', slots.map(s => s.start_time));
 
         res.json({ slots });
     } catch (error) {

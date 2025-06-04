@@ -51,6 +51,6 @@ const db = {
     pool: pool  // Export the pool instance
 };
 
-console.log(`PostgreSQL pool initialized for ${config.env} environment with max ${pool.options.max} connections`);
+// console.log(`PostgreSQL pool initialized for ${config.env} environment with max ${pool.options.max} connections`);
 
 module.exports = db; 

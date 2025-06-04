@@ -831,7 +831,7 @@
                     }
                 },
                 events: function(info, successCallback, failureCallback) {
-                    console.log('Fetching events...');
+                    // console.log('Fetching events...');
                     fetch('/dashboard/bookings')
                         .then(response => {
                             if (!response.ok) {
@@ -840,11 +840,11 @@
                             return response.json();
                         })
                         .then(events => {
-                            console.log('Events received:', events);
+                            // console.log('Events received:', events);
                             successCallback(events);
                         })
                         .catch(error => {
-                            console.error('Error fetching events:', error);
+                            // console.error('Error fetching events:', error);
                             failureCallback(error);
                         });
                 },
@@ -859,7 +859,7 @@
                 },
                 dayMaxEvents: true,
                 eventContent: function(arg) {
-                    console.log('Rendering event:', arg.event);
+                    // console.log('Rendering event:', arg.event);
                     const startTime = formatTimeShort(arg.event.extendedProps.start_time);
                     const endTime = formatTimeShort(arg.event.extendedProps.end_time);
                     const isMobile = window.innerWidth <= 640;
@@ -1221,7 +1221,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error updating notes:', error);
+                // console.error('Error updating notes:', error);
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1297,7 +1297,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error deleting booking:', error);
+                // console.error('Error deleting booking:', error);
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1372,18 +1372,11 @@
                     message: 'Your booking link has been copied to clipboard'
                 });
 
-                // Update has_shared_link status
+                // Update has_shared_link status silently in the background
                 fetch('/dashboard/update-share-status', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Refresh the page to update the checklist
-                        window.location.reload();
                     }
                 });
             }).catch(() => {
@@ -1417,7 +1410,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error dismissing checklist:', error);
+                // console.error('Error dismissing checklist:', error);
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1462,7 +1455,7 @@
                     });
                 })
                 .catch(error => {
-                    console.error('Error loading upcoming bookings:', error);
+                    // console.error('Error loading upcoming bookings:', error);
                 });
         }
 
@@ -1584,7 +1577,6 @@
                     document.getElementById('display-name').value = user.display_name || user.full_name || '';
                 })
                 .catch(error => {
-                    console.error('Error fetching account details:', error);
                     toast.show({
                         type: 'error',
                         title: 'Error',
@@ -1602,16 +1594,17 @@
         // Handle account settings form submission
         document.getElementById('account-settings-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            const fullName = document.getElementById('full-name').value;
-            const displayName = document.getElementById('display-name').value;
-            
+            const formData = {
+                full_name: document.getElementById('full-name').value,
+                display_name: document.getElementById('display-name').value
+            };
+
             fetch('/dashboard/account', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ full_name: fullName, display_name: displayName })
+                body: JSON.stringify(formData)
             })
             .then(response => response.json())
             .then(data => {
@@ -1621,10 +1614,10 @@
                         title: 'Success',
                         message: 'Account settings updated successfully'
                     });
-                    // Update display name in the UI if needed
+                    // Update display name in the UI
                     const displayNameElements = document.querySelectorAll('.user-display-name');
                     displayNameElements.forEach(el => {
-                        el.textContent = displayName || fullName;
+                        el.textContent = formData.display_name || formData.full_name;
                     });
                 } else {
                     throw new Error(data.error || 'Failed to update account settings');
@@ -1653,11 +1646,11 @@
                 dayBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const today = new Date();
-                    console.log('Day button clicked: switching to today', today);
+                    // console.log('Day button clicked: switching to today', today);
                     calendarInstance.gotoDate(today);
                     calendarInstance.changeView('timeGridDay');
                     setTimeout(() => {
-                        console.log('Calendar current date after changeView:', calendarInstance.getDate());
+                        // console.log('Calendar current date after changeView:', calendarInstance.getDate());
                     }, 100);
                 });
             }
