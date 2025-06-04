@@ -626,7 +626,7 @@
                     </div>
                     <div class="mt-4 space-y-3">
                         <% if (!user.has_set_availability) { %>
-                        <div class="flex items-center">
+                        <div class="flex items-center" data-checklist-item="availability">
                             <div class="flex-shrink-0 h-5 w-5 relative">
                                 <div class="absolute inset-0 rounded-full border-2 border-gray-300"></div>
                             </div>
@@ -636,7 +636,7 @@
                             </p>
                         </div>
                         <% } else { %>
-                        <div class="flex items-center">
+                        <div class="flex items-center" data-checklist-item="availability">
                             <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
                                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -1074,6 +1074,12 @@
                     });
                 }
 
+                // Show loading state
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.textContent;
+                submitButton.textContent = 'Saving...';
+                submitButton.disabled = true;
+
                 fetch('/dashboard/availability', {
                     method: 'POST',
                     headers: {
@@ -1087,11 +1093,40 @@
                         toast.show({
                             type: 'success',
                             title: 'Success',
-                            message: 'Settings saved successfully!'
+                            message: 'Availability settings saved successfully!'
                         });
-                        // Refresh the page to update the checklist
-                        window.location.reload();
+                        
+                        // Update the checklist item without reloading
+                        const availabilityItem = document.querySelector('[data-checklist-item="availability"]');
+                        if (availabilityItem) {
+                            const icon = availabilityItem.querySelector('.flex-shrink-0');
+                            const text = availabilityItem.querySelector('p');
+                            
+                            // Update to completed state
+                            icon.innerHTML = `
+                                <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
+                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            `;
+                            text.innerHTML = 'Availability configured';
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to save availability settings');
                     }
+                })
+                .catch(error => {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: error.message || 'Failed to save availability settings'
+                    });
+                })
+                .finally(() => {
+                    // Restore button state
+                    submitButton.textContent = originalText;
+                    submitButton.disabled = false;
                 });
             });
 
