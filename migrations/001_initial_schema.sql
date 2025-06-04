@@ -69,22 +69,41 @@ CREATE INDEX IF NOT EXISTS "IDX_bookings_date" ON bookings(date);
 CREATE INDEX IF NOT EXISTS "IDX_availability_user_id" ON availability(user_id);
 CREATE INDEX IF NOT EXISTS "IDX_breaks_user_id" ON breaks(user_id);
 
--- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+-- Create updated_at trigger function if we have privileges
+DO $do$
+DECLARE
+    has_privilege boolean;
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+    SELECT EXISTS (
+        SELECT 1 FROM pg_roles 
+        WHERE rolname = current_user 
+        AND rolsuper
+    ) INTO has_privilege;
 
--- Add triggers for updated_at
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    IF has_privilege THEN
+        -- Create updated_at trigger function
+        EXECUTE $func$
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $trigger$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $trigger$ LANGUAGE plpgsql
+        $func$;
 
-CREATE TRIGGER update_bookings_updated_at
-    BEFORE UPDATE ON bookings
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 
+        -- Add triggers for updated_at
+        DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+        CREATE TRIGGER update_users_updated_at
+            BEFORE UPDATE ON users
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+        CREATE TRIGGER update_bookings_updated_at
+            BEFORE UPDATE ON bookings
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$do$; 

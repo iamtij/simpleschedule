@@ -39,7 +39,8 @@
                 </label>
                 <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     id="full-name" name="name" type="text" required
-                    placeholder="Enter your full name">
+                    placeholder="Enter your full name"
+                    value="<%= typeof formData !== 'undefined' ? formData.full_name : '' %>">
             </div>
             
             <div>
@@ -48,10 +49,12 @@
                 </label>
                 <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     id="username" name="username" type="text" required
-                    pattern="^[a-zA-Z0-9_-]+$"
-                    title="Username can only contain letters, numbers, underscores and hyphens"
-                    placeholder="Choose a unique username">
+                    minlength="3"
+                    maxlength="30"
+                    placeholder="Choose a unique username"
+                    value="<%= typeof formData !== 'undefined' ? formData.username : '' %>">
                 <p class="mt-1 text-sm text-gray-500">This will be your booking link: isked.app/booking/<span class="text-gray-700">username</span></p>
+                <p id="username-error" class="mt-1 text-sm text-red-600 hidden">Username can only contain letters, numbers, underscores and hyphens</p>
             </div>
             
             <div>
@@ -60,7 +63,8 @@
                 </label>
                 <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     id="email" name="email" type="email" required
-                    placeholder="you@example.com">
+                    placeholder="you@example.com"
+                    value="<%= typeof formData !== 'undefined' ? formData.email : '' %>">
             </div>
             
             <div>
@@ -108,7 +112,8 @@
                 </label>
                 <input class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     id="coupon-code" name="coupon-code" type="text" required
-                    placeholder="Enter your coupon code">
+                    placeholder="Enter your coupon code"
+                    value="<%= typeof formData !== 'undefined' ? formData.couponCode : '' %>">
             </div>
             
             <button type="submit" 
@@ -136,6 +141,11 @@
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
+        function validateUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+            return usernameRegex.test(username);
+        }
+
         function validatePasswords() {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
@@ -150,8 +160,31 @@
             }
         }
 
+        document.getElementById('username').addEventListener('input', function(e) {
+            const username = e.target.value;
+            const usernameError = document.getElementById('username-error');
+            
+            if (username && !validateUsername(username)) {
+                usernameError.classList.remove('hidden');
+                e.target.setCustomValidity('Username can only contain letters, numbers, underscores and hyphens');
+            } else {
+                usernameError.classList.add('hidden');
+                e.target.setCustomValidity('');
+            }
+        });
+
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            if (!validateUsername(username)) {
+                toast.show({
+                    type: 'error',
+                    title: 'Validation Error',
+                    message: 'Username can only contain letters, numbers, underscores and hyphens'
+                });
+                return;
+            }
             
             if (!validatePasswords()) {
                 toast.show({

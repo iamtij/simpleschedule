@@ -312,7 +312,7 @@
                             throw new Error(json.error || 'Failed to book appointment');
                         } catch (e) {
                             throw new Error(text || 'Failed to book appointment');
-                        }
+                }
                     });
                 }
                 
@@ -327,8 +327,8 @@
                 if (typeof result === 'string') {
                     // Handle HTML response
                     document.documentElement.innerHTML = result;
-                    window.history.pushState({}, '', window.location.pathname + '/confirmation');
-                    window.scrollTo(0, 0);
+                window.history.pushState({}, '', window.location.pathname + '/confirmation');
+                window.scrollTo(0, 0);
                 } else {
                     // Handle JSON response
                     window.location.href = window.location.pathname + '/confirmation';

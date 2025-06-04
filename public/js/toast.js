@@ -1,116 +1,64 @@
+// Toast notification system
 const toast = {
-    container: null,
-    activeToasts: new Set(),
-    
-    init() {
-        if (!this.container) {
-            this.container = document.createElement('div');
-            this.container.id = 'toast-container';
-            this.container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2';
-            document.body.appendChild(this.container);
-        }
+    createContainer: function() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+        return container;
     },
-    
-    show({ type = 'info', title = '', message = '', duration = 3000 }) {
-        this.init(); // Ensure container exists
 
-        // Create toast element
-        const toastEl = document.createElement('div');
-        toastEl.className = `flex items-center p-4 rounded-lg shadow-lg transition-all transform translate-x-full ${
-            type === 'success' ? 'bg-green-100 text-green-800' :
-            type === 'error' ? 'bg-red-100 text-red-800' :
-            'bg-blue-100 text-blue-800'
-        }`;
+    show: function({ type = 'info', title = '', message = '' }) {
+        const toastContainer = document.getElementById('toast-container') || this.createContainer();
+        const toastElement = document.createElement('div');
+        
+        // Set toast classes based on type
+        const baseClasses = 'flex items-start p-4 mb-4 rounded-lg shadow-lg border-l-4 transform transition-all duration-300';
+        const typeClasses = type === 'error' 
+            ? 'bg-red-50 border-red-500 text-red-800' 
+            : 'bg-green-50 border-green-500 text-green-800';
+        
+        toastElement.className = `${baseClasses} ${typeClasses}`;
+        toastElement.style.minWidth = '300px';
+        toastElement.style.maxWidth = '500px';
 
-        // Add icon based on type
-        const icon = document.createElement('div');
-        icon.className = 'flex-shrink-0 w-5 h-5 mr-3';
-        icon.innerHTML = this.getIcon(type);
+        // Create toast content
+        toastElement.innerHTML = `
+            <div class="flex-1">
+                ${title ? `<h3 class="text-sm font-medium">${title}</h3>` : ''}
+                <div class="mt-1 text-sm opacity-90">${message}</div>
+            </div>
+            <button class="ml-4 text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        `;
 
-        // Add content
-        const content = document.createElement('div');
-        content.className = 'flex flex-col';
-        if (title) {
-            const titleEl = document.createElement('span');
-            titleEl.className = 'font-medium';
-            titleEl.textContent = this.escapeHtml(title);
-            content.appendChild(titleEl);
-        }
-        if (message) {
-            const messageEl = document.createElement('span');
-            messageEl.className = 'text-sm';
-            messageEl.textContent = this.escapeHtml(message);
-            content.appendChild(messageEl);
-        }
+        // Add close button functionality
+        const closeButton = toastElement.querySelector('button');
+        closeButton.addEventListener('click', () => {
+            toastElement.style.opacity = '0';
+            toastElement.style.transform = 'translateX(100%)';
+            setTimeout(() => toastElement.remove(), 300);
+        });
 
-        // Add close button
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'ml-auto pl-3';
-        closeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-        closeBtn.onclick = () => this.removeToast(toastEl);
-
-        // Assemble toast
-        toastEl.appendChild(icon);
-        toastEl.appendChild(content);
-        toastEl.appendChild(closeBtn);
-
-        // Add to container and track
-        this.container.appendChild(toastEl);
-        this.activeToasts.add(toastEl);
+        // Add to container
+        toastContainer.appendChild(toastElement);
 
         // Animate in
         requestAnimationFrame(() => {
-            toastEl.classList.remove('translate-x-full');
+            toastElement.style.transform = 'translateX(0)';
+            toastElement.style.opacity = '1';
         });
 
-        // Auto remove after duration
-        if (duration > 0) {
-            setTimeout(() => this.removeToast(toastEl), duration);
-        }
-    },
-
-    removeToast(toastEl) {
-        if (!toastEl || !this.activeToasts.has(toastEl)) return;
-        
-        toastEl.classList.add('translate-x-full');
-        this.activeToasts.delete(toastEl);
-        
-        // Remove after transition
+        // Auto remove after 5 seconds
         setTimeout(() => {
-            if (toastEl.parentNode === this.container) {
-                this.container.removeChild(toastEl);
+            if (toastElement.parentElement) {
+                toastElement.style.opacity = '0';
+                toastElement.style.transform = 'translateX(100%)';
+                setTimeout(() => toastElement.remove(), 300);
             }
-            
-            // Clean up container if empty
-            if (this.container && this.container.children.length === 0) {
-                document.body.removeChild(this.container);
-                this.container = null;
-            }
-        }, 300);
-    },
-    
-    escapeHtml(str) {
-        if (typeof str !== 'string') return str;
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    },
-    
-    getIcon(type) {
-        switch (type) {
-            case 'success':
-                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e">
-                    <path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>`;
-            case 'error':
-                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ef4444">
-                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>`;
-            default:
-                return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6">
-                    <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>`;
-        }
+        }, 5000);
     }
 };
 

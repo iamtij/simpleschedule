@@ -23,45 +23,58 @@ router.get('/login', (req, res) => {
 // Register POST
 router.post('/register', async (req, res) => {
   const { name: full_name, username, email, password, 'confirm-password': confirmPassword, 'coupon-code': couponCode } = req.body;
+  const formData = { full_name, username, email, couponCode };
   
   try {
+    console.log('Registration attempt:', { full_name, username, email, couponCode });
+
     // Validate required fields
     if (!full_name || !username || !email || !password || !confirmPassword || !couponCode) {
-      return res.render('register', { error: 'All fields are required' });
+      console.log('Missing required fields:', { full_name, username, email, password: !!password, confirmPassword: !!confirmPassword, couponCode });
+      return res.render('register', { error: 'All fields are required', formData });
     }
 
     // Validate coupon code
+    console.log('Validating coupon code:', couponCode);
     const couponValidation = await Coupon.validateCode(couponCode);
     if (!couponValidation.valid) {
-      return res.render('register', { error: couponValidation.message });
+      console.log('Invalid coupon:', couponValidation.message);
+      return res.render('register', { error: couponValidation.message, formData });
     }
 
     // Validate username format
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!usernameRegex.test(username)) {
+      console.log('Invalid username format:', username);
       return res.render('register', { 
-        error: 'Username can only contain letters, numbers, underscores and hyphens'
+        error: 'Username can only contain letters, numbers, underscores and hyphens',
+        formData
       });
     }
 
     // Check if passwords match
     if (password !== confirmPassword) {
-      return res.render('register', { error: 'Passwords do not match' });
+      console.log('Passwords do not match');
+      return res.render('register', { error: 'Passwords do not match', formData });
     }
 
     // Check if user already exists (email or username)
+    console.log('Checking for existing user:', { email, username });
     const existingUserResult = await db.query(
       'SELECT id FROM users WHERE email = $1 OR username = $2',
       [email, username]
     );
     
     if (existingUserResult.rows.length > 0) {
+      console.log('User already exists');
       return res.render('register', { 
-        error: 'Email or username already taken'
+        error: 'Email or username already taken',
+        formData
       });
     }
 
     // Start transaction
+    console.log('Starting registration transaction');
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
@@ -70,15 +83,29 @@ router.post('/register', async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Insert new user
-      const result = await client.query(
-        'INSERT INTO users (full_name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
-        [full_name, username, email, hashedPassword]
-      );
+      console.log('Inserting new user');
+      let result;
+      try {
+        result = await client.query(
+          'INSERT INTO users (name, username, email, password, full_name) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+          [full_name, username, email, hashedPassword, full_name]
+        );
+      } catch (insertError) {
+        console.error('Error inserting user:', insertError);
+        throw new Error('Failed to create user account');
+      }
 
       // Record coupon usage
-      await Coupon.useCoupon(couponValidation.coupon.id, result.rows[0].id, client);
+      console.log('Recording coupon usage');
+      try {
+        await Coupon.useCoupon(couponValidation.coupon.id, result.rows[0].id, client);
+      } catch (couponError) {
+        console.error('Error recording coupon usage:', couponError);
+        throw new Error('Failed to record coupon usage');
+      }
 
       await client.query('COMMIT');
+      console.log('Transaction committed successfully');
 
       // Set session and redirect
       req.session.userId = result.rows[0].id;
@@ -103,7 +130,11 @@ router.post('/register', async (req, res) => {
 
     } catch (error) {
       await client.query('ROLLBACK');
-      throw error;
+      console.error('Transaction error:', error);
+      return res.render('register', { 
+        error: error.message || 'Error creating account. Please try again.',
+        formData
+      });
     } finally {
       client.release();
     }
@@ -111,7 +142,8 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     return res.render('register', { 
-      error: 'Error creating account. Please try again.'
+      error: error.message || 'Error creating account. Please try again.',
+      formData
     });
   }
 });
@@ -124,7 +156,7 @@ router.post('/login', async (req, res) => {
   
   if (!email || !password) {
     console.log('Missing email or password');
-    return res.render('login', { error: 'Email and password are required' });
+    return res.render('login', { error: 'Email and password are required', email });
   }
 
   try {
@@ -135,13 +167,13 @@ router.post('/login', async (req, res) => {
     const user = result.rows[0];
     if (!user) {
       console.log('User not found');
-      return res.render('login', { error: 'Invalid email or password' });
+      return res.render('login', { error: 'Invalid email or password', email });
     }
 
     // Check if user account is inactive
     if (!user.status) {
       console.log('Inactive account');
-      return res.render('login', { error: 'Your account is inactive. Please contact support.' });
+      return res.render('login', { error: 'Your account is inactive. Please contact support.', email });
     }
 
     console.log('Comparing passwords...');
@@ -150,7 +182,7 @@ router.post('/login', async (req, res) => {
 
     if (!validPassword) {
       console.log('Invalid password');
-      return res.render('login', { error: 'Invalid email or password' });
+      return res.render('login', { error: 'Invalid email or password', email });
     }
 
     // Update last_login timestamp
@@ -169,7 +201,7 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    return res.render('login', { error: 'An error occurred. Please try again.' });
+    return res.render('login', { error: 'An error occurred. Please try again.', email });
   }
 });
 
