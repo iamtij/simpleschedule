@@ -34,7 +34,7 @@ class Coupon {
             return { valid: false, message: 'Invalid coupon code' };
         }
 
-        if (coupon.status === 'inactive') {
+        if (!coupon.status) {
             return { valid: false, message: 'This coupon code is inactive' };
         }
 
@@ -101,17 +101,8 @@ class Coupon {
 
     static async list(filters = {}) {
         let query = `
-            SELECT c.*, 
-                   COUNT(DISTINCT cu.id) as actual_uses,
-                   json_agg(json_build_object(
-                       'user_id', u.id,
-                       'name', u.name,
-                       'email', u.email,
-                       'used_at', cu.used_at
-                   )) FILTER (WHERE u.id IS NOT NULL) as usage_details
-            FROM coupons c
-            LEFT JOIN coupon_usage cu ON c.id = cu.coupon_id
-            LEFT JOIN users u ON cu.user_id = u.id
+            SELECT * FROM get_coupon_list()
+            WHERE 1=1
         `;
 
         const whereConditions = [];
@@ -119,26 +110,26 @@ class Coupon {
         let paramCount = 1;
 
         if (filters.status) {
-            whereConditions.push(`c.status = $${paramCount}`);
+            whereConditions.push(`status = $${paramCount}`);
             params.push(filters.status);
             paramCount++;
         }
 
         if (filters.code) {
-            whereConditions.push(`c.code ILIKE $${paramCount}`);
+            whereConditions.push(`code ILIKE $${paramCount}`);
             params.push(`%${filters.code}%`);
             paramCount++;
         }
 
         if (filters.showExpired === false) {
-            whereConditions.push(`(c.expires_at IS NULL OR c.expires_at > CURRENT_TIMESTAMP)`);
+            whereConditions.push(`(expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`);
         }
 
         if (whereConditions.length > 0) {
-            query += ` WHERE ${whereConditions.join(' AND ')}`;
+            query += ` AND ${whereConditions.join(' AND ')}`;
         }
 
-        query += ` GROUP BY c.id ORDER BY c.created_at DESC`;
+        query += ` ORDER BY created_at DESC`;
 
         const result = await db.query(query, params);
         return result.rows;
