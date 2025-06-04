@@ -310,18 +310,19 @@ router.get('/account', requireLogin, async (req, res) => {
 
 // Update account details
 router.post('/account', requireLogin, async (req, res) => {
-  const { full_name } = req.body;
-  
   try {
-    await db.query(
-      'UPDATE users SET full_name = $1 WHERE id = $2',
-      [full_name, req.session.userId]
-    );
+    const { full_name, display_name } = req.body;
     
+    // Update user details
+    await db.query(
+      'UPDATE users SET full_name = $1, display_name = $2 WHERE id = $3',
+      [full_name, display_name, req.session.userId]
+    );
+
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating account details:', error);
-    res.status(500).json({ error: 'Failed to update account details' });
+    console.error('Error updating account:', error);
+    res.status(500).json({ error: 'Failed to update account settings' });
   }
 });
 
