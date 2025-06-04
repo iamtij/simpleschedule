@@ -40,7 +40,7 @@ function formatTime(time) {
 router.get('/:username', async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, username, name, email FROM users WHERE username = $1',
+      'SELECT id, username, full_name, email FROM users WHERE username = $1',
       [req.params.username]
     );
     
@@ -142,7 +142,7 @@ router.post('/:username', async (req, res) => {
     try {
         // First get the user ID from username
         const userResult = await db.query(
-            'SELECT id, name, email, username FROM users WHERE username = $1',
+            'SELECT id, full_name, email, username FROM users WHERE username = $1',
             [username]
         );
 
