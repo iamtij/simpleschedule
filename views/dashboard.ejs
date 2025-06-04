@@ -595,105 +595,210 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
-        <!-- Calendar -->
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <div id="calendar"></div>
-        </div>
+    <div class="min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <!-- ... existing header content ... -->
+            </div>
+        </header>
 
-        <!-- Upcoming Bookings -->
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">Upcoming Bookings</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Date</th>
-                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Time</th>
-                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
-                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Notes</th>
-                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="upcoming-bookings" class="divide-y divide-gray-200">
-                        <!-- Bookings will be populated by JavaScript -->
-                    </tbody>
-                </table>
+        <!-- Onboarding Checklist -->
+        <% if ((!user.has_set_availability || !user.has_set_display_name || !user.has_shared_link) && !user.has_dismissed_checklist) { %>
+        <div id="onboarding-checklist" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Welcome to isked! 🎉</h2>
+                            <p class="mt-1 text-sm text-gray-500">Complete these steps to get started:</p>
+                        </div>
+                        <button onclick="dismissChecklist()" class="text-gray-400 hover:text-gray-500">
+                            <span class="sr-only">Dismiss</span>
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-4 space-y-3">
+                        <% if (!user.has_set_availability) { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative">
+                                <div class="absolute inset-0 rounded-full border-2 border-gray-300"></div>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Set your availability
+                                <a href="#availability-settings" onclick="scrollToAvailability()" class="text-blue-600 hover:text-blue-800 font-medium">Configure now →</a>
+                            </p>
+                        </div>
+                        <% } else { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Availability configured
+                            </p>
+                        </div>
+                        <% } %>
+
+                        <% if (!user.has_set_display_name) { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative">
+                                <div class="absolute inset-0 rounded-full border-2 border-gray-300"></div>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Update your display name
+                                <a href="#" onclick="showAccountSettings()" class="text-blue-600 hover:text-blue-800 font-medium">Set display name →</a>
+                            </p>
+                        </div>
+                        <% } else { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Display name updated
+                            </p>
+                        </div>
+                        <% } %>
+
+                        <% if (!user.has_shared_link) { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative">
+                                <div class="absolute inset-0 rounded-full border-2 border-gray-300"></div>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Share your booking link
+                                <button onclick="copyBookingLink()" class="text-blue-600 hover:text-blue-800 font-medium">Copy link →</button>
+                            </p>
+                        </div>
+                        <% } else { %>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">
+                                Booking link shared
+                            </p>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
             </div>
         </div>
+        <% } %>
 
-        <!-- Availability Settings -->
-        <div class="bg-white rounded-lg shadow mb-6">
-            <!-- Toggle Header -->
-            <button id="availability-toggle" class="w-full flex items-center justify-between p-6 focus:outline-none">
-                <h2 class="text-xl font-semibold">Availability Settings</h2>
-                <svg id="toggle-arrow" class="w-6 h-6 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto px-4 py-6">
+                <!-- Calendar -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <div id="calendar"></div>
+                </div>
 
-            <!-- Settings Content -->
-            <div id="availability-content" class="hidden p-6 pt-0 border-t">
-            <form id="availability-form">
-                <div class="mb-6">
-                    <h3 class="text-lg font-medium mb-4">Working Days</h3>
-                    <div class="space-y-4">
-                        <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3 border-b last:border-0">
+                <!-- Upcoming Bookings -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Upcoming Bookings</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Date</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Time</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Notes</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="upcoming-bookings" class="divide-y divide-gray-200">
+                                <!-- Bookings will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Availability Settings -->
+                <div id="availability-settings" class="bg-white rounded-lg shadow mb-6">
+                    <!-- Toggle Header -->
+                    <button id="availability-toggle" class="w-full flex items-center justify-between p-6 focus:outline-none">
+                        <h2 class="text-xl font-semibold">Availability Settings</h2>
+                        <svg id="toggle-arrow" class="w-6 h-6 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Settings Content -->
+                    <div id="availability-content" class="hidden p-6 pt-0 border-t">
+                    <form id="availability-form">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-medium mb-4">Working Days</h3>
+                            <div class="space-y-4">
+                                <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3 border-b last:border-0">
+                                        <div class="flex items-center w-full sm:w-1/3">
+                                            <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="w-4 h-4 mr-3">
+                                            <label for="day-<%= index %>" class="text-gray-700"><%= day %></label>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                                            <input type="time" class="work-start border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="09:00" disabled>
+                                            <span class="text-gray-500 px-2">to</span>
+                                            <input type="time" class="work-end border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="17:00" disabled>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+
+                        <div class="mb-8">
+                            <h3 class="text-lg font-medium mb-4">Universal Breaks</h3>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3">
                                 <div class="flex items-center w-full sm:w-1/3">
-                                    <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="w-4 h-4 mr-3">
-                                    <label for="day-<%= index %>" class="text-gray-700"><%= day %></label>
+                                    <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
+                                    <label for="break-enabled" class="text-gray-700">Enable Break Time</label>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
-                                    <input type="time" class="work-start border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="09:00" disabled>
+                                    <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
                                     <span class="text-gray-500 px-2">to</span>
-                                    <input type="time" class="work-end border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="17:00" disabled>
+                                    <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
                                 </div>
                             </div>
-                        <% }); %>
-                    </div>
-                </div>
 
-                <div class="mb-8">
-                    <h3 class="text-lg font-medium mb-4">Universal Breaks</h3>
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3">
-                        <div class="flex items-center w-full sm:w-1/3">
-                            <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
-                            <label for="break-enabled" class="text-gray-700">Enable Break Time</label>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
-                            <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
-                            <span class="text-gray-500 px-2">to</span>
-                            <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
-                        </div>
-                    </div>
-
-                    <!-- Buffer Between Bookings -->
-                    <div class="mt-6 border-t pt-6">
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                            <div class="w-full sm:w-1/3">
-                                <label for="buffer-minutes" class="text-gray-700 font-medium">Buffer Between Bookings</label>
-                                <p class="text-sm text-gray-500 mt-1">Add padding time after each booking</p>
-                            </div>
-                            <div class="w-full sm:w-2/3">
-                                <select id="buffer-minutes" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="0">No buffer</option>
-                                    <option value="10">10 minutes</option>
-                                    <option value="15">15 minutes</option>
-                                    <option value="30">30 minutes</option>
-                                    <option value="45">45 minutes</option>
-                                </select>
+                            <!-- Buffer Between Bookings -->
+                            <div class="mt-6 border-t pt-6">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                    <div class="w-full sm:w-1/3">
+                                        <label for="buffer-minutes" class="text-gray-700 font-medium">Buffer Between Bookings</label>
+                                        <p class="text-sm text-gray-500 mt-1">Add padding time after each booking</p>
+                                    </div>
+                                    <div class="w-full sm:w-2/3">
+                                        <select id="buffer-minutes" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="0">No buffer</option>
+                                            <option value="10">10 minutes</option>
+                                            <option value="15">15 minutes</option>
+                                            <option value="30">30 minutes</option>
+                                            <option value="45">45 minutes</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                            Save Settings
+                        </button>
+                    </form>
                     </div>
                 </div>
-
-                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    Save Settings
-                </button>
-            </form>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
@@ -981,9 +1086,8 @@
                             title: 'Success',
                             message: 'Settings saved successfully!'
                         });
-                        // Collapse settings panel after successful save
-                        availabilityContent.classList.add('hidden');
-                        toggleArrow.classList.remove('rotate-180');
+                        // Refresh the page to update the checklist
+                        window.location.reload();
                     }
                 });
             });
@@ -1254,73 +1358,69 @@
         });
 
         function copyBookingLink() {
-            const link = document.querySelector('input[readonly]').value;
+            const username = '<%= user.username %>';
+            const bookingLink = `${window.location.origin}/booking/${username}`;
             
-            // Fallback function for older browsers
-            const fallbackCopy = () => {
-                const textArea = document.createElement('textarea');
-                textArea.value = link;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
+            navigator.clipboard.writeText(bookingLink).then(() => {
+                // Show success toast
+                toast.show({
+                    type: 'success',
+                    title: 'Link copied!',
+                    message: 'Your booking link has been copied to clipboard'
+                });
 
-                try {
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    return true;
-                } catch (err) {
-                    document.body.removeChild(textArea);
-                    return false;
-                }
-            };
-
-            // Try the modern API first, fall back to execCommand if not available
-            if (!navigator.clipboard) {
-                const success = fallbackCopy();
-                if (success) {
-                    toast.show({
-                        type: 'success',
-                        title: 'Link Copied',
-                        message: 'Booking link copied to clipboard'
-                    });
-                } else {
-                    toast.show({
-                        type: 'error',
-                        title: 'Error',
-                        message: 'Failed to copy booking link'
-                    });
-                }
-                return;
-            }
-
-            navigator.clipboard.writeText(link)
-                .then(() => {
-                    toast.show({
-                        type: 'success',
-                        title: 'Link Copied',
-                        message: 'Booking link copied to clipboard'
-                    });
+                // Update has_shared_link status
+                fetch('/dashboard/update-share-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 })
-                .catch((error) => {
-                    console.error('Clipboard error:', error);
-                    // Try fallback if modern API fails
-                    const success = fallbackCopy();
-                    if (success) {
-                        toast.show({
-                            type: 'success',
-                            title: 'Link Copied',
-                            message: 'Booking link copied to clipboard'
-                        });
-                    } else {
-                        toast.show({
-                            type: 'error',
-                            title: 'Error',
-                            message: 'Failed to copy booking link'
-                        });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Refresh the page to update the checklist
+                        window.location.reload();
                     }
                 });
+            }).catch(() => {
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to copy link to clipboard'
+                });
+            });
+        }
+
+        // Dismiss checklist
+        function dismissChecklist() {
+            // Send request to dismiss checklist
+            fetch('/dashboard/dismiss-checklist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide the checklist with a fade-out animation
+                    const checklist = document.getElementById('onboarding-checklist');
+                    checklist.style.transition = 'opacity 0.3s ease-out';
+                    checklist.style.opacity = '0';
+                    setTimeout(() => {
+                        checklist.style.display = 'none';
+                    }, 300);
+                }
+            })
+            .catch(error => {
+                console.error('Error dismissing checklist:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to dismiss checklist'
+                });
+            });
         }
 
         // Function to load upcoming bookings
@@ -1511,16 +1611,9 @@
                         title: 'Success',
                         message: 'Account settings updated successfully'
                     });
-                } else {
-                    throw new Error(data.error || 'Failed to update account settings');
+                    // Refresh the page to update the checklist
+                    window.location.reload();
                 }
-            })
-            .catch(error => {
-                toast.show({
-                    type: 'error',
-                    title: 'Error',
-                    message: error.message || 'Failed to update account settings'
-                });
             });
         });
 
@@ -1546,6 +1639,20 @@
                     }, 100);
                 });
             }
+        }
+
+        function scrollToAvailability() {
+            const availabilitySection = document.getElementById('availability-settings');
+            const availabilityContent = document.getElementById('availability-content');
+            
+            // Show availability content if hidden
+            if (availabilityContent.classList.contains('hidden')) {
+                availabilityContent.classList.remove('hidden');
+                document.getElementById('toggle-arrow').classList.add('rotate-180');
+            }
+            
+            // Scroll to section with smooth animation
+            availabilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     </script>
 </body>

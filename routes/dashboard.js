@@ -17,7 +17,7 @@ router.get('/', requireLogin, async (req, res) => {
     
     // Get user data
     const userResult = await db.query(
-      'SELECT id, email, username, full_name FROM users WHERE id = $1',
+      'SELECT id, email, username, full_name, display_name, has_set_availability, has_set_display_name, has_shared_link, has_dismissed_checklist FROM users WHERE id = $1',
       [req.session.userId]
     );
     if (userResult.rows.length === 0) {
@@ -87,9 +87,9 @@ router.post('/availability', requireLogin, async (req, res) => {
     // Start a transaction
     await db.query('BEGIN');
 
-    // Update buffer_minutes in users table
+    // Update buffer_minutes in users table and set has_set_availability to true
     await db.query(
-      'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
+      'UPDATE users SET buffer_minutes = $1, has_set_availability = TRUE WHERE id = $2',
       [buffer_minutes, userId]
     );
 
@@ -313,9 +313,16 @@ router.post('/account', requireLogin, async (req, res) => {
   try {
     const { full_name, display_name } = req.body;
     
-    // Update user details
+    // Update user details and set has_set_display_name to true if display_name is set
     await db.query(
-      'UPDATE users SET full_name = $1, display_name = $2 WHERE id = $3',
+      `UPDATE users 
+       SET full_name = $1::TEXT, 
+           display_name = $2::TEXT,
+           has_set_display_name = CASE 
+               WHEN $2::TEXT IS NOT NULL AND TRIM($2::TEXT) != '' THEN TRUE 
+               ELSE FALSE 
+           END
+       WHERE id = $3`,
       [full_name, display_name, req.session.userId]
     );
 
@@ -324,6 +331,34 @@ router.post('/account', requireLogin, async (req, res) => {
     console.error('Error updating account:', error);
     res.status(500).json({ error: 'Failed to update account settings' });
   }
+});
+
+// Update share status
+router.post('/update-share-status', requireLogin, async (req, res) => {
+    try {
+        await db.query(
+            'UPDATE users SET has_shared_link = TRUE WHERE id = $1',
+            [req.session.userId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating share status:', error);
+        res.status(500).json({ error: 'Failed to update share status' });
+    }
+});
+
+// Dismiss onboarding checklist
+router.post('/dismiss-checklist', requireLogin, async (req, res) => {
+    try {
+        await db.query(
+            'UPDATE users SET has_dismissed_checklist = TRUE WHERE id = $1',
+            [req.session.userId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error dismissing checklist:', error);
+        res.status(500).json({ error: 'Failed to dismiss checklist' });
+    }
 });
 
 module.exports = router; 
