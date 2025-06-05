@@ -76,8 +76,8 @@ router.post('/register', async (req, res) => {
       let result;
       try {
         result = await client.query(
-          'INSERT INTO users (name, username, email, password, full_name) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-          [full_name, username, email, hashedPassword, full_name]
+          'INSERT INTO users (full_name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+          [full_name, username, email, hashedPassword]
         );
       } catch (insertError) {
         throw new Error('Failed to create user account');
