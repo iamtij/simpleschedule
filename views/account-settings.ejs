@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Account Settings</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/js/toast.js" defer></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/dashboard" class="text-xl font-bold">isked</a>
+                </div>
+                <div class="flex items-center">
+                    <a href="/dashboard" class="text-gray-600 hover:text-gray-900">
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div class="space-y-8">
+            <!-- Header -->
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
+                <p class="mt-2 text-sm text-gray-600">
+                    Manage your account details and preferences
+                </p>
+            </div>
+
+            <!-- Booking Information Section -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900">Booking Information</h2>
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    <!-- Display Name -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
+                        <div class="relative">
+                            <div id="display-name-display" class="flex items-center space-x-3">
+                                <input type="text" value="<%= user.display_name || user.full_name || '' %>" readonly
+                                    class="flex-1 bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                                <button id="edit-display-name-btn" type="button"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Change
+                                </button>
+                            </div>
+                            <div id="display-name-edit" class="hidden">
+                                <form class="space-y-4">
+                                    <div>
+                                        <input type="text" id="new-display-name" name="new-display-name"
+                                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-4 py-3"
+                                            placeholder="Enter your display name"
+                                            value="<%= user.display_name || user.full_name || '' %>">
+                                        <p id="display-name-error" class="mt-2 text-sm text-red-600 hidden"></p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <button type="submit" id="save-display-name-btn"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                            disabled>
+                                            Save
+                                        </button>
+                                        <button type="button" id="cancel-display-name-edit"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            This name will be shown on your booking page
+                        </p>
+                    </div>
+
+                    <!-- Username -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <div class="relative">
+                            <div id="username-display" class="flex items-center space-x-3">
+                                <input type="text" value="<%= user.username %>" readonly
+                                    class="flex-1 bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                                <button id="edit-username-btn" type="button"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Change
+                                </button>
+                            </div>
+                            <div id="username-edit" class="hidden">
+                                <form id="inline-username-form" class="space-y-4">
+                                    <div>
+                                        <input type="text" id="new-username" name="new-username"
+                                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-4 py-3"
+                                            placeholder="Enter new username"
+                                            value="<%= user.username %>">
+                                        <p id="username-error" class="mt-2 text-sm text-red-600 hidden"></p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <button type="submit" id="save-username-btn"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                            disabled>
+                                            Save
+                                        </button>
+                                        <button type="button" id="cancel-username-edit"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Booking Link -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Booking Link</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="text" id="booking-link" value="isked.app/booking/<%= user.username %>" readonly
+                                class="flex-1 bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                            <button id="copy-link-btn" type="button"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Information Section -->
+            <div class="bg-white shadow rounded-lg mt-8">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900">Account Information</h2>
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    <!-- Email Address -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <div>
+                            <input type="email" value="<%= user.email %>" readonly
+                                class="block w-full bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                            <span class="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Verified
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Full Name -->
+                    <div>
+                        <label for="full-name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Full Name
+                        </label>
+                        <input type="text" id="full-name" name="full-name"
+                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 cursor-not-allowed px-3 py-2"
+                            value="<%= user.full_name || '' %>"
+                            placeholder="Enter your full name"
+                            readonly>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Contact support to change your full name
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing functions...');
+            initUsernameEditing();
+            initDisplayNameEditing();
+            initCopyLink();
+        });
+
+        // Copy link functionality
+        function initCopyLink() {
+            console.log('Initializing copy link...');
+            const copyBtn = document.getElementById('copy-link-btn');
+            const bookingLink = document.getElementById('booking-link');
+
+            copyBtn.addEventListener('click', function() {
+                console.log('Copy button clicked');
+                const linkValue = bookingLink.value;
+                const fullUrl = `https://${linkValue}`;
+                
+                // Try to use the modern clipboard API
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(fullUrl).then(() => {
+                        toast.show({
+                            type: 'success',
+                            title: 'Copied!',
+                            message: 'Booking link copied to clipboard'
+                        });
+                        
+                        // Change button text temporarily
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Copied!';
+                        copyBtn.classList.add('text-green-600', 'border-green-300');
+                        
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('text-green-600', 'border-green-300');
+                        }, 2000);
+                    }).catch(() => {
+                        fallbackCopy(fullUrl);
+                    });
+                } else {
+                    fallbackCopy(fullUrl);
+                }
+            });
+
+            function fallbackCopy(text) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    toast.show({
+                        type: 'success',
+                        title: 'Copied!',
+                        message: 'Booking link copied to clipboard'
+                    });
+                } catch (err) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to copy link. Please copy manually.'
+                    });
+                }
+                
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // Display Name inline editing
+        function initDisplayNameEditing() {
+            console.log('Initializing display name editing...');
+            const editBtn = document.getElementById('edit-display-name-btn');
+            const display = document.getElementById('display-name-display');
+            const edit = document.getElementById('display-name-edit');
+            const form = edit.querySelector('form');
+            const input = document.getElementById('new-display-name');
+            const cancelBtn = document.getElementById('cancel-display-name-edit');
+            const saveBtn = document.getElementById('save-display-name-btn');
+            const errorDisplay = document.getElementById('display-name-error');
+            let currentDisplayName = input.value;
+
+            console.log('Display name elements found:', {
+                editBtn: !!editBtn,
+                display: !!display,
+                edit: !!edit,
+                form: !!form,
+                input: !!input,
+                cancelBtn: !!cancelBtn,
+                saveBtn: !!saveBtn,
+                errorDisplay: !!errorDisplay
+            });
+
+            function showEdit() {
+                console.log('Showing display name edit form');
+                display.classList.add('hidden');
+                edit.classList.remove('hidden');
+                input.focus();
+                input.select();
+                validateDisplayName();
+            }
+
+            function hideEdit() {
+                console.log('Hiding display name edit form');
+                edit.classList.add('hidden');
+                display.classList.remove('hidden');
+                input.value = currentDisplayName;
+                errorDisplay.classList.add('hidden');
+                errorDisplay.textContent = '';
+                saveBtn.disabled = true;
+            }
+
+            function validateDisplayName() {
+                const displayName = input.value.trim();
+                const hasChanged = displayName !== currentDisplayName && displayName.length > 0;
+                console.log('Validating display name:', { displayName, currentDisplayName, hasChanged });
+                saveBtn.disabled = !hasChanged;
+            }
+
+            editBtn.addEventListener('click', showEdit);
+            cancelBtn.addEventListener('click', hideEdit);
+            input.addEventListener('input', validateDisplayName);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Display name form submitted');
+                const newDisplayName = input.value.trim();
+                
+                if (!newDisplayName) {
+                    console.log('Display name is empty');
+                    errorDisplay.textContent = 'Display name cannot be empty';
+                    errorDisplay.classList.remove('hidden');
+                    return;
+                }
+
+                console.log('Saving display name:', newDisplayName);
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                fetch('/dashboard/account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ display_name: newDisplayName })
+                })
+                .then(response => {
+                    console.log('Display name response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Display name response data:', data);
+                    if (data.success) {
+                        currentDisplayName = newDisplayName;
+                        document.querySelector('#display-name-display input').value = newDisplayName;
+                        hideEdit();
+                        toast.show({
+                            type: 'success',
+                            title: 'Success',
+                            message: 'Display name updated successfully'
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to update display name');
+                    }
+                })
+                .catch(error => {
+                    console.error('Display name error:', error);
+                    errorDisplay.textContent = error.message;
+                    errorDisplay.classList.remove('hidden');
+                })
+                .finally(() => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+            });
+        }
+
+        // Username inline editing
+        function initUsernameEditing() {
+            console.log('Initializing username editing...');
+            const editBtn = document.getElementById('edit-username-btn');
+            const display = document.getElementById('username-display');
+            const edit = document.getElementById('username-edit');
+            const form = document.getElementById('inline-username-form');
+            const input = document.getElementById('new-username');
+            const cancelBtn = document.getElementById('cancel-username-edit');
+            const saveBtn = document.getElementById('save-username-btn');
+            const errorDisplay = document.getElementById('username-error');
+            let currentUsername = '<%= user.username %>';
+            let typingTimer;
+
+            console.log('Username elements found:', {
+                editBtn: !!editBtn,
+                display: !!display,
+                edit: !!edit,
+                form: !!form,
+                input: !!input,
+                cancelBtn: !!cancelBtn,
+                saveBtn: !!saveBtn,
+                errorDisplay: !!errorDisplay
+            });
+
+            function showEdit() {
+                console.log('Showing username edit form');
+                display.classList.add('hidden');
+                edit.classList.remove('hidden');
+                input.focus();
+                input.select();
+                validateUsername();
+            }
+
+            function hideEdit() {
+                console.log('Hiding username edit form');
+                edit.classList.add('hidden');
+                display.classList.remove('hidden');
+                input.value = currentUsername;
+                errorDisplay.classList.add('hidden');
+                errorDisplay.textContent = '';
+                saveBtn.disabled = true;
+            }
+
+            function validateUsername() {
+                const username = input.value.toLowerCase().trim();
+                const isValid = /^[a-z0-9_-]+$/.test(username);
+                const hasChanged = username !== currentUsername;
+                
+                console.log('Validating username:', { username, currentUsername, isValid, hasChanged });
+
+                if (!username) {
+                    errorDisplay.textContent = 'Username cannot be empty';
+                    errorDisplay.classList.remove('hidden');
+                    saveBtn.disabled = true;
+                    return;
+                }
+
+                if (!isValid) {
+                    errorDisplay.textContent = 'Username can only contain lowercase letters, numbers, underscores and hyphens';
+                    errorDisplay.classList.remove('hidden');
+                    saveBtn.disabled = true;
+                    return;
+                }
+
+                if (!hasChanged) {
+                    saveBtn.disabled = true;
+                    errorDisplay.classList.add('hidden');
+                    return;
+                }
+
+                // Check if username is available
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => {
+                    console.log('Checking username availability...');
+                    fetch('/dashboard/username', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, checkOnly: true })
+                    })
+                    .then(response => {
+                        console.log('Username check response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Username check response data:', data);
+                        if (data.available) {
+                            errorDisplay.classList.add('hidden');
+                            saveBtn.disabled = false;
+                        } else {
+                            errorDisplay.textContent = 'This username is already taken';
+                            errorDisplay.classList.remove('hidden');
+                            saveBtn.disabled = true;
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Username check error:', error);
+                        errorDisplay.textContent = 'Error checking username availability';
+                        errorDisplay.classList.remove('hidden');
+                        saveBtn.disabled = true;
+                    });
+                }, 500);
+            }
+
+            editBtn.addEventListener('click', showEdit);
+            cancelBtn.addEventListener('click', hideEdit);
+            input.addEventListener('input', validateUsername);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Username form submitted');
+                const newUsername = input.value.toLowerCase().trim();
+                console.log('Saving username:', newUsername);
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                fetch('/dashboard/username', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: newUsername })
+                })
+                .then(response => {
+                    console.log('Username save response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Username save response data:', data);
+                    if (data.success) {
+                        currentUsername = newUsername;
+                        document.querySelector('#username-display input').value = newUsername;
+                        document.getElementById('booking-link').value = `isked.app/booking/${newUsername}`;
+                        hideEdit();
+                        toast.show({
+                            type: 'success',
+                            title: 'Success',
+                            message: 'Username updated successfully'
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to update username');
+                    }
+                })
+                .catch(error => {
+                    console.error('Username save error:', error);
+                    errorDisplay.textContent = error.message;
+                    errorDisplay.classList.remove('hidden');
+                })
+                .finally(() => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+            });
+        }
+    </script>
+</body>
+</html> 

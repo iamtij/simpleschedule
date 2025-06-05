@@ -1,14 +1,31 @@
 const db = require('../db');
 
 class Coupon {
-    static async create({ code, description, maxUses, expiresAt, createdBy }) {
+    static async create(couponData) {
+        const { code, description, max_uses, maxUses, status = 'active', expires_at, expiresAt, created_by, createdBy } = couponData;
+        
+        // Handle both naming conventions
+        const finalMaxUses = max_uses || maxUses;
+        const finalExpiresAt = expires_at || expiresAt;
+        const finalCreatedBy = created_by || createdBy;
+        
         const result = await db.query(
-            `INSERT INTO coupons (code, description, max_uses, expires_at, created_by)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING *`,
-            [code, description, maxUses, expiresAt, createdBy]
+            `INSERT INTO coupons (code, description, max_uses, status, expires_at, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *, 
+                      CASE 
+                          WHEN status = true THEN 'active'
+                          ELSE 'inactive'
+                      END as status_text`,
+            [code, description, finalMaxUses, status === 'active', finalExpiresAt, finalCreatedBy]
         );
-        return result.rows[0];
+        
+        const coupon = result.rows[0];
+        if (coupon) {
+            coupon.status = coupon.status_text;
+            delete coupon.status_text;
+        }
+        return coupon;
     }
 
     static async findByCode(code) {
@@ -101,12 +118,14 @@ class Coupon {
 
     static async list(filters = {}) {
         let query = `
-            SELECT *, 
+            SELECT c.*,
+                   COUNT(cu.id) as current_uses,
                    CASE 
-                       WHEN status = true THEN 'active'
+                       WHEN c.status = true THEN 'active'
                        ELSE 'inactive'
-                   END as status
-            FROM get_coupon_list()
+                   END as status_text
+            FROM coupons c
+            LEFT JOIN coupon_usage cu ON c.id = cu.coupon_id
             WHERE 1=1
         `;
 
@@ -115,29 +134,34 @@ class Coupon {
         let paramCount = 1;
 
         if (filters.status) {
-            whereConditions.push(`status = $${paramCount}`);
-            params.push(filters.status === 'active');
+            whereConditions.push(`c.status = $${paramCount}`);
+            params.push(filters.status === 'active'); // Convert 'active'/'inactive' to boolean
             paramCount++;
         }
 
         if (filters.code) {
-            whereConditions.push(`code ILIKE $${paramCount}`);
+            whereConditions.push(`c.code ILIKE $${paramCount}`);
             params.push(`%${filters.code}%`);
             paramCount++;
         }
 
         if (filters.showExpired === false) {
-            whereConditions.push(`(expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`);
+            whereConditions.push(`(c.expires_at IS NULL OR c.expires_at > CURRENT_TIMESTAMP)`);
         }
 
         if (whereConditions.length > 0) {
             query += ` AND ${whereConditions.join(' AND ')}`;
         }
 
-        query += ` ORDER BY created_at DESC`;
+        query += ` GROUP BY c.id ORDER BY c.created_at DESC`;
 
         const result = await db.query(query, params);
-        return result.rows;
+        
+        // Convert status_text to status for consistent API
+        return result.rows.map(row => ({
+            ...row,
+            status: row.status_text
+        }));
     }
 
     static async update(id, updates) {
@@ -148,10 +172,9 @@ class Coupon {
 
         Object.keys(updates).forEach(field => {
             if (validFields.includes(field) && updates[field] !== undefined) {
-                // Convert status string to boolean
                 if (field === 'status') {
                     setFields.push(`${field} = $${paramCount}`);
-                    values.push(updates[field] === 'active');
+                    values.push(updates[field] === 'active'); // Convert 'active'/'inactive' to boolean
                     paramCount++;
                 } else {
                     setFields.push(`${field} = $${paramCount}`);

@@ -188,7 +188,7 @@
                                 ${new Date(user.created_at).toLocaleDateString()}
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                             <button onclick='openEditModal(${JSON.stringify(JSON.stringify(user))})' 
                                 class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
                             <button onclick="showDeleteConfirmation('${user.id}')"

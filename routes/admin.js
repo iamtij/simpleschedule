@@ -303,7 +303,7 @@ router.get('/coupons/:id/usage', async (req, res) => {
                    CASE 
                        WHEN c.status = true THEN 'active'
                        ELSE 'inactive'
-                   END as status
+                   END as status_text
             FROM coupons c
             LEFT JOIN coupon_usage cu ON c.id = cu.coupon_id
             LEFT JOIN users u ON cu.user_id = u.id
@@ -315,8 +315,12 @@ router.get('/coupons/:id/usage', async (req, res) => {
             return res.status(404).send('Coupon not found');
         }
 
+        const coupon = result.rows[0];
+        coupon.status = coupon.status_text;
+        delete coupon.status_text;
+
         res.render('admin/coupon-usage', { 
-            coupon: result.rows[0],
+            coupon,
             path: '/admin/coupons'
         });
     } catch (error) {

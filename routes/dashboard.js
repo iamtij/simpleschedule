@@ -307,27 +307,30 @@ router.get('/account', requireLogin, async (req, res) => {
 
 // Update account details
 router.post('/account', requireLogin, async (req, res) => {
-  try {
-    const { full_name, display_name } = req.body;
-    
-    // Update user details and set has_set_display_name to true if display_name is set
-    await db.query(
-      `UPDATE users 
-       SET full_name = $1::TEXT, 
-           display_name = $2::TEXT,
-           has_set_display_name = CASE 
-               WHEN $2::TEXT IS NOT NULL AND TRIM($2::TEXT) != '' THEN TRUE 
-               ELSE FALSE 
-           END
-       WHERE id = $3`,
-      [full_name, display_name, req.session.userId]
-    );
+    try {
+        const { full_name, display_name } = req.body;
+        
+        // Validate and sanitize input
+        const sanitizedFullName = full_name ? full_name.trim() : null;
+        const sanitizedDisplayName = display_name ? display_name.trim() : null;
 
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error updating account:', error);
-    res.status(500).json({ error: 'Failed to update account settings' });
-  }
+        await db.query(
+            `UPDATE users 
+             SET full_name = COALESCE($1::text, full_name), 
+                 display_name = COALESCE($2::text, display_name),
+                 has_set_display_name = CASE 
+                     WHEN $2::text IS NOT NULL AND LENGTH(TRIM($2::text)) > 0 THEN TRUE 
+                     ELSE has_set_display_name 
+                 END
+             WHERE id = $3`,
+            [sanitizedFullName, sanitizedDisplayName, req.session.userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating account:', error);
+        res.status(500).json({ error: 'Failed to update account settings' });
+    }
 });
 
 // Update share status
@@ -355,6 +358,38 @@ router.post('/dismiss-checklist', requireLogin, async (req, res) => {
     } catch (error) {
         console.error('Error dismissing checklist:', error);
         res.status(500).json({ error: 'Failed to dismiss checklist' });
+    }
+});
+
+// Get account settings
+router.get('/settings', requireLogin, async (req, res) => {
+    try {
+        // Additional check to ensure user is properly authenticated
+        if (!req.session.userId) {
+            return res.redirect('/auth/login');
+        }
+
+        const userResult = await db.query(
+            'SELECT id, email, username, full_name, display_name FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            // User not found, clear session and redirect to login
+            req.session.destroy();
+            return res.redirect('/auth/login');
+        }
+
+        res.render('account-settings', {
+            user: userResult.rows[0],
+            title: 'Account Settings'
+        });
+    } catch (error) {
+        console.error('Error fetching user details:', error);
+        res.status(500).render('error', { 
+            message: 'Failed to load account settings',
+            error: { status: 500 }
+        });
     }
 });
 
