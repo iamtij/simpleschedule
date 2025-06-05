@@ -832,24 +832,12 @@
                         titleFormat: { year: 'numeric', month: 'long', day: '2-digit' }
                     }
                 },
-                events: function(info, successCallback, failureCallback) {
-                    // console.log('Fetching events...');
-                    fetch('/dashboard/bookings')
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch events');
-                            }
-                            return response.json();
-                        })
-                        .then(events => {
-                            // console.log('Events received:', events);
-                            successCallback(events);
-                        })
-                        .catch(error => {
-                            // console.error('Error fetching events:', error);
-                            failureCallback(error);
-                        });
-                },
+                navLinks: true,
+                nowIndicator: true,
+                dayMaxEvents: true,
+                selectable: true,
+                editable: false,
+                handleWindowResize: true,
                 timeZone: 'Asia/Manila',
                 slotMinTime: '06:00:00',
                 slotMaxTime: '24:00:00',
@@ -859,41 +847,26 @@
                     meridiem: 'short',
                     hour12: true
                 },
-                dayMaxEvents: true,
+                allDaySlot: false,
+                slotDuration: '00:30:00',
+                height: 'auto',
+                contentHeight: 'auto',
+                expandRows: true,
+                windowResizeDelay: 200,
+                businessHours: {
+                    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+                    startTime: '09:00',
+                    endTime: '17:00'
+                },
+                events: function(info, successCallback, failureCallback) {
+                    fetch('/dashboard/bookings')
+                        .then(response => response.json())
+                        .then(events => successCallback(events))
+                        .catch(error => failureCallback(error));
+                },
                 eventContent: function(arg) {
-                    // console.log('Rendering event:', arg.event);
                     const startTime = formatTimeShort(arg.event.extendedProps.start_time);
                     const endTime = formatTimeShort(arg.event.extendedProps.end_time);
-                    const isMobile = window.innerWidth <= 640;
-                    
-                    // Mobile view
-                    if (isMobile) {
-                        // Day view - show full details
-                        if (arg.view.type === 'timeGridDay') {
-                            return {
-                                html: `
-                                    <div class="fc-content p-1">
-                                        <div class="text-xs font-medium">
-                                            <div class="fc-event-time">${startTime} - ${endTime}</div>
-                                            <div class="fc-event-title">${arg.event.title}</div>
-                                        </div>
-                                    </div>
-                                `
-                            };
-                        }
-                        // Month/Week view - show only start time
-                        return {
-                            html: `
-                                <div class="fc-content p-1">
-                                    <div class="text-xs font-medium">
-                                        <div class="fc-event-time">${startTime}</div>
-                                    </div>
-                                </div>
-                            `
-                        };
-                    }
-                    
-                    // Desktop view - always show full details
                     return {
                         html: `
                             <div class="fc-content p-1">
@@ -905,68 +878,44 @@
                         `
                     };
                 },
-                eventDidMount: function(info) {
-                    // No need for additional classes since we're using a single style
-                },
                 eventClick: function(info) {
                     showBookingDetails(info.event);
-                },
-                allDaySlot: false,
-                slotDuration: '00:30:00',
-                initialDate: new Date(),
-                displayEventTime: true,
-                displayEventEnd: true,
-                eventDidMount: function(info) {
-                    // No need for additional classes since we're using a single style
-                },
-                eventClick: function(info) {
-                    showBookingDetails(info.event);
-                },
-                dayMaxEvents: false, // Allow all events to be displayed
-                height: 'auto', // Adjust height automatically
-                contentHeight: 'auto',
-                expandRows: true, // Expand rows to fit all events
-                handleWindowResize: true,
-                windowResizeDelay: 200,
-                nowIndicator: true, // Show current time indicator
-                businessHours: {
-                    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-                    startTime: '09:00',
-                    endTime: '17:00'
                 },
                 datesSet: function(info) {
-                    if (info.view.type === 'timeGridDay') {
-                        const today = new Date();
-                        if (
-                            info.start.getDate() !== today.getDate() ||
-                            info.start.getMonth() !== today.getMonth() ||
-                            info.start.getFullYear() !== today.getFullYear()
-                        ) {
-                            if (!justSwitchedToDay) {
-                                justSwitchedToDay = true;
-                                calendarInstance.gotoDate(today);
-                            }
-                        } else {
-                            justSwitchedToDay = false;
-                        }
-                    } else {
-                        justSwitchedToDay = false;
-                    }
+                    // Refresh events when date range changes
+                    calendarInstance.refetchEvents();
                 },
+                // Add custom button click handlers
+                customButtons: {
+                    prev: {
+                        click: function() {
+                            const view = calendarInstance.view;
+                            const date = calendarInstance.getDate();
+                            
+                            if (view.type === 'timeGridDay') {
+                                date.setDate(date.getDate() - 1);
+                                calendarInstance.gotoDate(date);
+                            } else {
+                                calendarInstance.prev();
+                            }
+                        }
+                    },
+                    next: {
+                        click: function() {
+                            const view = calendarInstance.view;
+                            const date = calendarInstance.getDate();
+                            
+                            if (view.type === 'timeGridDay') {
+                                date.setDate(date.getDate() + 1);
+                                calendarInstance.gotoDate(date);
+                            } else {
+                                calendarInstance.next();
+                            }
+                        }
+                    }
+                }
             });
             calendarInstance.render();
-
-            // Attach handler initially
-            attachDayButtonHandler();
-
-            // Observe toolbar for changes and re-attach handler if needed
-            const toolbar = document.querySelector('.fc-header-toolbar');
-            if (toolbar) {
-                const observer = new MutationObserver(() => {
-                    attachDayButtonHandler();
-                });
-                observer.observe(toolbar, { childList: true, subtree: true });
-            }
 
             // Handle working days checkboxes
             document.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
@@ -1514,12 +1463,8 @@
                 dayBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const today = new Date();
-                    // console.log('Day button clicked: switching to today', today);
                     calendarInstance.gotoDate(today);
                     calendarInstance.changeView('timeGridDay');
-                    setTimeout(() => {
-                        // console.log('Calendar current date after changeView:', calendarInstance.getDate());
-                    }, 100);
                 });
             }
         }
