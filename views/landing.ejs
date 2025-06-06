@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked – Simple Scheduling</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="icon" href="/favicon.ico" />
+</head>
+<body class="bg-white text-gray-900 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="/" class="text-2xl font-bold text-indigo-600">isked</a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/auth/login" class="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
+                    <a href="/auth/register" class="bg-indigo-600 text-white px-5 py-2.5 rounded-md hover:bg-indigo-700 transition-colors font-medium shadow-sm hover:shadow">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with gradient background -->
+    <section class="relative bg-gradient-to-b from-indigo-50 to-white pt-32 pb-20 px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                <span class="block mb-2">Simple Scheduling</span>
+                <span class="block text-indigo-600">Made Easy</span>
+            </h1>
+            <p class="mt-6 max-w-md mx-auto text-base text-gray-600 sm:text-lg md:mt-8 md:text-xl md:max-w-3xl">
+                Let others book your time with ease. isked simplifies scheduling by letting you share your availability and get booked instantly — no back-and-forth emails.
+            </p>
+            <div class="mt-8 flex justify-center">
+                <div class="rounded-md shadow-lg">
+                    <a href="/auth/register" class="w-full flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transform transition md:text-lg md:px-10 hover:scale-105">
+                        Create Your Booking Link
+                    </a>
+                </div>
+            </div>
+            <div class="mt-8">
+                <p class="text-sm text-gray-600 bg-white px-6 py-3 inline-block rounded-lg shadow-sm border border-gray-100">
+                    Your booking link: <span class="font-mono font-semibold text-indigo-600">isked.app/booking/yourname</span>
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section with subtle background -->
+    <section class="py-20 px-6 text-center bg-gradient-to-b from-white to-gray-50">
+        <h2 class="text-3xl font-bold mb-4 text-gray-900">Your Schedule, Streamlined</h2>
+        <p class="text-gray-600 mb-12 text-lg">A calmer, smarter way to book your time — on your terms.</p>
+        <div class="grid md:grid-cols-3 gap-12 max-w-6xl mx-auto text-left">
+            <div class="flex items-start gap-5 group hover:scale-105 transition-transform duration-300 p-4 rounded-xl hover:bg-white hover:shadow-lg">
+                <i data-feather="clock" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-gray-900">Custom Availability</h3>
+                    <p class="text-gray-600 leading-relaxed">Decide when you're free — and block out the rest. You're in control.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 group hover:scale-105 transition-transform duration-300 p-4 rounded-xl hover:bg-white hover:shadow-lg">
+                <i data-feather="link" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-gray-900">Personal Booking Link</h3>
+                    <p class="text-gray-600 leading-relaxed">Share a link that feels like yours. No more email ping-pong.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 group hover:scale-105 transition-transform duration-300 p-4 rounded-xl hover:bg-white hover:shadow-lg">
+                <i data-feather="shield" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-gray-900">Smart Buffers</h3>
+                    <p class="text-gray-600 leading-relaxed">Give yourself a breather between meetings. Your time matters.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section with cards -->
+    <section class="py-24 px-6 text-center bg-white">
+        <h2 class="text-3xl font-bold mb-6 text-gray-900">More Than Just a Link</h2>
+        <p class="text-gray-600 mb-12 max-w-2xl mx-auto text-lg">isked is more than a scheduling tool — it's your assistant, buffer, and time-saver rolled into one.</p>
+        <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div class="bg-gradient-to-br from-white to-indigo-50 p-8 rounded-xl shadow-sm hover:shadow-xl transition-shadow duration-300">
+                <div class="text-left">
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">1-on-1 Consultations</h3>
+                    <p class="text-gray-600 leading-relaxed">Make it easy for clients to find time with you. No confusion, no delays.</p>
+                </div>
+            </div>
+            <div class="bg-gradient-to-br from-white to-indigo-50 p-8 rounded-xl shadow-sm hover:shadow-xl transition-shadow duration-300">
+                <div class="text-left">
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Discovery Calls</h3>
+                    <p class="text-gray-600 leading-relaxed">Let leads instantly book time to connect, without the wait.</p>
+                </div>
+            </div>
+            <div class="bg-gradient-to-br from-white to-indigo-50 p-8 rounded-xl shadow-sm hover:shadow-xl transition-shadow duration-300">
+                <div class="text-left">
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Mentorship Sessions</h3>
+                    <p class="text-gray-600 leading-relaxed">Offer guidance and support with a booking system that respects your time.</p>
+                </div>
+            </div>
+            <div class="bg-gradient-to-br from-white to-indigo-50 p-8 rounded-xl shadow-sm hover:shadow-xl transition-shadow duration-300">
+                <div class="text-left">
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Team Scheduling</h3>
+                    <p class="text-gray-600 leading-relaxed">Align with your team's time zones and commitments in just a few clicks.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA with gradient background -->
+    <section class="py-24 px-6 text-center bg-gradient-to-b from-gray-50 to-white">
+        <h2 class="text-3xl font-bold mb-6 text-gray-900">Let Others Book You — Without the Hassle</h2>
+        <a href="/auth/register" class="mt-6 bg-indigo-600 text-white px-8 py-4 rounded-lg font-medium hover:bg-indigo-700 inline-block shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            Get Started for Free
+        </a>
+    </section>
+
+    <!-- Footer with subtle styling -->
+    <footer class="text-center text-sm text-gray-500 py-12 border-t border-gray-100">
+        <p class="max-w-md mx-auto">
+            © 2024 isked — Built with simplicity in mind.
+        </p>
+    </footer>
+
+    <script>
+        feather.replace();
+    </script>
+</body>
+</html> 

@@ -87,7 +87,7 @@ app.get('/', (req, res) => {
     if (req.session.userId) {
         res.redirect('/dashboard');
     } else {
-        res.render('login', { error: null });
+        res.render('landing');
     }
 });
 
