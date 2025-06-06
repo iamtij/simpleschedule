@@ -57,6 +57,12 @@
                         <span class="font-medium text-gray-800"><%= booking.notes %></span>
                     </div>
                     <% } %>
+                    <% if (host.meeting_link) { %>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Meeting Link:</span>
+                        <a href="<%= host.meeting_link %>" target="_blank" class="font-medium text-blue-600 hover:text-blue-800 break-all"><%= host.meeting_link %></a>
+                    </div>
+                    <% } %>
                 </div>
             </div>
 
@@ -68,7 +74,7 @@
                 const formatTimeForGCal = (time) => {
                     return time ? time.replace(/:/g, '') : '';
                 };
-                const calendarUrl = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(`Appointment with ${host.name || host.username}`)}&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00&details=${encodeURIComponent(`Client: ${booking.client_name}\nEmail: ${booking.client_email}${booking.client_phone ? '\nPhone: ' + booking.client_phone : ''}${booking.notes ? '\nNotes: ' + booking.notes : ''}`)}`;
+                const calendarUrl = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(`Appointment with ${host.name || host.username}`)}&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00&details=${encodeURIComponent(`${host.meeting_link ? `We will meet using this link: ${host.meeting_link}\n\n` : ''}${booking.notes ? `Notes: ${booking.notes}` : ''}`)}`;
                 %>
                 <a href="<%= calendarUrl %>" 
                    target="_blank"

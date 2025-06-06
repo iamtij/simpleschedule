@@ -66,6 +66,7 @@ Details:
 - Date: ${formattedDate}
 - Time: ${booking.formatted_start_time} - ${booking.formatted_end_time}
 - With: ${host.name || host.username}
+${host.meeting_link ? `\nMeeting Link: ${host.meeting_link}` : ''}
 
 ${booking.notes ? `Notes: ${booking.notes}
 
@@ -114,6 +115,7 @@ Appointment Details:
 - Date: ${formattedDate}
 - Time: ${booking.formatted_start_time} - ${booking.formatted_end_time}
 ${booking.notes ? `- Notes: ${booking.notes}` : ''}
+${host.meeting_link ? `- Meeting Link: ${host.meeting_link}` : ''}
 
 You can view and manage this appointment in your dashboard:
 ${process.env.APP_URL || 'https://isked.app'}/dashboard
@@ -259,8 +261,7 @@ The isked Team`,
         const formatDateForGCal = (date) => date.replace(/-/g, '');
         const formatTimeForGCal = (time) => time.replace(/:/g, '');
 
-        const details = `Client: ${booking.client_name}
-Email: ${booking.client_email}${booking.client_phone ? '\nPhone: ' + booking.client_phone : ''}${booking.notes ? '\nNotes: ' + booking.notes : ''}`;
+        const details = `${host.meeting_link ? `We will meet using this link: ${host.meeting_link}\n\n` : ''}${booking.notes ? `Notes: ${booking.notes}` : ''}`;
 
         return `https://calendar.google.com/calendar/event?action=TEMPLATE` +
             `&text=${encodeURIComponent(`Appointment with ${host.name || host.username}`)}` +

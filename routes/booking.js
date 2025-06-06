@@ -125,7 +125,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link FROM users WHERE username = $1',
         [username]
     );
 

@@ -141,6 +141,46 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Meeting Link -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Meeting Link</label>
+                        <div class="relative">
+                            <div id="meeting-link-display" class="flex items-center space-x-3">
+                                <input type="text" value="<%= user.meeting_link || '' %>" readonly
+                                    class="flex-1 bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                                <button id="edit-meeting-link-btn" type="button"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Change
+                                </button>
+                            </div>
+                            <div id="meeting-link-edit" class="hidden">
+                                <form class="space-y-4">
+                                    <div>
+                                        <input type="text" id="new-meeting-link" name="new-meeting-link"
+                                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-4 py-3"
+                                            placeholder="Enter your Zoom or Google Meet link"
+                                            value="<%= user.meeting_link || '' %>">
+                                        <p id="meeting-link-error" class="mt-2 text-sm text-red-600 hidden"></p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <button type="submit" id="save-meeting-link-btn"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                            disabled>
+                                            Save
+                                        </button>
+                                        <button type="button" id="cancel-meeting-link-edit"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            This link will be included in booking confirmation emails
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -186,6 +226,7 @@
             console.log('DOM loaded, initializing functions...');
             initUsernameEditing();
             initDisplayNameEditing();
+            initMeetingLinkEditing();
             initCopyLink();
         });
 
@@ -511,6 +552,84 @@
                 })
                 .catch(error => {
                     console.error('Username save error:', error);
+                    errorDisplay.textContent = error.message;
+                    errorDisplay.classList.remove('hidden');
+                })
+                .finally(() => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+            });
+        }
+
+        // Meeting Link inline editing
+        function initMeetingLinkEditing() {
+            const editBtn = document.getElementById('edit-meeting-link-btn');
+            const display = document.getElementById('meeting-link-display');
+            const edit = document.getElementById('meeting-link-edit');
+            const form = edit.querySelector('form');
+            const input = document.getElementById('new-meeting-link');
+            const cancelBtn = document.getElementById('cancel-meeting-link-edit');
+            const saveBtn = document.getElementById('save-meeting-link-btn');
+            const errorDisplay = document.getElementById('meeting-link-error');
+            let currentMeetingLink = input.value;
+
+            function showEdit() {
+                display.classList.add('hidden');
+                edit.classList.remove('hidden');
+                input.focus();
+                input.select();
+                validateMeetingLink();
+            }
+
+            function hideEdit() {
+                edit.classList.add('hidden');
+                display.classList.remove('hidden');
+                input.value = currentMeetingLink;
+                errorDisplay.classList.add('hidden');
+                errorDisplay.textContent = '';
+                saveBtn.disabled = true;
+            }
+
+            function validateMeetingLink() {
+                const meetingLink = input.value.trim();
+                const hasChanged = meetingLink !== currentMeetingLink;
+                saveBtn.disabled = !hasChanged;
+            }
+
+            editBtn.addEventListener('click', showEdit);
+            cancelBtn.addEventListener('click', hideEdit);
+            input.addEventListener('input', validateMeetingLink);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const newMeetingLink = input.value.trim();
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                fetch('/dashboard/account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ meeting_link: newMeetingLink })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentMeetingLink = newMeetingLink;
+                        document.querySelector('#meeting-link-display input').value = newMeetingLink;
+                        hideEdit();
+                        toast.show({
+                            type: 'success',
+                            title: 'Success',
+                            message: 'Meeting link updated successfully'
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to update meeting link');
+                    }
+                })
+                .catch(error => {
                     errorDisplay.textContent = error.message;
                     errorDisplay.classList.remove('hidden');
                 })

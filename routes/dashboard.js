@@ -308,22 +308,24 @@ router.get('/account', requireLogin, async (req, res) => {
 // Update account details
 router.post('/account', requireLogin, async (req, res) => {
     try {
-        const { full_name, display_name } = req.body;
+        const { full_name, display_name, meeting_link } = req.body;
         
         // Validate and sanitize input
         const sanitizedFullName = full_name ? full_name.trim() : null;
         const sanitizedDisplayName = display_name ? display_name.trim() : null;
+        const sanitizedMeetingLink = meeting_link ? meeting_link.trim() : null;
 
         await db.query(
             `UPDATE users 
              SET full_name = COALESCE($1::text, full_name), 
                  display_name = COALESCE($2::text, display_name),
+                 meeting_link = COALESCE($3::text, meeting_link),
                  has_set_display_name = CASE 
                      WHEN $2::text IS NOT NULL AND LENGTH(TRIM($2::text)) > 0 THEN TRUE 
                      ELSE has_set_display_name 
                  END
-             WHERE id = $3`,
-            [sanitizedFullName, sanitizedDisplayName, req.session.userId]
+             WHERE id = $4`,
+            [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
         );
 
         res.json({ success: true });
@@ -370,7 +372,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link FROM users WHERE id = $1',
             [req.session.userId]
         );
 
