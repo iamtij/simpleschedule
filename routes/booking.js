@@ -64,7 +64,7 @@ router.get('/:username/availability', async (req, res) => {
     }
     
     try {
-        // First get the user ID from username
+        // First get the user ID and timezone from username
         const userResult = await db.query(
             'SELECT id FROM users WHERE username = $1',
             [username]
@@ -76,15 +76,27 @@ router.get('/:username/availability', async (req, res) => {
 
         const userId = userResult.rows[0].id;
 
-        // Create date object in local timezone
-        const localDate = new Date(date + 'T00:00:00');
-        const dayOfWeek = localDate.getDay();
+        // Create date object and get day of week in UTC
+        const utcDate = new Date(date);
+        const dayOfWeek = utcDate.getUTCDay();
+        
+        console.log('Debug - Availability Request:', {
+            date,
+            utcDate: utcDate.toISOString(),
+            dayOfWeek,
+            userId
+        });
         
         // Get user's availability for this day
         const availabilityResult = await db.query(
             'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
             [userId, dayOfWeek]
         );
+
+        console.log('Debug - Availability DB Result:', {
+            hasAvailability: availabilityResult.rows.length > 0,
+            availability: availabilityResult.rows
+        });
 
         // If no availability set for this day
         if (!availabilityResult.rows || availabilityResult.rows.length === 0) {
@@ -123,6 +135,14 @@ router.post('/:username', async (req, res) => {
     const { date, start_time, end_time, client_name, client_email, client_phone, notes } = req.body;
     const username = req.params.username;
     
+    console.log('Debug - Booking Request:', {
+        date,
+        start_time,
+        end_time,
+        client_name,
+        client_email
+    });
+    
     // Get the user ID from username
     const userResult = await db.query(
         'SELECT id, full_name, email, username, meeting_link FROM users WHERE username = $1',
@@ -141,6 +161,28 @@ router.post('/:username', async (req, res) => {
     if (!date || !start_time || !end_time || !client_name || !client_email) {
         console.error('Missing required fields:', { date, start_time, end_time, client_name, client_email });
         return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Parse and validate the date
+    const [year, month, day] = date.split('-').map(Number);
+    const bookingDate = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = bookingDate.getUTCDay();
+
+    console.log('Debug - Date Processing:', {
+        inputDate: date,
+        parsedDate: bookingDate.toISOString(),
+        dayOfWeek
+    });
+
+    // Verify this time slot is actually available
+    const availabilityResult = await db.query(
+        'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
+        [userId, dayOfWeek]
+    );
+
+    if (availabilityResult.rows.length === 0) {
+        console.error('No availability for this day:', { date, dayOfWeek });
+        return res.status(400).json({ error: 'This time slot is not available' });
     }
 
     // Check if the slot is still available
@@ -174,6 +216,15 @@ router.post('/:username', async (req, res) => {
     booking.formatted_start_time = formatTime(booking.start_time);
     booking.formatted_end_time = formatTime(booking.end_time);
 
+    console.log('Debug - Created Booking:', {
+        id: booking.id,
+        date: booking.date,
+        start: booking.start_time,
+        end: booking.end_time,
+        formatted_start: booking.formatted_start_time,
+        formatted_end: booking.formatted_end_time
+    });
+
     // Send confirmation emails
     try {
         await Promise.all([
@@ -196,7 +247,7 @@ router.get('/:username/slots', async (req, res) => {
     try {
         // Get user by username
         const userResult = await db.query(
-            'SELECT id, buffer_minutes FROM users WHERE username = $1',
+            'SELECT id, buffer_minutes, timezone FROM users WHERE username = $1',
             [req.params.username]
         );
         
@@ -206,24 +257,53 @@ router.get('/:username/slots', async (req, res) => {
         
         const userId = userResult.rows[0].id;
         const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
+        const userTimezone = userResult.rows[0].timezone || 'UTC';
         const date = req.query.date;
+        const clientTimezone = req.query.timezone || userTimezone;
         
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
         }
 
-        // Get current time
-        const now = new Date();
-        const requestedDate = new Date(date);
+        // Create date object preserving the date
+        const [year, month, day] = date.split('-').map(Number);
+        const requestedDate = new Date(Date.UTC(year, month - 1, day));
         
-        // Get day of week (0-6, where 0 is Sunday)
-        const dayOfWeek = requestedDate.getDay();
+        // Get current time in client's timezone
+        const now = new Date();
+        const clientOffset = now.getTimezoneOffset();
+        const clientTime = new Date(now.getTime() - clientOffset * 60000);
+        
+        // Check if the requested date is in the past (in client's timezone)
+        if (requestedDate < clientTime) {
+            return res.json({ slots: [] });
+        }
+        
+        console.log('Debug - Date Processing:', {
+            inputDate: date,
+            year,
+            month,
+            day,
+            requestedDate: requestedDate.toISOString(),
+            dayOfWeek: requestedDate.getUTCDay(),
+            clientTime: clientTime.toISOString(),
+            clientTimezone
+        });
+        
+        // Get day of week in UTC (0-6, where 0 is Sunday)
+        const dayOfWeek = requestedDate.getUTCDay();
 
         // Get availability for the day
         const availabilityResult = await db.query(
             'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
             [userId, dayOfWeek]
         );
+
+        console.log('Debug - Availability Result:', {
+            hasAvailability: availabilityResult.rows.length > 0,
+            availability: availabilityResult.rows,
+            dayOfWeek
+        });
 
         if (availabilityResult.rows.length === 0) {
             return res.json({ slots: [] });
@@ -256,16 +336,17 @@ router.get('/:username/slots', async (req, res) => {
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
-        // Current time in minutes since midnight
-        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+        // Current time in minutes since midnight in client's timezone
+        const currentTimeMinutes = clientTime.getHours() * 60 + clientTime.getMinutes();
+        const isToday = requestedDate.toDateString() === clientTime.toDateString();
 
         // Generate slots with proper intervals
         for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
             const slotStart = time;
             const slotEnd = time + meetingLength;
             
-            // Skip slots in the past for today
-            if (requestedDate.toDateString() === now.toDateString() && slotStart <= currentTimeMinutes + 15) {
+            // Skip slots in the past for today (using client's timezone)
+            if (isToday && slotStart <= currentTimeMinutes + bufferTime) {
                 continue;
             }
             
@@ -293,6 +374,14 @@ router.get('/:username/slots', async (req, res) => {
                 });
             }
         }
+
+        console.log('Debug - Generated Slots:', {
+            numberOfSlots: slots.length,
+            slots: slots.map(s => `${s.start_time}-${s.end_time}`),
+            date,
+            dayOfWeek,
+            clientTimezone
+        });
 
         res.json({ slots });
     } catch (error) {

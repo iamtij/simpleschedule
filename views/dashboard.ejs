@@ -838,7 +838,7 @@
                 selectable: true,
                 editable: false,
                 handleWindowResize: true,
-                timeZone: 'local',
+                timeZone: 'UTC',
                 slotMinTime: '06:00:00',
                 slotMaxTime: '24:00:00',
                 eventTimeFormat: {
@@ -862,12 +862,17 @@
                     fetch('/dashboard/bookings')
                         .then(response => response.json())
                         .then(events => {
-                            // Adjust event dates to local timezone
+                            // Keep dates in UTC
                             events = events.map(event => {
-                                const localDate = new Date(event.start);
-                                event.start = localDate.toISOString().split('T')[0] + 'T' + event.extendedProps.start_time;
-                                event.end = localDate.toISOString().split('T')[0] + 'T' + event.extendedProps.end_time;
-                                return event;
+                                const [year, month, day] = event.start.split('T')[0].split('-').map(Number);
+                                const utcDate = new Date(Date.UTC(year, month - 1, day));
+                                const dateStr = utcDate.toISOString().split('T')[0];
+                                
+                                return {
+                                    ...event,
+                                    start: dateStr + 'T' + event.extendedProps.start_time,
+                                    end: dateStr + 'T' + event.extendedProps.end_time
+                                };
                             });
                             successCallback(events);
                         })

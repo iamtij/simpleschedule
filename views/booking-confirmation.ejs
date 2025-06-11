@@ -25,11 +25,16 @@
                     <div class="flex justify-between">
                         <span class="text-gray-600">Date:</span>
                         <span class="font-medium text-gray-800">
-                            <%= new Date(booking.date).toLocaleDateString('en-US', { 
+                            <% 
+                            const [year, month, day] = booking.date.split('-').map(Number);
+                            const bookingDate = new Date(Date.UTC(year, month - 1, day));
+                            %>
+                            <%= bookingDate.toLocaleDateString('en-US', { 
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
-                                year: 'numeric'
+                                year: 'numeric',
+                                timeZone: 'UTC'
                             }) %>
                         </span>
                     </div>
@@ -69,12 +74,12 @@
             <div class="space-y-4">
                 <% 
                 const formatDateForGCal = (date) => {
-                    return date ? date.replace(/-/g, '') : '';
+                    return date.replace(/-/g, '');
                 };
                 const formatTimeForGCal = (time) => {
-                    return time ? time.replace(/:/g, '') : '';
+                    return time.replace(/:/g, '');
                 };
-                const calendarUrl = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(`Appointment with ${host.name || host.username}`)}&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00&details=${encodeURIComponent(`${host.meeting_link ? `We will meet using this link: ${host.meeting_link}\n\n` : ''}${booking.notes ? `Notes: ${booking.notes}` : ''}`)}`;
+                const calendarUrl = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(`Appointment with ${host.display_name || host.full_name || host.username}`)}&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00&details=${encodeURIComponent(`${host.meeting_link ? `We will meet using this link: ${host.meeting_link}\n\n` : ''}${booking.notes ? `Notes: ${booking.notes}` : ''}`)}`;
                 %>
                 <a href="<%= calendarUrl %>" 
                    target="_blank"

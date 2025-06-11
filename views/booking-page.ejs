@@ -107,8 +107,9 @@
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
-                    // Format the date as YYYY-MM-DD in local timezone
-                    selectedDate = date.toISOString().split('T')[0];
+                    // Keep the date as is without timezone conversion
+                    selectedDate = date.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
+                    console.log('Selected date:', selectedDate);
                     loadTimeSlots();
                 }
             }
@@ -118,11 +119,21 @@
         function generateTimeSlots(startTime, endTime, breaks, bookings) {
             const slots = [];
             const baseDate = new Date(selectedDate);
-            const start = new Date(baseDate);
-            start.setHours(parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]));
+            const start = new Date(Date.UTC(
+                baseDate.getUTCFullYear(),
+                baseDate.getUTCMonth(),
+                baseDate.getUTCDate(),
+                parseInt(startTime.split(':')[0]),
+                parseInt(startTime.split(':')[1])
+            ));
             
-            const end = new Date(baseDate);
-            end.setHours(parseInt(endTime.split(':')[0]), parseInt(endTime.split(':')[1]));
+            const end = new Date(Date.UTC(
+                baseDate.getUTCFullYear(),
+                baseDate.getUTCMonth(),
+                baseDate.getUTCDate(),
+                parseInt(endTime.split(':')[0]),
+                parseInt(endTime.split(':')[1])
+            ));
             
             // console.log('Generating slots:', {
             //     selectedDate,
@@ -229,12 +240,15 @@
             const noSlotsMsg = document.getElementById('no-slots');
             timeSlotsDiv.innerHTML = '';
 
-            // console.log('Loading slots for date:', selectedDate);
+            console.log('Loading slots for date:', selectedDate);
             
-            fetch(`/booking/<%= user.username %>/slots?date=${selectedDate}`)
+            // Get client's timezone
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            
+            fetch(`/booking/<%= user.username %>/slots?date=${selectedDate}&timezone=${encodeURIComponent(timezone)}`)
                 .then(response => response.json())
                 .then(data => {
-                    // console.log('Available slots:', data);
+                    console.log('Available slots response:', data);
                     
                     if (!data.slots || data.slots.length === 0) {
                         noSlotsMsg.textContent = 'No appointments available on this day.';
@@ -253,7 +267,7 @@
                     });
                 })
                 .catch(error => {
-                    // console.error('Error loading time slots:', error);
+                    console.error('Error loading time slots:', error);
                     noSlotsMsg.textContent = 'Unable to load available time slots. Please try again later.';
                     noSlotsMsg.classList.remove('hidden');
                 });
@@ -284,6 +298,11 @@
                 return;
             }
 
+            console.log('Debug - Form Submission:', {
+                selectedDate,
+                selectedTime
+            });
+
             const formData = {
                 date: selectedDate,
                 start_time: selectedTime.start,
@@ -294,53 +313,29 @@
                 notes: document.getElementById('notes').value
             };
 
-            // console.log('Submitting booking:', formData);
+            console.log('Debug - Submitting booking:', formData);
 
-            fetch('/booking/<%= user.username %>', {
+            // Submit the form
+            fetch(`/booking/<%= user.username %>`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/html,application/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
             .then(response => {
-                // console.log('Response status:', response.status);
-                // console.log('Response headers:', response.headers);
-                
                 if (!response.ok) {
-                    return response.text().then(text => {
-                        // console.error('Error response:', text);
-                        try {
-                            const json = JSON.parse(text);
-                            throw new Error(json.error || 'Failed to book appointment');
-                        } catch (e) {
-                            throw new Error(text || 'Failed to book appointment');
-                }
-                    });
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
+                    return response.json().then(err => Promise.reject(err));
                 }
                 return response.text();
             })
-            .then(result => {
-                // console.log('Booking result:', result);
-                if (typeof result === 'string') {
-                    // Handle HTML response
-                    document.documentElement.innerHTML = result;
-                window.history.pushState({}, '', window.location.pathname + '/confirmation');
-                window.scrollTo(0, 0);
-                } else {
-                    // Handle JSON response
-                    window.location.href = window.location.pathname + '/confirmation';
-                }
+            .then(html => {
+                // Replace the current page content with the confirmation page
+                document.documentElement.innerHTML = html;
             })
             .catch(error => {
-                // console.error('Booking error:', error);
-                alert(error.message || 'Failed to book appointment. Please try again.');
+                console.error('Error creating booking:', error);
+                alert(error.error || 'Failed to create booking. Please try again.');
             });
         });
     </script>

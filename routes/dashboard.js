@@ -128,7 +128,7 @@ router.get('/bookings', requireLogin, async (req, res) => {
   try {
     // Get bookings
     const result = await db.query(`
-      SELECT * FROM bookings 
+      SELECT *, date::text as date_str FROM bookings 
       WHERE user_id = $1 
       AND date >= CURRENT_DATE
       ORDER BY date, start_time
@@ -136,9 +136,10 @@ router.get('/bookings', requireLogin, async (req, res) => {
 
     // Format bookings for FullCalendar
     const events = result.rows.map(booking => {
-      // Get the date in local timezone
-      const localDate = new Date(booking.date);
-      const dateStr = localDate.toISOString().split('T')[0];
+      // Keep the date in UTC
+      const [year, month, day] = booking.date_str.split('-').map(Number);
+      const utcDate = new Date(Date.UTC(year, month - 1, day));
+      const dateStr = utcDate.toISOString().split('T')[0];
       
       // Clean up time strings
       const startTime = booking.start_time.trim();
