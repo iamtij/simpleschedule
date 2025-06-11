@@ -212,8 +212,12 @@ router.get('/:username/slots', async (req, res) => {
             return res.status(400).json({ error: 'Date is required' });
         }
 
+        // Get current time
+        const now = new Date();
+        const requestedDate = new Date(date);
+        
         // Get day of week (0-6, where 0 is Sunday)
-        const dayOfWeek = new Date(date).getDay();
+        const dayOfWeek = requestedDate.getDay();
 
         // Get availability for the day
         const availabilityResult = await db.query(
@@ -252,11 +256,18 @@ router.get('/:username/slots', async (req, res) => {
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
+        // Current time in minutes since midnight
+        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+
         // Generate slots with proper intervals
         for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
             const slotStart = time;
             const slotEnd = time + meetingLength;
-            const nextSlotStart = time + totalInterval;
+            
+            // Skip slots in the past for today
+            if (requestedDate.toDateString() === now.toDateString() && slotStart <= currentTimeMinutes + 15) {
+                continue;
+            }
             
             // Check if slot overlaps with any breaks
             const overlapsBreak = breaks.some(b => {
