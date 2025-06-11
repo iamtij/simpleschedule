@@ -838,7 +838,7 @@
                 selectable: true,
                 editable: false,
                 handleWindowResize: true,
-                timeZone: 'Asia/Manila',
+                timeZone: 'local',
                 slotMinTime: '06:00:00',
                 slotMaxTime: '24:00:00',
                 eventTimeFormat: {
@@ -861,7 +861,16 @@
                 events: function(info, successCallback, failureCallback) {
                     fetch('/dashboard/bookings')
                         .then(response => response.json())
-                        .then(events => successCallback(events))
+                        .then(events => {
+                            // Adjust event dates to local timezone
+                            events = events.map(event => {
+                                const localDate = new Date(event.start);
+                                event.start = localDate.toISOString().split('T')[0] + 'T' + event.extendedProps.start_time;
+                                event.end = localDate.toISOString().split('T')[0] + 'T' + event.extendedProps.end_time;
+                                return event;
+                            });
+                            successCallback(events);
+                        })
                         .catch(error => failureCallback(error));
                 },
                 eventContent: function(arg) {

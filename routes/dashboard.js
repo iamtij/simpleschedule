@@ -136,11 +136,9 @@ router.get('/bookings', requireLogin, async (req, res) => {
 
     // Format bookings for FullCalendar
     const events = result.rows.map(booking => {
-      // Format date as YYYY-MM-DD without timezone conversion
-      const date = new Date(booking.date);
-      const dateStr = date.getFullYear() + '-' + 
-        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(date.getDate()).padStart(2, '0');
+      // Get the date in local timezone
+      const localDate = new Date(booking.date);
+      const dateStr = localDate.toISOString().split('T')[0];
       
       // Clean up time strings
       const startTime = booking.start_time.trim();

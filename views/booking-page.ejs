@@ -100,14 +100,15 @@
         flatpickr("#date-picker", {
             minDate: "today",
             dateFormat: "Y-m-d",
+            enableTime: false,
+            locale: {
+                firstDayOfWeek: 0
+            },
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     // Format the date as YYYY-MM-DD in local timezone
-                    selectedDate = date.getFullYear() + '-' + 
-                        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
-                        String(date.getDate()).padStart(2, '0');
-                    // console.log('Selected date (local):', selectedDate);
+                    selectedDate = date.toISOString().split('T')[0];
                     loadTimeSlots();
                 }
             }
