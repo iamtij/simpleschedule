@@ -1100,13 +1100,15 @@
             currentBookingId = event.id;
             const details = event.extendedProps;
             
-            // Format date
-            const date = new Date(event.start);
+            // Format date - properly handle UTC date
+            const [year, month, day] = event.start.split('T')[0].split('-').map(Number);
+            const date = new Date(Date.UTC(year, month - 1, day));
             const formattedDate = date.toLocaleDateString('en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
+                timeZone: 'UTC'
             });
 
             // Format time
@@ -1367,12 +1369,19 @@
                     tbody.innerHTML = '';
 
                     bookings.forEach(booking => {
-                        const date = new Date(booking.date);
+                        // Handle UTC date properly
+                        const [year, month, day] = booking.date.split('-').map(Number);
+                        const date = new Date(Date.UTC(year, month - 1, day));
                         const row = document.createElement('tr');
                         row.className = 'hover:bg-gray-50';
                         row.innerHTML = `
                             <td class="px-4 py-3 text-sm text-gray-900">
-                                ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+                                ${date.toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    weekday: 'short',
+                                    timeZone: 'UTC'
+                                })}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">
                                 ${formatTimeShort(booking.start_time)}
