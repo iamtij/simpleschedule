@@ -1,38 +1,42 @@
 const { Pool } = require('pg');
-const fs = require('fs').promises;
-const path = require('path');
-const config = require('./config');
+const bcrypt = require('bcrypt');
+
+const pool = new Pool({
+    user: 'isked',
+    password: 'isked_dev',
+    host: 'localhost',
+    port: 5432,
+    database: 'isked_dev'
+});
 
 async function testConnection() {
-    const pool = new Pool({
-        connectionString: config.database.path,
-        ssl: config.database.ssl
-    });
-
     try {
-        console.log('Attempting to connect to database...');
+        // Test database connection
         const client = await pool.connect();
         console.log('Successfully connected to database');
 
-        console.log('Reading schema file...');
-        const schemaSQL = await fs.readFile(path.join(__dirname, 'db/schema.postgres.sql'), 'utf8');
-        
-        console.log('Creating tables...');
-        await client.query(schemaSQL);
-        console.log('Tables created successfully');
+        // Test user query
+        const result = await client.query('SELECT id, email, password, username FROM users WHERE email = $1', ['tjtalusan@gmail.com']);
+        if (result.rows.length > 0) {
+            console.log('User found:', {
+                id: result.rows[0].id,
+                email: result.rows[0].email,
+                username: result.rows[0].username
+            });
+            
+            // Test password
+            const testPassword = 'isked2024';
+            const validPassword = await bcrypt.compare(testPassword, result.rows[0].password);
+            console.log('Password check result:', validPassword);
+        } else {
+            console.log('User not found');
+        }
 
-        const tables = await client.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
-        
-        console.log('Available tables:', tables.rows.map(row => row.table_name));
-        
         client.release();
-        await pool.end();
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Database test error:', err);
+    } finally {
+        pool.end();
     }
 }
 

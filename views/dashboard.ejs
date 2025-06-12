@@ -248,12 +248,12 @@
             <!-- Header -->
             <div class="flex justify-between items-center p-6 border-b">
                 <h3 class="text-xl font-semibold text-gray-800">Booking Details</h3>
-                    <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
+                <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
 
             <!-- Content -->
             <div class="p-6">
@@ -812,8 +812,7 @@
         }
 
         function initializeCalendar() {
-            // Initialize FullCalendar
-            var calendarEl = document.getElementById('calendar');
+            const calendarEl = document.getElementById('calendar');
             calendarInstance = new FullCalendar.Calendar(calendarEl, {
                 initialView: window.innerWidth < 768 ? 'timeGridDay' : 'dayGridMonth',
                 headerToolbar: {
@@ -868,10 +867,19 @@
                                 const utcDate = new Date(Date.UTC(year, month - 1, day));
                                 const dateStr = utcDate.toISOString().split('T')[0];
                                 
+                                // Clean up time strings
+                                const startTime = event.extendedProps.start_time.trim();
+                                const endTime = event.extendedProps.end_time.trim();
+                                
                                 return {
                                     ...event,
-                                    start: dateStr + 'T' + event.extendedProps.start_time,
-                                    end: dateStr + 'T' + event.extendedProps.end_time
+                                    start: dateStr + 'T' + startTime,
+                                    end: dateStr + 'T' + endTime,
+                                    extendedProps: {
+                                        ...event.extendedProps,
+                                        start_time: startTime,
+                                        end_time: endTime
+                                    }
                                 };
                             });
                             successCallback(events);
@@ -1083,6 +1091,7 @@
 
         function formatTimeShort(timeStr) {
             if (!timeStr) return '';
+            timeStr = timeStr.trim();
             const [time, period] = timeStr.split(' ');
             if (period) {
                 // Already in AM/PM format
@@ -1097,57 +1106,71 @@
         }
 
         function showBookingDetails(event) {
+            console.log('Showing booking details for event:', event);
             currentBookingId = event.id;
             const details = event.extendedProps;
+            console.log('Event extended props:', details);
             
-            // Format date - properly handle UTC date
-            const [year, month, day] = event.start.split('T')[0].split('-').map(Number);
-            const date = new Date(Date.UTC(year, month - 1, day));
+            // Format date
+            const date = new Date(event.start);
+            console.log('Event start date:', date);
             const formattedDate = date.toLocaleDateString('en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
-                year: 'numeric',
-                timeZone: 'UTC'
+                year: 'numeric'
             });
+            console.log('Formatted date:', formattedDate);
 
-            // Format time
-            const startTime = formatTimeShort(details.start_time);
-            const endTime = formatTimeShort(details.end_time);
+            // Format time - ensure times are trimmed
+            const startTime = formatTimeShort(details.start_time.trim());
+            const endTime = formatTimeShort(details.end_time.trim());
+            console.log('Formatted times:', { startTime, endTime });
             
-            // Update modal content
-            document.querySelector('.booking-date').textContent = formattedDate;
-            document.querySelector('.booking-time').textContent = `${startTime} - ${endTime}`;
-            document.querySelector('.booking-client').textContent = details.client_name;
-            
-            // Set up email link
-            const emailElement = document.querySelector('.booking-email');
-            emailElement.textContent = details.client_email;
-            emailElement.href = `mailto:${details.client_email}`;
-            
-            // Set up phone with click-to-copy
-            document.querySelector('.booking-phone').textContent = details.client_phone || '—';
-            
-            // Set up notes
-            const notesTextarea = document.getElementById('booking-notes');
-            notesTextarea.value = details.notes || '';
-            
-            // Show modal
+            try {
+                // Update modal content
+                document.querySelector('.booking-date').textContent = formattedDate;
+                document.querySelector('.booking-time').textContent = `${startTime} - ${endTime}`;
+                document.querySelector('.booking-client').textContent = details.client_name;
+                
+                // Set up email link
+                const emailElement = document.querySelector('.booking-email');
+                emailElement.textContent = details.client_email;
+                emailElement.href = `mailto:${details.client_email}`;
+                
+                // Set up phone with click-to-copy
+                document.querySelector('.booking-phone').textContent = details.client_phone || '—';
+                
+                // Set up notes
+                const notesTextarea = document.getElementById('booking-notes');
+                notesTextarea.value = details.notes || '';
+                
+                // Show modal
+                const modal = document.getElementById('booking-modal');
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+                // Remove any existing click event listeners
+                modal.removeEventListener('click', handleModalClick);
+                
+                // Add click outside to close
+                modal.addEventListener('click', handleModalClick);
+
+                // Focus on notes textarea
+                setTimeout(() => {
+                    notesTextarea.focus();
+                }, 300);
+            } catch (error) {
+                console.error('Error updating modal content:', error);
+            }
+        }
+
+        function handleModalClick(e) {
             const modal = document.getElementById('booking-modal');
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
-
-            // Add click outside to close
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    closeBookingModal();
-                }
-            });
-
-            // Focus on notes textarea
-            setTimeout(() => {
-                notesTextarea.focus();
-            }, 300);
+            const modalContent = modal.querySelector('.modal-content');
+            if (e.target === modal && !modalContent.contains(e.target)) {
+                closeBookingModal();
+            }
         }
 
         function copyPhoneNumber(element) {
@@ -1369,9 +1392,8 @@
                     tbody.innerHTML = '';
 
                     bookings.forEach(booking => {
-                        // Handle UTC date properly
-                        const [year, month, day] = booking.date.split('-').map(Number);
-                        const date = new Date(Date.UTC(year, month - 1, day));
+                        // Handle date properly
+                        const date = new Date(booking.date);
                         const row = document.createElement('tr');
                         row.className = 'hover:bg-gray-50';
                         row.innerHTML = `
@@ -1380,7 +1402,7 @@
                                     month: 'short', 
                                     day: 'numeric', 
                                     weekday: 'short',
-                                    timeZone: 'UTC'
+                                    year: 'numeric'
                                 })}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">

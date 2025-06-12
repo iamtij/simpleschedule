@@ -128,11 +128,22 @@ router.get('/bookings', requireLogin, async (req, res) => {
   try {
     // Get bookings
     const result = await db.query(`
-      SELECT *, date::text as date_str FROM bookings 
+      SELECT 
+        id,
+        client_name,
+        client_email,
+        client_phone,
+        notes,
+        date::text as date_str,
+        TRIM(start_time::text) as start_time,
+        TRIM(end_time::text) as end_time
+      FROM bookings 
       WHERE user_id = $1 
       AND date >= CURRENT_DATE
       ORDER BY date, start_time
     `, [req.session.userId]);
+
+    console.log('Raw bookings from DB:', result.rows);
 
     // Format bookings for FullCalendar
     const events = result.rows.map(booking => {
@@ -141,25 +152,24 @@ router.get('/bookings', requireLogin, async (req, res) => {
       const utcDate = new Date(Date.UTC(year, month - 1, day));
       const dateStr = utcDate.toISOString().split('T')[0];
       
-      // Clean up time strings
-      const startTime = booking.start_time.trim();
-      const endTime = booking.end_time.trim();
-      
-      return {
+      const event = {
         id: booking.id,
         title: `${booking.client_name}`,
-        start: dateStr + 'T' + startTime,
-        end: dateStr + 'T' + endTime,
+        start: dateStr + 'T' + booking.start_time,
+        end: dateStr + 'T' + booking.end_time,
         allDay: false,
         extendedProps: {
           client_name: booking.client_name,
           client_email: booking.client_email,
           client_phone: booking.client_phone,
           notes: booking.notes,
-          start_time: startTime,
-          end_time: endTime
+          start_time: booking.start_time,
+          end_time: booking.end_time
         }
       };
+
+      console.log('Formatted event:', event);
+      return event;
     });
 
     res.json(events);
