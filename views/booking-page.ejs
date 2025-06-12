@@ -104,6 +104,32 @@
             locale: {
                 firstDayOfWeek: 0
             },
+            // Add custom styling for days with available slots
+            onDayCreate: function(dObj, dStr, fp, dayElem) {
+                // Get the date in YYYY-MM-DD format
+                const date = dayElem.dateObj.toLocaleDateString('en-CA');
+                
+                // Fetch available slots for this date
+                fetch(`/booking/<%= user.username %>/slots?date=${date}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.slots && data.slots.length > 0) {
+                            // Create and append the blue dot
+                            const dot = document.createElement('span');
+                            dot.className = 'absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full';
+                            dayElem.appendChild(dot);
+                        }
+                    })
+                    .catch(error => console.error('Error checking slots:', error));
+            },
+            // Add custom CSS to position the dots correctly
+            onReady: function() {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .flatpickr-day { position: relative; }
+                `;
+                document.head.appendChild(style);
+            },
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
