@@ -135,7 +135,6 @@
                     const date = selectedDates[0];
                     // Keep the date as is without timezone conversion
                     selectedDate = date.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
-                    console.log('Selected date:', selectedDate);
                     loadTimeSlots();
                 }
             }
@@ -161,14 +160,6 @@
                 parseInt(endTime.split(':')[1])
             ));
             
-            // console.log('Generating slots:', {
-            //     selectedDate,
-            //     startTime,
-            //     endTime,
-            //     localStart: start.toLocaleString(),
-            //     localEnd: end.toLocaleString()
-            // });
-
             // Function to convert time to AM/PM format
             function convertTo12Hour(time) {
                 const [hours, minutes] = time.split(':');
@@ -265,8 +256,6 @@
             const timeSlotsDiv = document.getElementById('time-slots');
             const noSlotsMsg = document.getElementById('no-slots');
             timeSlotsDiv.innerHTML = '';
-
-            console.log('Loading slots for date:', selectedDate);
             
             // Get client's timezone
             const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -274,8 +263,6 @@
             fetch(`/booking/<%= user.username %>/slots?date=${selectedDate}&timezone=${encodeURIComponent(timezone)}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Available slots response:', data);
-                    
                     if (!data.slots || data.slots.length === 0) {
                         noSlotsMsg.textContent = 'No appointments available on this day.';
                         noSlotsMsg.classList.remove('hidden');
@@ -324,11 +311,6 @@
                 return;
             }
 
-            console.log('Debug - Form Submission:', {
-                selectedDate,
-                selectedTime
-            });
-
             const formData = {
                 date: selectedDate,
                 start_time: selectedTime.start,
@@ -338,8 +320,6 @@
                 client_phone: document.getElementById('phone').value,
                 notes: document.getElementById('notes').value
             };
-
-            console.log('Debug - Submitting booking:', formData);
 
             // Submit the form
             fetch(`/booking/<%= user.username %>`, {
