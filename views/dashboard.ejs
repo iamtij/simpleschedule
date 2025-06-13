@@ -1412,7 +1412,7 @@
                                 ${booking.client_name}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600">
-                                ${booking.notes ? booking.notes : '<span class="italic text-gray-400">No notes yet</span>'}
+                                ${booking.notes ? (booking.notes.length > 40 ? booking.notes.substring(0, 40) + '…' : booking.notes) : '<span class="italic text-gray-400">No notes yet</span>'}
                             </td>
                             <td class="px-4 py-3 text-sm">
                                 <button onclick="showBookingFromList('${booking.id}')" 
