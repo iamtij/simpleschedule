@@ -54,8 +54,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
-app.use(express.json({ limit: '1mb' }));  // Limit JSON payload size
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));  // Limit form data size
+app.use(express.json({ limit: '10mb' }));  // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));  // Limit form data size
 app.use(express.static(path.join(__dirname, 'public'), {
     maxAge: config.env === 'production' ? '1d' : 0  // Cache static files in production
 }));
