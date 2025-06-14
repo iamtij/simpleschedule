@@ -139,11 +139,8 @@ router.get('/bookings', requireLogin, async (req, res) => {
         TRIM(end_time::text) as end_time
       FROM bookings 
       WHERE user_id = $1 
-      AND date >= CURRENT_DATE
       ORDER BY date, start_time
     `, [req.session.userId]);
-
-    console.log('Raw bookings from DB:', result.rows);
 
     // Format bookings for FullCalendar
     const events = result.rows.map(booking => {
@@ -168,7 +165,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
         }
       };
 
-      console.log('Formatted event:', event);
       return event;
     });
 
