@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const mailService = require('../services/mail');
+const smsService = require('../services/sms');
 
 // Helper function to convert time to AM/PM format
 function convertTo12Hour(time) {
@@ -225,15 +226,16 @@ router.post('/:username', async (req, res) => {
         formatted_end: booking.formatted_end_time
     });
 
-    // Send confirmation emails
+    // Send confirmation emails and SMS
     try {
         await Promise.all([
             mailService.sendClientConfirmation(booking, host),
-            mailService.sendHostNotification(booking, host)
+            mailService.sendHostNotification(booking, host),
+            smsService.sendBookingConfirmationSMS(booking, host)
         ]);
-    } catch (emailError) {
-        console.error('Failed to send confirmation emails:', emailError);
-        // Don't fail the booking if emails fail
+    } catch (notificationError) {
+        console.error('Failed to send notifications:', notificationError);
+        // Don't fail the booking if notifications fail
     }
 
     // Render the confirmation page with booking and host details
