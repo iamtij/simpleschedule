@@ -83,7 +83,9 @@ router.get('/users/data', requireAdmin, async (req, res) => {
                 status,
                 created_at,
                 last_login,
-                is_admin 
+                is_admin,
+                is_pro,
+                pro_expires_at
              FROM users ${whereClause} 
              ORDER BY full_name ASC 
              LIMIT $${params.length + 1} 
@@ -332,17 +334,30 @@ router.get('/coupons/:id/usage', async (req, res) => {
 // Update user
 router.put('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
-    const { full_name, email, status } = req.body;
+    const { full_name, email, status, is_pro, pro_expires_at } = req.body;
     
     try {
-        // Convert status string to boolean
-        const statusBool = status === 'active';
-        
-        await db.query(
-            'UPDATE users SET full_name = $1, email = $2, status = $3 WHERE id = $4',
-            [full_name, email, statusBool, userId]
+        const result = await db.query(
+            `UPDATE users 
+             SET full_name = $1, 
+                 email = $2, 
+                 status = $3,
+                 is_pro = $4,
+                 pro_expires_at = $5,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6
+             RETURNING *`,
+            [full_name, email, status === 'active', is_pro, pro_expires_at, userId]
         );
-        res.json({ success: true });
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({
+            ...result.rows[0],
+            status: result.rows[0].status ? 'active' : 'inactive'
+        });
     } catch (error) {
         console.error('Error updating user:', error);
         res.status(500).json({ error: 'Failed to update user' });

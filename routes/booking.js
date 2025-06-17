@@ -146,7 +146,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at FROM users WHERE username = $1',
         [username]
     );
 
@@ -226,13 +226,23 @@ router.post('/:username', async (req, res) => {
         formatted_end: booking.formatted_end_time
     });
 
-    // Send confirmation emails and SMS
+    // Send confirmation emails and SMS (if pro)
     try {
-        await Promise.all([
+        const notifications = [
             mailService.sendClientConfirmation(booking, host),
-            mailService.sendHostNotification(booking, host),
-            smsService.sendBookingConfirmationSMS(booking, host)
-        ]);
+            mailService.sendHostNotification(booking, host)
+        ];
+
+        // Only attempt SMS if phone number is provided
+        if (booking.client_phone) {
+            if (host.is_pro && (!host.pro_expires_at || new Date(host.pro_expires_at) > new Date())) {
+                notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
+            } else {
+                console.log('SMS notification skipped - host is not a pro user or subscription expired');
+            }
+        }
+
+        await Promise.all(notifications);
     } catch (notificationError) {
         console.error('Failed to send notifications:', notificationError);
         // Don't fail the booking if notifications fail

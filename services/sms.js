@@ -21,6 +21,12 @@ function formatTime(time) {
 }
 
 async function sendBookingConfirmationSMS(booking, host) {
+    // Check if host has pro subscription
+    if (!host.is_pro || (host.pro_expires_at && new Date(host.pro_expires_at) < new Date())) {
+        console.log('SMS not sent: Host does not have an active pro subscription');
+        return null;
+    }
+
     if (!SEMAPHORE_API_KEY) {
         if (process.env.NODE_ENV === 'development') {
             console.warn('Semaphore API key missing. SMS functionality will be disabled.');
