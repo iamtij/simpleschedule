@@ -4,6 +4,23 @@ const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
 const SEMAPHORE_SENDER = 'ISKED';
 const SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages';
 
+function formatPhoneNumber(phone) {
+    // Remove all spaces, dashes, parentheses and other non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If number starts with 0, remove it
+    if (cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+    }
+    
+    // If number doesn't start with 63, add it
+    if (!cleaned.startsWith('63')) {
+        cleaned = '63' + cleaned;
+    }
+    
+    return cleaned;
+}
+
 function formatDate(date) {
     return new Date(date).toLocaleDateString('en-US', {
         month: 'long',
@@ -48,7 +65,7 @@ async function sendBookingConfirmationSMS(booking, host) {
     try {
         const response = await axios.post(SEMAPHORE_API_URL, {
             apikey: SEMAPHORE_API_KEY,
-            number: booking.client_phone,
+            number: formatPhoneNumber(booking.client_phone),
             message: message.trim(), // Remove any trailing newlines if no meeting link
             sendername: SEMAPHORE_SENDER
         });
