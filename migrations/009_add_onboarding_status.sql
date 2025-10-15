@@ -1,8 +1,8 @@
--- Add onboarding status columns to users table
+-- Add onboarding status columns to users table (if they don't exist)
 ALTER TABLE users 
-ADD COLUMN has_set_availability BOOLEAN DEFAULT FALSE,
-ADD COLUMN has_set_display_name BOOLEAN DEFAULT FALSE,
-ADD COLUMN has_shared_link BOOLEAN DEFAULT FALSE;
+ADD COLUMN IF NOT EXISTS has_set_availability BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS has_set_display_name BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS has_shared_link BOOLEAN DEFAULT FALSE;
 
 -- Set has_set_display_name to TRUE for users who already have a custom display_name
 UPDATE users 
