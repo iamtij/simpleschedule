@@ -184,6 +184,94 @@
                 </div>
             </div>
 
+            <!-- Google Calendar Integration Section -->
+            <div class="bg-white shadow rounded-lg mt-8">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900">Google Calendar Integration</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Connect your Google Calendar to automatically block time slots when you have existing events
+                    </p>
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    <!-- Connection Status -->
+                    <div id="google-calendar-status">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div id="connection-status-icon" class="w-3 h-3 rounded-full bg-gray-300"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900" id="connection-status-text">
+                                        Checking connection status...
+                                    </p>
+                                    <p class="text-sm text-gray-500" id="connection-status-description">
+                                        Connect your Google Calendar to enable automatic blocking
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <button id="connect-google-calendar-btn" type="button"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                    </svg>
+                                    Connect Google Calendar
+                                </button>
+                                <button id="disconnect-google-calendar-btn" type="button" class="hidden
+                                    inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sync Settings -->
+                    <div id="google-calendar-settings" class="hidden">
+                        <div class="border-t border-gray-200 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Sync Settings</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Block conflicting times</p>
+                                        <p class="text-sm text-gray-500">Automatically block booking slots when you have Google Calendar events</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="auto-block-enabled" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Create calendar events</p>
+                                        <p class="text-sm text-gray-500">Automatically create Google Calendar events for new bookings</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="auto-create-events" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Connection -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <button id="test-calendar-sync-btn" type="button"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                                Test Calendar Sync
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Account Information Section -->
             <div class="bg-white shadow rounded-lg mt-8">
                 <div class="px-6 py-5 border-b border-gray-200">
@@ -228,6 +316,7 @@
             initDisplayNameEditing();
             initMeetingLinkEditing();
             initCopyLink();
+            initGoogleCalendarIntegration();
         });
 
         // Copy link functionality
@@ -638,6 +727,175 @@
                     saveBtn.textContent = 'Save';
                 });
             });
+        }
+
+        // Google Calendar Integration
+        function initGoogleCalendarIntegration() {
+            console.log('Initializing Google Calendar integration...');
+            
+            const connectBtn = document.getElementById('connect-google-calendar-btn');
+            const disconnectBtn = document.getElementById('disconnect-google-calendar-btn');
+            const settingsDiv = document.getElementById('google-calendar-settings');
+            const testSyncBtn = document.getElementById('test-calendar-sync-btn');
+            
+            // Check connection status on page load
+            checkGoogleCalendarStatus();
+            
+            // Connect button click handler
+            connectBtn.addEventListener('click', function() {
+                console.log('Connect Google Calendar clicked');
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Connecting...';
+                
+                fetch('/dashboard/google-calendar/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Redirect to Google OAuth
+                        window.location.href = data.authUrl;
+                    } else {
+                        throw new Error(data.error || 'Failed to initiate connection');
+                    }
+                })
+                .catch(error => {
+                    console.error('Connection error:', error);
+                    toast.show({
+                        type: 'error',
+                        title: 'Connection Failed',
+                        message: error.message
+                    });
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = 'Connect Google Calendar';
+                });
+            });
+            
+            // Disconnect button click handler
+            disconnectBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to disconnect your Google Calendar? This will disable automatic blocking of conflicting times.')) {
+                    console.log('Disconnect Google Calendar clicked');
+                    disconnectBtn.disabled = true;
+                    disconnectBtn.textContent = 'Disconnecting...';
+                    
+                    fetch('/dashboard/google-calendar/disconnect', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateConnectionStatus(false);
+                            toast.show({
+                                type: 'success',
+                                title: 'Disconnected',
+                                message: 'Google Calendar has been disconnected'
+                            });
+                        } else {
+                            throw new Error(data.error || 'Failed to disconnect');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Disconnect error:', error);
+                        toast.show({
+                            type: 'error',
+                            title: 'Disconnect Failed',
+                            message: error.message
+                        });
+                    })
+                    .finally(() => {
+                        disconnectBtn.disabled = false;
+                        disconnectBtn.textContent = 'Disconnect';
+                    });
+                }
+            });
+            
+            // Test sync button click handler
+            testSyncBtn.addEventListener('click', function() {
+                console.log('Test calendar sync clicked');
+                testSyncBtn.disabled = true;
+                testSyncBtn.textContent = 'Testing...';
+                
+                // Get events for the next 7 days
+                const now = new Date();
+                const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                
+                fetch(`/dashboard/google-calendar/events?start=${now.toISOString()}&end=${nextWeek.toISOString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const eventCount = data.events.length;
+                        toast.show({
+                            type: 'success',
+                            title: 'Sync Test Successful',
+                            message: `Found ${eventCount} event${eventCount !== 1 ? 's' : ''} in the next 7 days`
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to test sync');
+                    }
+                })
+                .catch(error => {
+                    console.error('Test sync error:', error);
+                    toast.show({
+                        type: 'error',
+                        title: 'Test Failed',
+                        message: error.message
+                    });
+                })
+                .finally(() => {
+                    testSyncBtn.disabled = false;
+                    testSyncBtn.textContent = 'Test Calendar Sync';
+                });
+            });
+        }
+        
+        function checkGoogleCalendarStatus() {
+            console.log('Checking Google Calendar status...');
+            
+            fetch('/dashboard/google-calendar/status')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Google Calendar status:', data);
+                updateConnectionStatus(data.connected);
+            })
+            .catch(error => {
+                console.error('Error checking Google Calendar status:', error);
+                updateConnectionStatus(false);
+            });
+        }
+        
+        function updateConnectionStatus(connected) {
+            const statusIcon = document.getElementById('connection-status-icon');
+            const statusText = document.getElementById('connection-status-text');
+            const statusDescription = document.getElementById('connection-status-description');
+            const connectBtn = document.getElementById('connect-google-calendar-btn');
+            const disconnectBtn = document.getElementById('disconnect-google-calendar-btn');
+            const settingsDiv = document.getElementById('google-calendar-settings');
+            
+            if (connected) {
+                // Connected state
+                statusIcon.className = 'w-3 h-3 rounded-full bg-green-400';
+                statusText.textContent = 'Connected to Google Calendar';
+                statusDescription.textContent = 'Your calendar is synced and automatic blocking is enabled';
+                
+                connectBtn.classList.add('hidden');
+                disconnectBtn.classList.remove('hidden');
+                settingsDiv.classList.remove('hidden');
+            } else {
+                // Disconnected state
+                statusIcon.className = 'w-3 h-3 rounded-full bg-gray-300';
+                statusText.textContent = 'Not connected to Google Calendar';
+                statusDescription.textContent = 'Connect your Google Calendar to enable automatic blocking';
+                
+                connectBtn.classList.remove('hidden');
+                disconnectBtn.classList.add('hidden');
+                settingsDiv.classList.add('hidden');
+            }
         }
     </script>
 </body>
