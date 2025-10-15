@@ -281,7 +281,7 @@ router.post('/booking/:username/check-conflicts', async (req, res) => {
         // Get user ID from username
         const db = require('../db');
         const userResult = await db.query(
-            'SELECT id, google_sync_enabled FROM users WHERE username = $1',
+            'SELECT id, google_calendar_enabled FROM users WHERE username = $1',
             [username]
         );
         
@@ -293,7 +293,7 @@ router.post('/booking/:username/check-conflicts', async (req, res) => {
         }
         
         const userId = userResult.rows[0].id;
-        const googleSyncEnabled = userResult.rows[0].google_sync_enabled;
+        const googleSyncEnabled = userResult.rows[0].google_calendar_enabled;
         
         // If Google Calendar sync is not enabled, return no conflicts
         if (!googleSyncEnabled) {
