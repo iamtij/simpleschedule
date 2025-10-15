@@ -14,15 +14,24 @@ const requireLogin = (req, res, next) => {
  * GET /auth/google
  * Initiate Google OAuth2 flow
  */
-router.get('/auth/google', requireLogin, (req, res) => {
+router.get('/auth/google', requireLogin, async (req, res) => {
     try {
         const authUrl = googleCalendarService.getAuthUrl();
         
-        // Store state parameter to verify callback
-        req.session.googleOAuthState = Math.random().toString(36).substring(7);
+        // Generate a unique state token
+        const stateToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        
+        // Store state in database instead of session
+        const db = require('../db');
+        await db.query(
+            'INSERT INTO oauth_states (state_token, user_id, provider) VALUES ($1, $2, $3)',
+            [stateToken, req.session.userId, 'google']
+        );
+        
+        console.log('OAuth state stored in database for user:', req.session.userId);
         
         // Add state to auth URL
-        const stateParam = `&state=${req.session.googleOAuthState}`;
+        const stateParam = `&state=${stateToken}`;
         const finalAuthUrl = authUrl + stateParam;
         
         res.redirect(finalAuthUrl);
@@ -39,44 +48,65 @@ router.get('/auth/google', requireLogin, (req, res) => {
 router.get('/auth/google/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
+        const db = require('../db');
         
         console.log('Google OAuth callback received:', { 
             hasCode: !!code, 
-            hasState: !!state, 
-            hasSession: !!req.session,
-            userId: req.session?.userId 
+            hasState: !!state
         });
-        
-        // Check if user is logged in
-        if (!req.session || !req.session.userId) {
-            console.error('No session or userId found in OAuth callback');
-            return res.redirect('/auth/login?error=session_expired&redirect=/dashboard/settings');
-        }
-        
-        // Verify state parameter
-        if (!state || state !== req.session.googleOAuthState) {
-            console.error('Invalid authentication state:', { 
-                received: state, 
-                expected: req.session.googleOAuthState 
-            });
-            return res.redirect('/dashboard/settings?error=invalid_state');
-        }
-        
-        // Clear the state from session
-        delete req.session.googleOAuthState;
         
         if (!code) {
             console.error('Authorization was denied or failed');
             return res.redirect('/dashboard/settings?error=auth_denied');
         }
         
+        if (!state) {
+            console.error('No state parameter received');
+            return res.redirect('/dashboard/settings?error=invalid_state');
+        }
+        
+        // Verify state token from database
+        const stateResult = await db.query(
+            'SELECT user_id, expires_at, used FROM oauth_states WHERE state_token = $1 AND provider = $2',
+            [state, 'google']
+        );
+        
+        if (stateResult.rows.length === 0) {
+            console.error('Invalid or expired state token:', state);
+            return res.redirect('/dashboard/settings?error=invalid_state');
+        }
+        
+        const stateData = stateResult.rows[0];
+        
+        // Check if state is expired
+        if (new Date() > new Date(stateData.expires_at)) {
+            console.error('State token expired:', state);
+            return res.redirect('/dashboard/settings?error=state_expired');
+        }
+        
+        // Check if state was already used
+        if (stateData.used) {
+            console.error('State token already used:', state);
+            return res.redirect('/dashboard/settings?error=state_used');
+        }
+        
+        const userId = stateData.user_id;
+        
+        // Mark state as used
+        await db.query(
+            'UPDATE oauth_states SET used = TRUE WHERE state_token = $1',
+            [state]
+        );
+        
+        console.log('OAuth state verified for user:', userId);
+        
         // Exchange code for tokens
         const tokens = await googleCalendarService.getTokens(code);
         
         // Save tokens for user
-        await googleCalendarService.setUserTokens(req.session.userId, tokens);
+        await googleCalendarService.setUserTokens(userId, tokens);
         
-        console.log('Google Calendar connected successfully for user:', req.session.userId);
+        console.log('Google Calendar connected successfully for user:', userId);
         res.redirect('/dashboard/settings?success=google_connected');
         
     } catch (error) {
@@ -89,16 +119,23 @@ router.get('/auth/google/callback', async (req, res) => {
  * POST /dashboard/google-calendar/connect
  * API endpoint to initiate Google Calendar connection
  */
-router.post('/dashboard/google-calendar/connect', requireLogin, (req, res) => {
+router.post('/dashboard/google-calendar/connect', requireLogin, async (req, res) => {
     try {
         const authUrl = googleCalendarService.getAuthUrl();
         
-        // Store state parameter
-        req.session.googleOAuthState = Math.random().toString(36).substring(7);
+        // Generate a unique state token
+        const stateToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        
+        // Store state in database instead of session
+        const db = require('../db');
+        await db.query(
+            'INSERT INTO oauth_states (state_token, user_id, provider) VALUES ($1, $2, $3)',
+            [stateToken, req.session.userId, 'google']
+        );
         
         res.json({
             success: true,
-            authUrl: authUrl + `&state=${req.session.googleOAuthState}`
+            authUrl: authUrl + `&state=${stateToken}`
         });
     } catch (error) {
         console.error('Error getting auth URL:', error);
