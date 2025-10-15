@@ -28,8 +28,7 @@ router.get('/auth/google', requireLogin, (req, res) => {
         res.redirect(finalAuthUrl);
     } catch (error) {
         console.error('Error initiating Google auth:', error);
-        req.flash('error', 'Failed to initiate Google Calendar connection');
-        res.redirect('/dashboard/settings');
+        res.redirect('/dashboard/settings?error=auth_init_failed');
     }
 });
 
@@ -43,16 +42,16 @@ router.get('/auth/google/callback', requireLogin, async (req, res) => {
         
         // Verify state parameter
         if (!state || state !== req.session.googleOAuthState) {
-            req.flash('error', 'Invalid authentication state');
-            return res.redirect('/dashboard/settings');
+            console.error('Invalid authentication state');
+            return res.redirect('/dashboard/settings?error=invalid_state');
         }
         
         // Clear the state from session
         delete req.session.googleOAuthState;
         
         if (!code) {
-            req.flash('error', 'Authorization was denied or failed');
-            return res.redirect('/dashboard/settings');
+            console.error('Authorization was denied or failed');
+            return res.redirect('/dashboard/settings?error=auth_denied');
         }
         
         // Exchange code for tokens
@@ -61,13 +60,12 @@ router.get('/auth/google/callback', requireLogin, async (req, res) => {
         // Save tokens for user
         await googleCalendarService.setUserTokens(req.session.userId, tokens);
         
-        req.flash('success', 'Google Calendar connected successfully!');
-        res.redirect('/dashboard/settings');
+        console.log('Google Calendar connected successfully for user:', req.session.userId);
+        res.redirect('/dashboard/settings?success=google_connected');
         
     } catch (error) {
         console.error('Error in Google callback:', error);
-        req.flash('error', 'Failed to connect Google Calendar');
-        res.redirect('/dashboard/settings');
+        res.redirect('/dashboard/settings?error=connection_failed');
     }
 });
 
@@ -208,6 +206,188 @@ router.post('/dashboard/google-calendar/check-availability', requireLogin, async
             success: false,
             error: error.message || 'Failed to check calendar availability'
         });
+    }
+});
+
+/**
+ * POST /booking/:username/check-conflicts
+ * Public endpoint to check Google Calendar conflicts for a booking
+ */
+router.post('/booking/:username/check-conflicts', async (req, res) => {
+    try {
+        const { startTime, endTime } = req.body;
+        const username = req.params.username;
+        
+        if (!startTime || !endTime) {
+            return res.status(400).json({
+                success: false,
+                error: 'Start and end time are required'
+            });
+        }
+        
+        // Get user ID from username
+        const db = require('../db');
+        const userResult = await db.query(
+            'SELECT id, google_sync_enabled FROM users WHERE username = $1',
+            [username]
+        );
+        
+        if (!userResult.rows[0]) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const userId = userResult.rows[0].id;
+        const googleSyncEnabled = userResult.rows[0].google_sync_enabled;
+        
+        // If Google Calendar sync is not enabled, return no conflicts
+        if (!googleSyncEnabled) {
+            return res.json({
+                success: true,
+                hasConflicts: false,
+                conflicts: [],
+                googleSyncEnabled: false
+            });
+        }
+        
+        // Check for conflicts
+        const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
+            userId,
+            startTime,
+            endTime
+        );
+        
+        res.json({
+            success: true,
+            ...conflictInfo,
+            googleSyncEnabled: true
+        });
+    } catch (error) {
+        console.error('Error checking booking conflicts:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to check calendar conflicts'
+        });
+    }
+});
+
+    /**
+     * GET /dashboard/google-calendar/list
+     * API endpoint to fetch available Google Calendars (only "My Calendars")
+     */
+    router.get('/dashboard/google-calendar/list', requireLogin, async (req, res) => {
+        try {
+            const tokens = await googleCalendarService.getUserTokens(req.session.userId);
+            if (!tokens || !tokens.google_access_token) {
+                return res.status(400).json({ success: false, error: 'Google Calendar not connected' });
+            }
+
+            // Use the optimized calendar list method with caching
+            const calendarList = await googleCalendarService.getCalendarList(req.session.userId);
+            
+            // Filter to only show "My Calendars" (owner calendars)
+            const myCalendars = calendarList.filter(cal => 
+                cal.accessRole === 'owner'
+            ).map(cal => ({
+                id: cal.id,
+                summary: cal.summary,
+                primary: cal.primary || false
+            }));
+
+            res.json({ success: true, calendars: myCalendars });
+        } catch (error) {
+            console.error('Error fetching Google Calendar list:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+/**
+ * POST /dashboard/google-calendar/select
+ * API endpoint to update selected Google Calendar
+ */
+router.post('/dashboard/google-calendar/select', requireLogin, async (req, res) => {
+    try {
+        const { calendarId } = req.body;
+        if (!calendarId) {
+            return res.status(400).json({ success: false, error: 'Calendar ID is required' });
+        }
+
+        const db = require('../db');
+        await db.query(
+            'UPDATE users SET google_calendar_id = $1 WHERE id = $2',
+            [calendarId, req.session.userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating Google Calendar selection:', error);
+        res.status(500).json({ success: false, error: 'Failed to update calendar selection' });
+    }
+});
+
+/**
+ * GET /dashboard/google-calendar/selected
+ * API endpoint to get currently selected Google Calendar
+ */
+router.get('/dashboard/google-calendar/selected', requireLogin, async (req, res) => {
+    try {
+        const db = require('../db');
+        const result = await db.query(
+            'SELECT google_calendar_id FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+        
+        const selectedCalendarId = result.rows[0]?.google_calendar_id || 'primary';
+        res.json({ success: true, calendarId: selectedCalendarId });
+    } catch (error) {
+        console.error('Error fetching selected Google Calendar:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch selected calendar' });
+    }
+});
+
+/**
+ * GET /dashboard/google-calendar/blocking-setting
+ * API endpoint to get Google Calendar blocking setting
+ */
+router.get('/dashboard/google-calendar/blocking-setting', requireLogin, async (req, res) => {
+    try {
+        const db = require('../db');
+        const result = await db.query(
+            'SELECT google_calendar_blocking_enabled FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+        
+        const blockingEnabled = result.rows[0]?.google_calendar_blocking_enabled ?? true;
+        res.json({ success: true, blockingEnabled });
+    } catch (error) {
+        console.error('Error fetching Google Calendar blocking setting:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch blocking setting' });
+    }
+});
+
+/**
+ * POST /dashboard/google-calendar/update-blocking
+ * API endpoint to update Google Calendar blocking setting
+ */
+router.post('/dashboard/google-calendar/update-blocking', requireLogin, async (req, res) => {
+    try {
+        const { blockingEnabled } = req.body;
+        if (typeof blockingEnabled !== 'boolean') {
+            return res.status(400).json({ success: false, error: 'Blocking enabled value is required' });
+        }
+
+        const db = require('../db');
+        await db.query(
+            'UPDATE users SET google_calendar_blocking_enabled = $1 WHERE id = $2',
+            [blockingEnabled, req.session.userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating Google Calendar blocking setting:', error);
+        res.status(500).json({ success: false, error: 'Failed to update blocking setting' });
     }
 });
 

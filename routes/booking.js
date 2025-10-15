@@ -3,6 +3,20 @@ const router = express.Router();
 const db = require('../db');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
+const googleCalendarService = require('../services/googleCalendar');
+
+// Helper function to convert time string (HH:MM) to minutes since midnight
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Helper function to convert minutes since midnight to time string (HH:MM)
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
 
 // Helper function to convert time to AM/PM format
 function convertTo12Hour(time) {
@@ -146,7 +160,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled FROM users WHERE username = $1',
         [username]
     );
 
@@ -204,6 +218,49 @@ router.post('/:username', async (req, res) => {
         return res.status(409).json({ error: 'This time slot is no longer available' });
     }
 
+    // Check for Google Calendar conflicts if sync is enabled and blocking is enabled
+    try {
+        console.log('Checking Google Calendar conflicts...');
+        const googleCalendarService = require('../services/googleCalendar');
+        const tokens = await googleCalendarService.getUserTokens(userId);
+        const googleCalendarBlockingEnabled = host.google_calendar_blocking_enabled;
+        
+        if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
+            console.log('Google Calendar is connected and blocking is enabled, checking for conflicts...');
+            
+            // Format the booking time for Google Calendar API
+            const bookingStartTime = `${bookingDate.toISOString().split('T')[0]}T${start_time}:00`;
+            const bookingEndTime = `${bookingDate.toISOString().split('T')[0]}T${end_time}:00`;
+            
+            const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
+                userId,
+                bookingStartTime,
+                bookingEndTime
+            );
+            
+            if (conflictInfo.hasConflicts) {
+                console.log('❌ Google Calendar conflicts detected:', conflictInfo.conflicts);
+                return res.status(409).json({ 
+                    error: 'This time slot conflicts with existing Google Calendar events',
+                    conflicts: conflictInfo.conflicts,
+                    conflictType: 'google_calendar'
+                });
+            } else {
+                console.log('✅ No Google Calendar conflicts found');
+            }
+        } else {
+            if (!tokens || !tokens.google_access_token) {
+                console.log('Google Calendar not connected, skipping conflict check');
+            } else if (!googleCalendarBlockingEnabled) {
+                console.log('Google Calendar blocking is disabled, skipping conflict check');
+            }
+        }
+    } catch (googleError) {
+        console.error('Failed to check Google Calendar conflicts:', googleError.message);
+        // Don't fail the booking if Google Calendar check fails
+        console.log('Continuing with booking despite Google Calendar check failure');
+    }
+
     // Insert the booking
     const bookingResult = await db.query(
         `INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
@@ -225,6 +282,63 @@ router.post('/:username', async (req, res) => {
         formatted_start: booking.formatted_start_time,
         formatted_end: booking.formatted_end_time
     });
+
+    // Sync to Google Calendar if connected
+    try {
+        console.log('Attempting Google Calendar sync...');
+        const tokens = await googleCalendarService.getUserTokens(userId);
+        
+        if (tokens && tokens.google_access_token) {
+            console.log('Google Calendar is connected, creating event...');
+            
+            // Create Google Calendar event
+            // Use Asia/Manila timezone since the user is in Philippines
+            let description = `Booking from isked\nClient: ${booking.client_name}\nEmail: ${booking.client_email}`;
+            
+            if (booking.client_phone) {
+                description += `\nPhone: ${booking.client_phone}`;
+            }
+            
+            if (booking.notes) {
+                description += `\nNotes: ${booking.notes}`;
+            }
+            
+            if (host.meeting_link) {
+                description += `\n\nMeeting Link: ${host.meeting_link}`;
+            }
+            
+            const eventDetails = {
+                title: `Meeting with ${booking.client_name}`,
+                description: description,
+                startTime: `${booking.date}T${booking.start_time}:00`,
+                endTime: `${booking.date}T${booking.end_time}:00`,
+                timeZone: 'Asia/Manila',
+                attendees: [{ email: booking.client_email }],
+            };
+            
+            const googleEvent = await googleCalendarService.createCalendarEvent(userId, eventDetails);
+            console.log('✅ Google Calendar event created successfully!');
+            console.log(`   Event ID: ${googleEvent.id}`);
+            console.log(`   Event Link: ${googleEvent.htmlLink}`);
+            
+            // Update booking with Google Event ID
+            const updatedNotes = `${booking.notes || ''}\n\nGoogle Calendar Event ID: ${googleEvent.id}`;
+            await db.query(
+                'UPDATE bookings SET notes = $1 WHERE id = $2',
+                [updatedNotes, booking.id]
+            );
+            
+            // Add Google Calendar link to booking object for display
+            booking.google_calendar_link = googleEvent.htmlLink;
+            booking.google_event_id = googleEvent.id;
+            
+        } else {
+            console.log('Google Calendar not connected, skipping sync');
+        }
+    } catch (googleError) {
+        console.error('Failed to sync to Google Calendar:', googleError.message);
+        // Don't fail the booking if Google Calendar sync fails
+    }
 
     // Send confirmation emails and SMS (if pro)
     try {
@@ -333,6 +447,53 @@ router.get('/:username/slots', async (req, res) => {
             [userId, date]
         );
 
+        // Get Google Calendar conflicts if enabled
+        let googleCalendarConflicts = [];
+        try {
+            const googleCalendarService = require('../services/googleCalendar');
+            const tokens = await googleCalendarService.getUserTokens(userId);
+            const userResult = await db.query(
+                'SELECT google_calendar_blocking_enabled FROM users WHERE id = $1',
+                [userId]
+            );
+            const googleCalendarBlockingEnabled = userResult.rows[0]?.google_calendar_blocking_enabled ?? true;
+            
+            if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
+                console.log('Checking Google Calendar conflicts for availability...');
+                
+                // Get conflicts for the entire day
+                const dayStart = `${date}T00:00:00`;
+                const dayEnd = `${date}T23:59:59`;
+                
+                const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
+                    userId,
+                    dayStart,
+                    dayEnd
+                );
+                
+                if (conflictInfo.hasConflicts) {
+                    console.log(`Found ${conflictInfo.conflicts.length} Google Calendar conflicts for ${date}`);
+                    googleCalendarConflicts = conflictInfo.conflicts.map(conflict => ({
+                        start: timeToMinutes(new Date(conflict.start).toLocaleTimeString('en-US', { 
+                            hour12: false, 
+                            timeZone: 'Asia/Manila',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }).slice(0, 5)),
+                        end: timeToMinutes(new Date(conflict.end).toLocaleTimeString('en-US', { 
+                            hour12: false, 
+                            timeZone: 'Asia/Manila',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }).slice(0, 5))
+                    }));
+                }
+            }
+        } catch (googleError) {
+            console.error('Failed to check Google Calendar conflicts for availability:', googleError.message);
+            // Continue without Google Calendar blocking if there's an error
+        }
+
         // Generate available time slots
         const availability = availabilityResult.rows[0];
         const breaks = breaksResult.rows;
@@ -376,10 +537,15 @@ router.get('/:username/slots', async (req, res) => {
                 return (slotStart < bookingEnd && slotEnd > bookingStart);
             });
             
+            // Check if slot overlaps with any Google Calendar events
+            const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
+                return (slotStart < conflict.end && slotEnd > conflict.start);
+            });
+            
             // Only check if the actual meeting fits within working hours
             const fitsInWorkingHours = slotEnd <= workEnd;
             
-            if (!overlapsBreak && !overlapsBooking && fitsInWorkingHours) {
+            if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
                 slots.push({
                     start_time: minutesToTime(slotStart),
                     end_time: minutesToTime(slotEnd)
@@ -401,18 +567,5 @@ router.get('/:username/slots', async (req, res) => {
         res.status(500).json({ error: 'Failed to get available slots' });
     }
 });
-
-// Helper function to convert time string (HH:MM) to minutes since midnight
-function timeToMinutes(timeStr) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-// Helper function to convert minutes since midnight to time string (HH:MM)
-function minutesToTime(minutes) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-}
 
 module.exports = router; 

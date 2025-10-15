@@ -229,31 +229,20 @@
                         </div>
                     </div>
 
-                    <!-- Sync Settings -->
+                    <!-- Google Calendar Settings -->
                     <div id="google-calendar-settings" class="hidden">
+                        <!-- Calendar Selection -->
                         <div class="border-t border-gray-200 pt-6">
-                            <h3 class="text-sm font-medium text-gray-900 mb-4">Sync Settings</h3>
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Calendar Selection</h3>
                             <div class="space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">Block conflicting times</p>
-                                        <p class="text-sm text-gray-500">Automatically block booking slots when you have Google Calendar events</p>
-                                    </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="auto-block-enabled" class="sr-only peer" checked>
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                <div>
+                                    <label for="calendar-select" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Select Calendar for New Appointments
                                     </label>
-                                </div>
-                                
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">Create calendar events</p>
-                                        <p class="text-sm text-gray-500">Automatically create Google Calendar events for new bookings</p>
-                                    </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="auto-create-events" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                    </label>
+                                    <select id="calendar-select" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="">Loading calendars...</option>
+                                    </select>
+                                    <p class="mt-1 text-sm text-gray-500">Choose which Google Calendar to sync new appointments to</p>
                                 </div>
                             </div>
                         </div>
@@ -317,7 +306,51 @@
             initMeetingLinkEditing();
             initCopyLink();
             initGoogleCalendarIntegration();
+            handleUrlMessages();
         });
+
+        // Handle success/error messages from URL parameters
+        function handleUrlMessages() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            const error = urlParams.get('error');
+            
+            if (success === 'google_connected') {
+                toast.show({
+                    type: 'success',
+                    title: 'Connected!',
+                    message: 'Google Calendar has been connected successfully'
+                });
+                // Clear the URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            if (error) {
+                let errorMessage = 'An error occurred';
+                switch (error) {
+                    case 'invalid_state':
+                        errorMessage = 'Invalid authentication state. Please try again.';
+                        break;
+                    case 'auth_denied':
+                        errorMessage = 'Authorization was denied. Please try again.';
+                        break;
+                    case 'connection_failed':
+                        errorMessage = 'Failed to connect Google Calendar. Please try again.';
+                        break;
+                    case 'auth_init_failed':
+                        errorMessage = 'Failed to initiate Google Calendar connection.';
+                        break;
+                }
+                
+                toast.show({
+                    type: 'error',
+                    title: 'Connection Failed',
+                    message: errorMessage
+                });
+                // Clear the URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
 
         // Copy link functionality
         function initCopyLink() {
@@ -738,8 +771,12 @@
             const settingsDiv = document.getElementById('google-calendar-settings');
             const testSyncBtn = document.getElementById('test-calendar-sync-btn');
             
-            // Check connection status on page load
-            checkGoogleCalendarStatus();
+        // Check connection status on page load
+        checkGoogleCalendarStatus();
+        
+        // Load calendar list when connected
+        loadCalendarList();
+        
             
             // Connect button click handler
             connectBtn.addEventListener('click', function() {
@@ -869,34 +906,197 @@
             });
         }
         
-        function updateConnectionStatus(connected) {
-            const statusIcon = document.getElementById('connection-status-icon');
-            const statusText = document.getElementById('connection-status-text');
-            const statusDescription = document.getElementById('connection-status-description');
-            const connectBtn = document.getElementById('connect-google-calendar-btn');
-            const disconnectBtn = document.getElementById('disconnect-google-calendar-btn');
-            const settingsDiv = document.getElementById('google-calendar-settings');
+    function updateConnectionStatus(connected) {
+        const statusIcon = document.getElementById('connection-status-icon');
+        const statusText = document.getElementById('connection-status-text');
+        const statusDescription = document.getElementById('connection-status-description');
+        const connectBtn = document.getElementById('connect-google-calendar-btn');
+        const disconnectBtn = document.getElementById('disconnect-google-calendar-btn');
+        const settingsDiv = document.getElementById('google-calendar-settings');
+
+        if (connected) {
+            // Connected state
+            statusIcon.className = 'w-3 h-3 rounded-full bg-green-400';
+            statusText.textContent = 'Connected to Google Calendar';
+            statusDescription.textContent = 'Your calendar is synced and automatic blocking is enabled';
+
+            connectBtn.classList.add('hidden');
+            disconnectBtn.classList.remove('hidden');
+            settingsDiv.classList.remove('hidden');
             
-            if (connected) {
-                // Connected state
-                statusIcon.className = 'w-3 h-3 rounded-full bg-green-400';
-                statusText.textContent = 'Connected to Google Calendar';
-                statusDescription.textContent = 'Your calendar is synced and automatic blocking is enabled';
-                
-                connectBtn.classList.add('hidden');
-                disconnectBtn.classList.remove('hidden');
-                settingsDiv.classList.remove('hidden');
-            } else {
-                // Disconnected state
-                statusIcon.className = 'w-3 h-3 rounded-full bg-gray-300';
-                statusText.textContent = 'Not connected to Google Calendar';
-                statusDescription.textContent = 'Connect your Google Calendar to enable automatic blocking';
-                
-                connectBtn.classList.remove('hidden');
-                disconnectBtn.classList.add('hidden');
-                settingsDiv.classList.add('hidden');
-            }
+            // Load calendar list when connected
+            loadCalendarList();
+        } else {
+            // Disconnected state
+            statusIcon.className = 'w-3 h-3 rounded-full bg-gray-300';
+            statusText.textContent = 'Not connected to Google Calendar';
+            statusDescription.textContent = 'Connect your Google Calendar to enable automatic blocking';
+
+            connectBtn.classList.remove('hidden');
+            disconnectBtn.classList.add('hidden');
+            settingsDiv.classList.add('hidden');
         }
+    }
+
+    function loadCalendarList() {
+        console.log('Loading calendar list...');
+        
+        fetch('/dashboard/google-calendar/list')
+        .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Calendars loaded:', data.calendars);
+                    populateCalendarDropdown(data.calendars);
+                } else {
+                console.error('Failed to load calendars:', data.error);
+                const select = document.getElementById('calendar-select');
+                select.innerHTML = '<option value="">Error loading calendars</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading calendar list:', error);
+            const select = document.getElementById('calendar-select');
+            select.innerHTML = '<option value="">Error loading calendars</option>';
+        });
+    }
+
+        function populateCalendarDropdown(calendars) {
+            const select = document.getElementById('calendar-select');
+            select.innerHTML = '';
+            
+            calendars.forEach(calendar => {
+                const option = document.createElement('option');
+                option.value = calendar.id;
+                option.textContent = calendar.summary + (calendar.primary ? ' (Primary)' : '');
+                select.appendChild(option);
+            });
+            
+            // Load selected calendar after populating the dropdown
+            loadSelectedCalendar();
+            
+            // Add change handler
+            select.addEventListener('change', function() {
+                const selectedCalendarId = this.value;
+                console.log('Calendar selection changed to:', selectedCalendarId);
+                
+                if (selectedCalendarId) {
+                    updateSelectedCalendar(selectedCalendarId);
+                }
+            });
+        }
+
+    function loadSelectedCalendar() {
+        console.log('Loading selected calendar...');
+        
+        fetch('/dashboard/google-calendar/selected')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Selected calendar:', data.calendarId);
+                const select = document.getElementById('calendar-select');
+                select.value = data.calendarId;
+            } else {
+                console.error('Failed to load selected calendar:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading selected calendar:', error);
+        });
+    }
+
+    function updateSelectedCalendar(calendarId) {
+        console.log('Updating selected calendar to:', calendarId);
+        
+        fetch('/dashboard/google-calendar/select', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ calendarId: calendarId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toast.show({
+                    type: 'success',
+                    title: 'Calendar Updated',
+                    message: 'New appointments will be synced to the selected calendar'
+                });
+            } else {
+                throw new Error(data.error || 'Failed to update calendar selection');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating calendar selection:', error);
+            toast.show({
+                type: 'error',
+                title: 'Update Failed',
+                message: error.message
+            });
+        });
+    }
+
+    function loadBlockingSetting() {
+        console.log('Loading Google Calendar blocking setting...');
+        
+        fetch('/dashboard/google-calendar/blocking-setting')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Blocking setting loaded:', data.blockingEnabled);
+                const checkbox = document.getElementById('google-calendar-blocking-enabled');
+                checkbox.checked = data.blockingEnabled;
+                
+                // Add change handler
+                checkbox.addEventListener('change', function() {
+                    updateBlockingSetting(this.checked);
+                });
+            } else {
+                console.error('Failed to load blocking setting:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading blocking setting:', error);
+        });
+    }
+
+    function updateBlockingSetting(blockingEnabled) {
+        console.log('Updating blocking setting to:', blockingEnabled);
+        
+        fetch('/dashboard/google-calendar/update-blocking', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ blockingEnabled: blockingEnabled })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toast.show({
+                    type: 'success',
+                    title: 'Setting Updated',
+                    message: blockingEnabled ? 
+                        'Google Calendar blocking is now enabled' : 
+                        'Google Calendar blocking is now disabled'
+                });
+            } else {
+                throw new Error(data.error || 'Failed to update blocking setting');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating blocking setting:', error);
+            toast.show({
+                type: 'error',
+                title: 'Update Failed',
+                message: error.message
+            });
+            
+            // Revert checkbox state
+            const checkbox = document.getElementById('google-calendar-blocking-enabled');
+            checkbox.checked = !blockingEnabled;
+        });
+    }
     </script>
 </body>
 </html> 

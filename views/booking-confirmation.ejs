@@ -68,6 +68,12 @@
                         <a href="<%= host.meeting_link %>" target="_blank" class="font-medium text-blue-600 hover:text-blue-800 break-all"><%= host.meeting_link %></a>
                     </div>
                     <% } %>
+                    <% if (booking.google_event_id) { %>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Google Calendar:</span>
+                        <a href="<%= booking.google_calendar_link %>" target="_blank" class="font-medium text-green-600 hover:text-green-800">View Event</a>
+                    </div>
+                    <% } %>
                 </div>
             </div>
 

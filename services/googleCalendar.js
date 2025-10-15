@@ -14,6 +14,39 @@ class GoogleCalendarService {
             'https://www.googleapis.com/auth/calendar.readonly',
             'https://www.googleapis.com/auth/calendar.events'
         ];
+        
+        // Add caching for calendar list and events
+        this.calendarListCache = new Map();
+        this.eventsCache = new Map();
+        this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    }
+
+    /**
+     * Get calendar list with caching
+     */
+    async getCalendarList(userId) {
+        const cacheKey = `calendarList_${userId}`;
+        const cached = this.calendarListCache.get(cacheKey);
+        
+        if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+            return cached.data;
+        }
+
+        try {
+            const calendar = await this.getCalendarService(userId);
+            const calendarList = await calendar.calendarList.list();
+            
+            const data = calendarList.data.items || [];
+            this.calendarListCache.set(cacheKey, {
+                data: data,
+                timestamp: Date.now()
+            });
+            
+            return data;
+        } catch (error) {
+            console.error('Error fetching calendar list:', error);
+            throw error;
+        }
     }
 
     /**
@@ -150,24 +183,84 @@ class GoogleCalendarService {
     }
 
     /**
-     * Get user's calendar events for a specific time range
+     * Get user's calendar events for a specific time range with caching
      */
     async getCalendarEvents(userId, timeMin, timeMax, calendarId = 'primary') {
+        const cacheKey = `events_${userId}_${calendarId}_${timeMin}_${timeMax}`;
+        const cached = this.eventsCache.get(cacheKey);
+        
+        if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+            return cached.data;
+        }
+
         try {
             const calendar = await this.getCalendarService(userId);
             
+            // Ensure timezone is included in the time strings
+            const formatTimeWithTimezone = (timeStr) => {
+                if (timeStr.includes('+') || timeStr.includes('Z')) {
+                    return timeStr; // Already has timezone
+                }
+                // Add Asia/Manila timezone (+08:00) if no timezone specified
+                return timeStr + '+08:00';
+            };
+            
             const response = await calendar.events.list({
                 calendarId: calendarId,
-                timeMin: timeMin,
-                timeMax: timeMax,
+                timeMin: formatTimeWithTimezone(timeMin),
+                timeMax: formatTimeWithTimezone(timeMax),
                 maxResults: 250,
                 singleEvents: true,
                 orderBy: 'startTime'
             });
 
-            return response.data.items || [];
+            const data = response.data.items || [];
+            this.eventsCache.set(cacheKey, {
+                data: data,
+                timestamp: Date.now()
+            });
+
+            return data;
         } catch (error) {
             console.error('Error fetching calendar events:', error);
+            
+            // If there's an error with the selected calendar, try with primary calendar
+            if (calendarId !== 'primary') {
+                console.log('Retrying with primary calendar...');
+                try {
+                    const calendar = await this.getCalendarService(userId);
+                    
+                    // Ensure timezone is included in the time strings
+                    const formatTimeWithTimezone = (timeStr) => {
+                        if (timeStr.includes('+') || timeStr.includes('Z')) {
+                            return timeStr; // Already has timezone
+                        }
+                        // Add Asia/Manila timezone (+08:00) if no timezone specified
+                        return timeStr + '+08:00';
+                    };
+                    
+                    const response = await calendar.events.list({
+                        calendarId: 'primary',
+                        timeMin: formatTimeWithTimezone(timeMin),
+                        timeMax: formatTimeWithTimezone(timeMax),
+                        maxResults: 250,
+                        singleEvents: true,
+                        orderBy: 'startTime'
+                    });
+                    
+                    const data = response.data.items || [];
+                    this.eventsCache.set(cacheKey, {
+                        data: data,
+                        timestamp: Date.now()
+                    });
+                    
+                    return data;
+                } catch (retryError) {
+                    console.error('Error fetching calendar events from primary calendar:', retryError);
+                    throw new Error('Failed to fetch calendar events from both selected and primary calendars');
+                }
+            }
+            
             throw new Error('Failed to fetch calendar events');
         }
     }
@@ -175,8 +268,17 @@ class GoogleCalendarService {
     /**
      * Check if a specific time slot is available (no conflicting events)
      */
-    async isTimeSlotAvailable(userId, startTime, endTime, calendarId = 'primary') {
+    async isTimeSlotAvailable(userId, startTime, endTime, calendarId = null) {
         try {
+            // If no calendarId provided, get user's selected calendar
+            if (!calendarId) {
+                const result = await db.query(
+                    'SELECT google_calendar_id FROM users WHERE id = $1',
+                    [userId]
+                );
+                calendarId = result.rows[0]?.google_calendar_id || 'primary';
+            }
+
             const events = await this.getCalendarEvents(userId, startTime, endTime, calendarId);
             
             // Filter out events that don't conflict with the requested time slot
@@ -197,11 +299,98 @@ class GoogleCalendarService {
     }
 
     /**
-     * Create an event in user's Google Calendar
+     * Get detailed conflict information for a time slot
+     * Optimized to check calendars in parallel instead of sequential
      */
-    async createCalendarEvent(userId, eventDetails, calendarId = 'primary') {
+    async getTimeSlotConflicts(userId, startTime, endTime, calendarId = null) {
         try {
             const calendar = await this.getCalendarService(userId);
+            
+            // Get all calendars where user is owner (with caching)
+            const calendarList = await this.getCalendarList(userId);
+            const ownedCalendars = calendarList.filter(cal => 
+                cal.accessRole === 'owner'
+            );
+            
+            console.log(`Checking conflicts across ${ownedCalendars.length} owned calendars`);
+            
+            // Batch check calendars in parallel instead of sequential
+            const conflictPromises = ownedCalendars.map(async (cal) => {
+                try {
+                    console.log(`Checking calendar: ${cal.summary} (${cal.id})`);
+                    
+                    const events = await this.getCalendarEvents(userId, startTime, endTime, cal.id);
+                    
+                    // Find events that conflict with the requested time slot
+                    const conflictingEvents = events.filter(event => {
+                        const eventStart = new Date(event.start.dateTime || event.start.date);
+                        const eventEnd = new Date(event.end.dateTime || event.end.date);
+                        
+                        // Check for overlap
+                        return (eventStart < new Date(endTime) && eventEnd > new Date(startTime));
+                    }).map(event => ({
+                        id: event.id,
+                        title: event.summary || 'Untitled Event',
+                        start: event.start.dateTime || event.start.date,
+                        end: event.end.dateTime || event.end.date,
+                        description: event.description || '',
+                        calendar: cal.summary,
+                        calendarId: cal.id
+                    }));
+                    
+                    if (conflictingEvents.length > 0) {
+                        console.log(`Found ${conflictingEvents.length} conflicts in ${cal.summary}`);
+                    }
+                    
+                    return conflictingEvents;
+                    
+                } catch (calError) {
+                    console.error(`Error checking calendar ${cal.summary}:`, calError.message);
+                    // Continue checking other calendars even if one fails
+                    return [];
+                }
+            });
+            
+            // Wait for all calendar checks to complete
+            const conflictResults = await Promise.all(conflictPromises);
+            
+            // Flatten the results
+            const allConflictingEvents = conflictResults.flat();
+            
+            return {
+                hasConflicts: allConflictingEvents.length > 0,
+                conflicts: allConflictingEvents,
+                calendarsChecked: ownedCalendars.length,
+                calendarId: calendarId
+            };
+        } catch (error) {
+            console.error('Error getting time slot conflicts:', error);
+            // If we can't check, return no conflicts to not block legitimate bookings
+            return {
+                hasConflicts: false,
+                conflicts: [],
+                calendarsChecked: 0,
+                calendarId: calendarId,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Create an event in user's Google Calendar
+     */
+    async createCalendarEvent(userId, eventDetails, calendarId = null) {
+        try {
+            const calendar = await this.getCalendarService(userId);
+            
+            // If no calendarId provided, get user's selected calendar
+            if (!calendarId) {
+                const result = await db.query(
+                    'SELECT google_calendar_id FROM users WHERE id = $1',
+                    [userId]
+                );
+                calendarId = result.rows[0]?.google_calendar_id || 'primary';
+            }
             
             const event = {
                 summary: eventDetails.title,
@@ -234,6 +423,25 @@ class GoogleCalendarService {
             console.error('Error creating calendar event:', error);
             throw new Error('Failed to create calendar event');
         }
+    }
+
+    /**
+     * Clear cache for a specific user (useful when calendar changes)
+     */
+    clearUserCache(userId) {
+        const keysToDelete = [];
+        for (const key of this.calendarListCache.keys()) {
+            if (key.startsWith(`calendarList_${userId}`) || key.startsWith(`events_${userId}`)) {
+                keysToDelete.push(key);
+            }
+        }
+        
+        keysToDelete.forEach(key => {
+            this.calendarListCache.delete(key);
+            this.eventsCache.delete(key);
+        });
+        
+        console.log(`Cleared ${keysToDelete.length} cache entries for user ${userId}`);
     }
 
     /**
