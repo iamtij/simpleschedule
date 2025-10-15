@@ -31,7 +31,7 @@ const sessionConfig = {
         secure: config.env === 'production', // Require HTTPS in production
         httpOnly: true,                      // Prevent XSS
         maxAge: 24 * 60 * 60 * 1000,        // 24 hours
-        sameSite: config.env === 'production' ? 'strict' : 'lax'
+        sameSite: config.env === 'production' ? 'lax' : 'lax' // Use 'lax' for OAuth compatibility
     },
     name: 'isked.sid',                      // Custom session cookie name
     proxy: config.env === 'production',      // Trust the reverse proxy

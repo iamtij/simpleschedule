@@ -5,6 +5,12 @@ set -e
 
 echo "Starting application setup..."
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+    echo "Loaded environment variables from .env"
+fi
+
 # Ensure PORT is set
 export PORT="${PORT:-3000}"
 echo "Using PORT: $PORT"
@@ -15,7 +21,7 @@ test_connection() {
         const { Pool } = require('pg');
         const pool = new Pool({
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
         });
         pool.query('SELECT 1').then(() => process.exit(0)).catch(() => process.exit(1))
     " 2>/dev/null

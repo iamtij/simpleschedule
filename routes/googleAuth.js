@@ -36,13 +36,29 @@ router.get('/auth/google', requireLogin, (req, res) => {
  * GET /auth/google/callback
  * Handle Google OAuth2 callback
  */
-router.get('/auth/google/callback', requireLogin, async (req, res) => {
+router.get('/auth/google/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
         
+        console.log('Google OAuth callback received:', { 
+            hasCode: !!code, 
+            hasState: !!state, 
+            hasSession: !!req.session,
+            userId: req.session?.userId 
+        });
+        
+        // Check if user is logged in
+        if (!req.session || !req.session.userId) {
+            console.error('No session or userId found in OAuth callback');
+            return res.redirect('/auth/login?error=session_expired&redirect=/dashboard/settings');
+        }
+        
         // Verify state parameter
         if (!state || state !== req.session.googleOAuthState) {
-            console.error('Invalid authentication state');
+            console.error('Invalid authentication state:', { 
+                received: state, 
+                expected: req.session.googleOAuthState 
+            });
             return res.redirect('/dashboard/settings?error=invalid_state');
         }
         
