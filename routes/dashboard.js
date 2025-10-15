@@ -134,6 +134,8 @@ router.get('/bookings', requireLogin, async (req, res) => {
         client_email,
         client_phone,
         notes,
+        google_event_id,
+        google_calendar_link,
         date::text as date_str,
         TRIM(start_time::text) as start_time,
         TRIM(end_time::text) as end_time
@@ -160,6 +162,8 @@ router.get('/bookings', requireLogin, async (req, res) => {
           client_email: booking.client_email,
           client_phone: booking.client_phone,
           notes: booking.notes,
+          google_event_id: booking.google_event_id,
+          google_calendar_link: booking.google_calendar_link,
           start_time: booking.start_time,
           end_time: booking.end_time
         }

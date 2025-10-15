@@ -321,11 +321,10 @@ router.post('/:username', async (req, res) => {
             console.log(`   Event ID: ${googleEvent.id}`);
             console.log(`   Event Link: ${googleEvent.htmlLink}`);
             
-            // Update booking with Google Event ID
-            const updatedNotes = `${booking.notes || ''}\n\nGoogle Calendar Event ID: ${googleEvent.id}`;
+            // Update booking with Google Event ID and link (separate from notes)
             await db.query(
-                'UPDATE bookings SET notes = $1 WHERE id = $2',
-                [updatedNotes, booking.id]
+                'UPDATE bookings SET google_event_id = $1, google_calendar_link = $2 WHERE id = $3',
+                [googleEvent.id, googleEvent.htmlLink, booking.id]
             );
             
             // Add Google Calendar link to booking object for display
