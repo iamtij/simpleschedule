@@ -13,8 +13,19 @@ const requireLogin = (req, res, next) => {
 // Get all contacts for the user
 router.get('/', requireLogin, async (req, res) => {
     try {
-        const { status, search, sort = 'name' } = req.query;
+        const { status, search, sort = 'name', page = 1, limit = 20 } = req.query;
         
+        // Parse pagination parameters
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 20;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // Build base query for counting total records
+        let countQuery = `SELECT COUNT(*) FROM contacts WHERE user_id = $1`;
+        const countParams = [req.session.userId];
+        let countParamCount = 1;
+        
+        // Build main query for fetching contacts
         let query = `
             SELECT 
                 id, name, email, phone, company, position, industry,
@@ -31,20 +42,27 @@ router.get('/', requireLogin, async (req, res) => {
         // Add status filter if provided
         if (status && status !== 'all') {
             paramCount++;
+            countParamCount++;
             query += ` AND status = $${paramCount}`;
+            countQuery += ` AND status = $${countParamCount}`;
             params.push(status);
+            countParams.push(status);
         }
         
         // Add search filter if provided
         if (search) {
             paramCount++;
-            query += ` AND (
+            countParamCount++;
+            const searchCondition = ` AND (
                 name ILIKE $${paramCount} OR 
                 email ILIKE $${paramCount} OR 
                 company ILIKE $${paramCount} OR
                 phone ILIKE $${paramCount}
             )`;
+            query += searchCondition;
+            countQuery += searchCondition;
             params.push(`%${search}%`);
+            countParams.push(`%${search}%`);
         }
         
         // Add sorting
@@ -52,7 +70,18 @@ router.get('/', requireLogin, async (req, res) => {
         const sortField = validSortFields.includes(sort) ? sort : 'name';
         query += ` ORDER BY ${sortField} ASC`;
         
-        const result = await db.query(query, params);
+        // Add pagination
+        query += ` LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+        params.push(limitNum, offset);
+        
+        // Execute both queries
+        const [countResult, result] = await Promise.all([
+            db.query(countQuery, countParams),
+            db.query(query, params)
+        ]);
+        
+        const totalContacts = parseInt(countResult.rows[0].count);
+        const totalPages = Math.ceil(totalContacts / limitNum);
         
         // Format date fields to avoid timezone conversion issues
         const formattedContacts = result.rows.map(contact => {
@@ -76,7 +105,17 @@ router.get('/', requireLogin, async (req, res) => {
         res.json({
             success: true,
             contacts: formattedContacts,
-            total: formattedContacts.length
+            total: totalContacts,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalContacts,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1,
+                nextPage: pageNum + 1,
+                prevPage: pageNum - 1,
+                limit: limitNum
+            }
         });
     } catch (error) {
         console.error('Error fetching contacts:', error);

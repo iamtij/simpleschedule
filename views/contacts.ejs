@@ -228,6 +228,11 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                <!-- Pagination will be rendered here -->
+            </div>
         </div>
     </div>
 
@@ -429,15 +434,29 @@
     <script>
         let contacts = [];
         let filteredContacts = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalContacts = 0;
+        let currentSearch = '';
+        let currentStatus = 'all';
+        let currentSort = 'name';
+        let currentLimit = 20;
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
+            // Get pagination parameters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            currentPage = parseInt(urlParams.get('page')) || 1;
+            currentSearch = urlParams.get('search') || '';
+            currentStatus = urlParams.get('status') || 'all';
+            currentSort = urlParams.get('sort') || 'name';
+            currentLimit = parseInt(urlParams.get('limit')) || 20;
+            
             loadContacts();
             loadStats();
             initializeEventListeners();
             
             // Check if we need to open edit modal from URL parameter
-            const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
             if (editId) {
                 // Wait for contacts to load, then open edit modal
@@ -454,9 +473,19 @@
         // Load contacts from API
         async function loadContacts() {
             try {
+                // Build query parameters
+                const params = new URLSearchParams();
+                if (currentSearch) params.append('search', currentSearch);
+                if (currentStatus !== 'all') params.append('status', currentStatus);
+                if (currentSort) params.append('sort', currentSort);
+                params.append('page', currentPage);
+                params.append('limit', currentLimit);
+                
                 // Add cache-busting parameter to ensure fresh data
                 const timestamp = new Date().getTime();
-                const response = await fetch(`/crm/?t=${timestamp}`, {
+                params.append('t', timestamp);
+                
+                const response = await fetch(`/crm/?${params.toString()}`, {
                     cache: 'no-cache',
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -469,7 +498,10 @@
                 if (data.success) {
                     contacts = data.contacts;
                     filteredContacts = [...contacts];
+                    totalPages = data.pagination.totalPages;
+                    totalContacts = data.pagination.totalContacts;
                     renderContacts();
+                    renderPagination();
                 } else {
                     console.error('Failed to load contacts:', data.error);
                 }
@@ -717,6 +749,25 @@
             document.getElementById('status-filter').addEventListener('change', handleFilter);
             document.getElementById('followup-filter').addEventListener('change', handleFollowUpFilter);
             document.getElementById('sort-contacts').addEventListener('change', handleSort);
+            
+            // Set initial values from URL parameters
+            const searchInput = document.getElementById('search-contacts');
+            const clearButton = document.getElementById('clear-search-contacts');
+            const statusFilter = document.getElementById('status-filter');
+            const sortSelect = document.getElementById('sort-contacts');
+            
+            if (searchInput && currentSearch) {
+                searchInput.value = currentSearch;
+                clearButton.classList.remove('hidden');
+            }
+            
+            if (statusFilter && currentStatus !== 'all') {
+                statusFilter.value = currentStatus;
+            }
+            
+            if (sortSelect && currentSort) {
+                sortSelect.value = currentSort;
+            }
         }
 
         // Show add contact modal
@@ -832,7 +883,7 @@
 
         // Handle search
         function handleSearch(e) {
-            const searchTerm = e.target.value.toLowerCase();
+            const searchTerm = e.target.value.trim();
             const clearButton = document.getElementById('clear-search-contacts');
             
             // Show/hide clear button based on search input
@@ -842,15 +893,12 @@
                 clearButton.classList.add('hidden');
             }
             
-            filteredContacts = contacts.filter(contact => 
-                contact.name.toLowerCase().includes(searchTerm) ||
-                (contact.email && contact.email.toLowerCase().includes(searchTerm)) ||
-                (contact.company && contact.company.toLowerCase().includes(searchTerm)) ||
-                (contact.phone && contact.phone.includes(searchTerm)) ||
-                (contact.industry && contact.industry.toLowerCase().includes(searchTerm)) ||
-                (contact.bni_chapter && contact.bni_chapter.toLowerCase().includes(searchTerm))
-            );
-            renderContacts();
+            // Update current search and reset to page 1
+            currentSearch = searchTerm;
+            currentPage = 1;
+            
+            // Reload contacts with new search parameters
+            loadContacts();
         }
 
         // Clear search
@@ -861,20 +909,24 @@
             searchInput.value = '';
             clearButton.classList.add('hidden');
             
-            // Reset filtered contacts to show all
-            filteredContacts = [...contacts];
-            renderContacts();
+            // Reset search and go to page 1
+            currentSearch = '';
+            currentPage = 1;
+            
+            // Reload contacts
+            loadContacts();
         }
 
         // Handle filter
         function handleFilter(e) {
             const status = e.target.value;
-            if (status === 'all') {
-                filteredContacts = [...contacts];
-            } else {
-                filteredContacts = contacts.filter(contact => contact.status === status);
-            }
-            renderContacts();
+            
+            // Update current status and reset to page 1
+            currentStatus = status;
+            currentPage = 1;
+            
+            // Reload contacts with new filter
+            loadContacts();
         }
 
         // Handle follow-up filter
@@ -931,26 +983,73 @@
         // Handle sort
         function handleSort(e) {
             const sortBy = e.target.value;
-            filteredContacts.sort((a, b) => {
-                if (sortBy === 'referral_potential') {
-                    return b[sortBy] - a[sortBy]; // Descending for referral potential
-                } else if (sortBy === 'next_follow_up') {
-                    // Handle follow-up dates - null values go to end
-                    if (!a.next_follow_up && !b.next_follow_up) return 0;
-                    if (!a.next_follow_up) return 1;
-                    if (!b.next_follow_up) return -1;
-                    return new Date(a.next_follow_up) - new Date(b.next_follow_up);
-                } else if (sortBy === 'created_at') {
-                    return new Date(b[sortBy]) - new Date(a[sortBy]); // Descending for dates
-                }
-                return a[sortBy].localeCompare(b[sortBy]);
-            });
-            renderContacts();
+            
+            // Update current sort and reset to page 1
+            currentSort = sortBy;
+            currentPage = 1;
+            
+            // Reload contacts with new sort
+            loadContacts();
         }
 
-        // View contact (placeholder)
-        function viewContact(id) {
-            window.location.href = `/contacts/${id}`;
+        // Render pagination controls
+        function renderPagination() {
+            const paginationContainer = document.getElementById('pagination-container');
+            if (!paginationContainer) return;
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            let paginationHTML = `
+                <div class="px-6 py-4 border-t border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing page ${currentPage} of ${totalPages} 
+                            (${totalContacts} total contacts)
+                        </div>
+                        <div class="flex space-x-2">
+            `;
+            
+            // Previous button
+            if (currentPage > 1) {
+                const prevParams = buildPaginationParams(currentPage - 1);
+                paginationHTML += `
+                    <a href="?${prevParams}" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Previous
+                    </a>
+                `;
+            }
+            
+            // Next button
+            if (currentPage < totalPages) {
+                const nextParams = buildPaginationParams(currentPage + 1);
+                paginationHTML += `
+                    <a href="?${nextParams}" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Next
+                    </a>
+                `;
+            }
+            
+            paginationHTML += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            paginationContainer.innerHTML = paginationHTML;
+        }
+        
+        // Build pagination parameters for URL
+        function buildPaginationParams(page) {
+            const params = new URLSearchParams();
+            if (currentSearch) params.append('search', currentSearch);
+            if (currentStatus !== 'all') params.append('status', currentStatus);
+            if (currentSort) params.append('sort', currentSort);
+            if (currentLimit !== 20) params.append('limit', currentLimit);
+            params.append('page', page);
+            return params.toString();
         }
 
         // Edit contact
