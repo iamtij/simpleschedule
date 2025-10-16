@@ -120,23 +120,29 @@ function formatTimeForDisplay(timeString) {
                     <!-- Search and Filters -->
                     <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                         <!-- Search Input -->
-                        <div class="relative flex-1">
-                            <input type="text" id="search-bookings" placeholder="Search bookings..." 
+                        <form id="search-form" method="GET" class="relative flex-1">
+                            <input type="text" name="search" id="search-bookings" placeholder="Search bookings..." 
+                                   value="<%= pagination.searchTerm || '' %>"
                                    class="pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </div>
-                            <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                            <button id="clear-search" type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 <%= pagination.searchTerm ? '' : 'hidden' %>">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                             </button>
-                        </div>
+                        </form>
                         
                         <!-- Filters -->
                         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 sm:flex-shrink-0">
+                            <select id="date-filter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">All Dates</option>
+                                <option value="today">Today</option>
+                                <option value="this-week">This Week</option>
+                            </select>
                             <select id="sort-order" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                 <option value="date-asc" selected>Date (Oldest First)</option>
                                 <option value="date-desc">Date (Newest First)</option>
@@ -272,12 +278,12 @@ function formatTimeForDisplay(timeString) {
                     </div>
                     <div class="flex space-x-2">
                         <% if (pagination.hasPrev) { %>
-                        <a href="?page=<%= pagination.prevPage %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <a href="?page=<%= pagination.prevPage %><%= pagination.searchTerm ? '&search=' + encodeURIComponent(pagination.searchTerm) : '' %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                             Previous
                         </a>
                         <% } %>
                         <% if (pagination.hasNext) { %>
-                        <a href="?page=<%= pagination.nextPage %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <a href="?page=<%= pagination.nextPage %><%= pagination.searchTerm ? '&search=' + encodeURIComponent(pagination.searchTerm) : '' %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                             Next
                         </a>
                         <% } %>
@@ -517,19 +523,39 @@ function formatTimeForDisplay(timeString) {
             return bookings.filter(booking => booking.status === status);
         }
 
-        function searchBookings(bookings, searchTerm) {
-            if (!searchTerm.trim()) return bookings;
+        function filterBookingsByDate(bookings, dateFilter) {
+            if (!dateFilter) return bookings;
             
-            const term = searchTerm.toLowerCase();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const startOfWeek = new Date(today);
+            const dayOfWeek = today.getDay();
+            startOfWeek.setDate(today.getDate() - dayOfWeek);
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 7);
+            
             return bookings.filter(booking => {
-                return (
-                    booking.client_name?.toLowerCase().includes(term) ||
-                    booking.client_email?.toLowerCase().includes(term) ||
-                    booking.client_phone?.includes(term) ||
-                    booking.notes?.toLowerCase().includes(term)
-                );
+                const bookingDate = new Date(booking.date);
+                bookingDate.setHours(0, 0, 0, 0);
+                
+                switch(dateFilter) {
+                    case 'today':
+                        return bookingDate.getTime() === today.getTime();
+                    case 'this-week':
+                        return bookingDate >= startOfWeek && bookingDate < endOfWeek;
+                    default:
+                        return true;
+                }
             });
         }
+
+        // Server-side search - no need for client-side search function
 
         function renderBookingsTable(bookings) {
             const tbody = document.getElementById('bookings-table-body');
@@ -633,6 +659,7 @@ function formatTimeForDisplay(timeString) {
         function applyFiltersAndSort() {
             const sortOrder = document.getElementById('sort-order').value;
             const statusFilter = document.getElementById('status-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
             const searchTerm = document.getElementById('search-bookings').value;
             
             // Show/hide clear button based on search input
@@ -643,9 +670,9 @@ function formatTimeForDisplay(timeString) {
                 clearButton.classList.add('hidden');
             }
             
-            // Apply filters in order: search -> status -> sort
-            let filtered = searchBookings(allBookings, searchTerm);
-            filtered = filterBookings(filtered, statusFilter);
+            // Apply filters and sorting (search is handled server-side)
+            let filtered = filterBookings(allBookings, statusFilter);
+            filtered = filterBookingsByDate(filtered, dateFilter);
             filteredBookings = sortBookings(filtered, sortOrder);
             
             // Update table display
@@ -947,12 +974,24 @@ function formatTimeForDisplay(timeString) {
         // Sort and filter event listeners
         document.getElementById('sort-order').addEventListener('change', applyFiltersAndSort);
         document.getElementById('status-filter').addEventListener('change', applyFiltersAndSort);
-        document.getElementById('search-bookings').addEventListener('input', applyFiltersAndSort);
+        document.getElementById('date-filter').addEventListener('change', applyFiltersAndSort);
         
+        // Search form submission
+        document.getElementById('search-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const searchTerm = document.getElementById('search-bookings').value;
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('search', searchTerm);
+            currentUrl.searchParams.delete('page'); // Reset to page 1 when searching
+            window.location.href = currentUrl.toString();
+        });
+
         // Clear search button
         document.getElementById('clear-search').addEventListener('click', function() {
-            document.getElementById('search-bookings').value = '';
-            applyFiltersAndSort();
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.delete('search');
+            currentUrl.searchParams.delete('page'); // Reset to page 1 when clearing
+            window.location.href = currentUrl.toString();
         });
 
         // Refresh button

@@ -100,31 +100,57 @@ router.get('/bookings', requireLogin, async (req, res) => {
     
     const user = userResult.rows[0];
     
-    // Get pagination parameters
+    // Get pagination and search parameters
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const offset = (page - 1) * limit;
+    const searchTerm = req.query.search || '';
     
-    // Get total count for pagination
+    // Build search conditions
+    let searchConditions = 'WHERE user_id = $1';
+    let queryParams = [req.session.userId];
+    let paramIndex = 2;
+    
+    if (searchTerm.trim()) {
+      searchConditions += ` AND (
+        LOWER(client_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(client_email) LIKE LOWER($${paramIndex}) OR
+        client_phone LIKE $${paramIndex} OR
+        LOWER(notes) LIKE LOWER($${paramIndex})
+      )`;
+      queryParams.push(`%${searchTerm}%`);
+      paramIndex++;
+    }
+    
+    // Get total count for pagination (with search)
+    console.log('🔍 Count query conditions:', searchConditions);
+    console.log('🔍 Count query params:', queryParams);
     const countResult = await db.query(
-      'SELECT COUNT(*) FROM bookings WHERE user_id = $1',
-      [req.session.userId]
+      `SELECT COUNT(*) FROM bookings ${searchConditions}`,
+      queryParams
     );
     const totalBookings = parseInt(countResult.rows[0].count);
     const totalPages = Math.ceil(totalBookings / limit);
     
-    // Get bookings with pagination
-    const bookingsResult = await db.query(
-      `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, 
+    // Get bookings with pagination and search
+    queryParams.push(limit, offset);
+    const finalQuery = `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, 
               notes, status, google_calendar_link, created_at
        FROM bookings 
-       WHERE user_id = $1 
+       ${searchConditions}
        ORDER BY date DESC, start_time DESC
-       LIMIT $2 OFFSET $3`,
-      [req.session.userId, limit, offset]
-    );
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    
+    console.log('🔍 Final SQL query:', finalQuery);
+    console.log('🔍 Final query params:', queryParams);
+    
+    const bookingsResult = await db.query(finalQuery, queryParams);
     
     const bookings = bookingsResult.rows;
+    console.log('🔍 Search results:', bookings.length, 'bookings found');
+    if (searchTerm.trim()) {
+      console.log('🔍 Filtered bookings:', bookings.map(b => ({ id: b.id, name: b.client_name, email: b.client_email })));
+    }
     
     // Pagination info
     const pagination = {
@@ -134,7 +160,8 @@ router.get('/bookings', requireLogin, async (req, res) => {
       hasPrev: page > 1,
       hasNext: page < totalPages,
       prevPage: page - 1,
-      nextPage: page + 1
+      nextPage: page + 1,
+      searchTerm: searchTerm
     };
     
     res.render('bookings', { user, bookings, pagination });
