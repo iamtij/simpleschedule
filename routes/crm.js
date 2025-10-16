@@ -311,17 +311,34 @@ router.post('/', requireLogin, async (req, res) => {
             }
         }
         
+        // If this contact is created from a booking, set last_contact_date to the booking date
+        let lastContactDate = null;
+        if (booking_id) {
+            try {
+                const bookingResult = await db.query(
+                    'SELECT date FROM bookings WHERE id = $1 AND user_id = $2',
+                    [booking_id, req.session.userId]
+                );
+                if (bookingResult.rows.length > 0) {
+                    lastContactDate = bookingResult.rows[0].date;
+                }
+            } catch (error) {
+                console.error('Error fetching booking date:', error);
+                // Continue without setting last_contact_date if there's an error
+            }
+        }
+
         const result = await db.query(
             `INSERT INTO contacts 
              (user_id, name, email, phone, company, position, industry,
               source, status, referral_potential, notes, tags, next_follow_up,
-              bni_member, bni_chapter)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+              bni_member, bni_chapter, last_contact_date)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
              RETURNING *`,
             [
                 req.session.userId, name, email, phone, company, position, industry,
                 source || 'manual', status || 'new_lead', referral_potential || 1,
-                notes, tags || [], parsedFollowUp, bni_member || false, bni_chapter
+                notes, tags || [], parsedFollowUp, bni_member || false, bni_chapter, lastContactDate
             ]
         );
         
