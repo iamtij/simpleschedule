@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Contact Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/js/toast.js" defer></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .referral-stars {
+            color: #F59E0B;
+        }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+        .status-new-lead { background-color: #FEF3C7; color: #92400E; }
+        .status-qualified-lead { background-color: #DBEAFE; color: #1E40AF; }
+        .status-warm-prospect { background-color: #F3E8FF; color: #7C3AED; }
+        .status-hot-prospect { background-color: #FEE2E2; color: #DC2626; }
+        .status-active-client { background-color: #D1FAE5; color: #059669; }
+        .status-bni-member { background-color: #E0F2FE; color: #0369A1; }
+        .status-inactive { background-color: #F3F4F6; color: #6B7280; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <%- include('partials/navigation', { currentPage: 'contacts', user: user }) %>
+
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <a href="/contacts" class="text-gray-500 hover:text-gray-700 mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Contact Details</h1>
+                        <p class="text-sm text-gray-600">View and manage contact information</p>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <!-- Primary Action - Always Visible -->
+                    <button id="edit-contact-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
+                        <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Edit Contact</span>
+                    </button>
+                    
+                    <!-- Desktop Actions - Hidden on Mobile -->
+                    <div class="hidden sm:flex sm:gap-3">
+                        <button id="add-interaction-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Interaction
+                        </button>
+                        <button id="add-referral-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Referral
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile Actions Dropdown -->
+                    <div class="sm:hidden relative">
+                        <button id="mobile-actions-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center w-full">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                            </svg>
+                            More Actions
+                        </button>
+                        
+                        <!-- Mobile Dropdown Menu -->
+                        <div id="mobile-actions-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 hidden z-50 border border-gray-200">
+                            <button id="mobile-add-interaction-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
+                                <svg class="w-4 h-4 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Add Interaction
+                            </button>
+                            <button id="mobile-add-referral-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
+                                <svg class="w-4 h-4 mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Add Referral
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-600">Loading contact details...</p>
+        </div>
+
+        <!-- Contact Details -->
+        <div id="contact-details" class="hidden">
+            <!-- Contact Header -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="px-6 py-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-16 w-16">
+                                <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <span id="contact-initial" class="text-2xl font-medium text-blue-600"></span>
+                                </div>
+                            </div>
+                            <div class="ml-6">
+                                <h2 id="contact-name" class="text-2xl font-bold text-gray-900"></h2>
+                                <p id="contact-company" class="text-lg text-gray-600"></p>
+                                <p id="contact-position" class="text-sm text-gray-500"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="text-center">
+                                <span class="status-badge" id="contact-status-badge"></span>
+                            </div>
+                            <div class="text-center">
+                                <div class="flex items-center justify-center">
+                                    <span id="contact-referral-stars" class="referral-stars text-xl"></span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Referral Potential</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Contact Info -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Contact Information</h3>
+                        </div>
+                        <div class="px-6 py-4 space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">Email</label>
+                                    <p id="contact-email" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">Phone</label>
+                                    <p id="contact-phone" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">Industry</label>
+                                    <p id="contact-industry" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">Source</label>
+                                    <p id="contact-source" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">BNI Member</label>
+                                    <p id="contact-bni-member" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">BNI Chapter</label>
+                                    <p id="contact-bni-chapter" class="mt-1 text-sm text-gray-900"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Notes</label>
+                                <p id="contact-notes" class="mt-1 text-sm text-gray-900"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactions -->
+                    <div class="bg-white rounded-lg shadow mt-6">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Recent Interactions</h3>
+                        </div>
+                        <div class="px-6 py-4">
+                            <div id="interactions-list">
+                                <!-- Interactions will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Quick Stats -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Quick Stats</h3>
+                        </div>
+                        <div class="px-6 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Last Contact</label>
+                                <p id="contact-last-contact" class="mt-1 text-sm text-gray-900"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Next Follow-up</label>
+                                <p id="contact-next-followup" class="mt-1 text-sm text-gray-900"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Interactions</label>
+                                <p id="contact-total-interactions" class="mt-1 text-sm text-gray-900"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referrals -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Referrals</h3>
+                        </div>
+                        <div class="px-6 py-4">
+                            <div id="referrals-list">
+                                <!-- Referrals will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden text-center py-12">
+            <div class="text-red-600 mb-4">
+                <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Contact not found</h3>
+            <p class="text-gray-600 mb-4">The contact you're looking for doesn't exist or you don't have permission to view it.</p>
+            <a href="/contacts" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Back to Contacts
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit Contact Modal -->
+    <div id="edit-contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Edit Contact</h3>
+                </div>
+                <form id="edit-contact-form" class="px-6 py-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                        <input type="text" id="edit-contact-name" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="edit-contact-email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="tel" id="edit-contact-phone" name="phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                        <input type="text" id="edit-contact-company" name="company" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                        <input type="text" id="edit-contact-position" name="position" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                        <input type="text" id="edit-contact-industry" name="industry" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="edit-contact-status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="new_lead">New Lead</option>
+                            <option value="qualified_lead">Qualified Lead</option>
+                            <option value="warm_prospect">Warm Prospect</option>
+                            <option value="hot_prospect">Hot Prospect</option>
+                            <option value="active_client">Active Client</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">BNI Member</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="edit-contact-bni-member" name="bni_member" value="true" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">Yes</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">BNI Chapter</label>
+                        <input type="text" id="edit-contact-bni-chapter" name="bni_chapter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., BNI Manila">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Potential</label>
+                        <select id="edit-contact-referral-potential" name="referral_potential" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="1">1 - Cold</option>
+                            <option value="2">2 - Warm</option>
+                            <option value="3">3 - Good</option>
+                            <option value="4">4 - Hot</option>
+                            <option value="5">5 - Fire</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="edit-contact-notes" name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" id="cancel-edit-contact" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" form="edit-contact-form" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Update Contact
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Interaction Modal -->
+    <div id="add-interaction-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Add Interaction</h3>
+                </div>
+                <form id="add-interaction-form" class="px-6 py-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                        <select name="type" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="meeting">Meeting</option>
+                            <option value="call">Phone Call</option>
+                            <option value="email">Email</option>
+                            <option value="referral_given">Referral Given</option>
+                            <option value="referral_received">Referral Received</option>
+                            <option value="follow_up">Follow-up</option>
+                            <option value="social_media">Social Media</option>
+                            <option value="event">Event</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                        <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <!-- Date and Time fields for Follow-up type -->
+                    <div id="follow-up-datetime-fields" class="hidden">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                                <input type="date" name="follow_up_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Time</label>
+                                <input type="time" name="follow_up_time" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Outcome</label>
+                        <select name="outcome" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="positive">Positive</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="negative">Negative</option>
+                            <option value="referral_potential">Referral Potential</option>
+                        </select>
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" id="cancel-add-interaction" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" form="add-interaction-form" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Add Interaction
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Referral Modal -->
+    <div id="add-referral-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Add Referral</h3>
+                </div>
+                <form id="add-referral-form" class="px-6 py-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Type *</label>
+                        <select name="referral_type" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="given">This contact referred someone TO YOU</option>
+                            <option value="received">You referred someone TO THIS CONTACT</option>
+                        </select>
+                    </div>
+                    <div id="receiver-contact-section">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Who was referred TO YOU? *</label>
+                        <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                            <h4 class="text-sm font-medium text-gray-900">New Contact Details</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Name *</label>
+                                    <input type="text" name="receiver_name" required class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                                    <input type="email" name="receiver_email" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                                    <input type="tel" name="receiver_phone" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Company</label>
+                                    <input type="text" name="receiver_company" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Enter details of the person who was referred to you</p>
+                    </div>
+                    <div id="giver-contact-section" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Who referred TO THIS CONTACT? *</label>
+                        <div class="flex space-x-2">
+                            <select name="giver_contact_id" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Select existing contact...</option>
+                            </select>
+                            <button type="button" id="add-new-giver-btn" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                                + New
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Select existing contact or create a new one</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Value</label>
+                        <input type="number" name="value" step="0.01" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Optional: Estimated value of the referral</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea name="notes" rows="3" placeholder="Additional details about the referral..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" id="cancel-add-referral" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" form="add-referral-form" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Add Referral
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const contactId = '<%= contactId %>';
+        let contact = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadContactDetails();
+            initializeEventListeners();
+        });
+
+        // Load contact details
+        async function loadContactDetails() {
+            try {
+                const response = await fetch(`/crm/${contactId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    contact = data.contact;
+                    displayContactDetails(data);
+                } else {
+                    showErrorState();
+                }
+            } catch (error) {
+                console.error('Error loading contact:', error);
+                showErrorState();
+            }
+        }
+
+        // Display contact details
+        function displayContactDetails(data) {
+            const contact = data.contact;
+            
+            // Hide loading, show details
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('contact-details').classList.remove('hidden');
+            
+            // Contact header
+            document.getElementById('contact-initial').textContent = contact.name.charAt(0).toUpperCase();
+            document.getElementById('contact-name').textContent = contact.name;
+            document.getElementById('contact-company').textContent = contact.company || 'No company';
+            document.getElementById('contact-position').textContent = contact.position || 'No position';
+            
+            // Status and referral potential
+            const statusBadge = document.getElementById('contact-status-badge');
+            statusBadge.textContent = formatStatus(contact.status);
+            statusBadge.className = `status-badge status-${contact.status.replace('_', '-')}`;
+            
+            const referralStars = '★'.repeat(contact.referral_potential) + '☆'.repeat(5 - contact.referral_potential);
+            document.getElementById('contact-referral-stars').textContent = referralStars;
+            
+            // Contact information
+            document.getElementById('contact-email').textContent = contact.email || 'No email';
+            document.getElementById('contact-phone').textContent = contact.phone || 'No phone';
+            document.getElementById('contact-industry').textContent = contact.industry || 'No industry';
+            document.getElementById('contact-source').textContent = formatSource(contact.source);
+            document.getElementById('contact-bni-member').textContent = contact.bni_member ? 'Yes' : 'No';
+            document.getElementById('contact-bni-chapter').textContent = contact.bni_chapter || 'Not specified';
+            document.getElementById('contact-notes').textContent = contact.notes || 'No notes';
+            
+            // Quick stats
+            document.getElementById('contact-last-contact').textContent = 
+                contact.last_contact_date ? new Date(contact.last_contact_date).toLocaleDateString() : 'Never';
+            document.getElementById('contact-next-followup').textContent = 
+                contact.next_follow_up ? new Date(contact.next_follow_up).toLocaleDateString() : 'Not set';
+            document.getElementById('contact-total-interactions').textContent = data.interactions.length;
+            
+            // Display interactions
+            displayInteractions(data.interactions);
+            
+            // Display referrals
+            displayReferrals(data.referralsGiven, data.referralsReceived);
+        }
+
+        // Display interactions
+        function displayInteractions(interactions) {
+            const container = document.getElementById('interactions-list');
+            
+            if (interactions.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No interactions yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = interactions.map(interaction => `
+                <div class="border-b border-gray-200 py-4 last:border-b-0">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    ${formatInteractionType(interaction.type)}
+                                </span>
+                                ${interaction.subject ? `<span class="text-sm font-medium text-gray-900">${interaction.subject}</span>` : ''}
+                            </div>
+                            ${interaction.notes ? `<p class="mt-1 text-sm text-gray-600">${interaction.notes}</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500">${new Date(interaction.date).toLocaleDateString()}</p>
+                            ${interaction.outcome ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getOutcomeColor(interaction.outcome)}">${interaction.outcome}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Display referrals
+        function displayReferrals(referralsGiven, referralsReceived) {
+            const container = document.getElementById('referrals-list');
+            
+            if (referralsGiven.length === 0 && referralsReceived.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No referrals yet.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            if (referralsGiven.length > 0) {
+                html += '<div class="mb-4"><h4 class="text-sm font-medium text-gray-900 mb-2">Referrals Given</h4>';
+                html += referralsGiven.map(ref => `
+                    <div class="text-sm text-gray-600 mb-1">
+                        → ${ref.receiver_name} (${ref.receiver_company || 'No company'})
+                        <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                    </div>
+                `).join('');
+                html += '</div>';
+            }
+            
+            if (referralsReceived.length > 0) {
+                html += '<div><h4 class="text-sm font-medium text-gray-900 mb-2">Referrals Received</h4>';
+                html += referralsReceived.map(ref => `
+                    <div class="text-sm text-gray-600 mb-1">
+                        ← ${ref.giver_name} (${ref.giver_company || 'No company'})
+                        <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                    </div>
+                `).join('');
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Show error state
+        function showErrorState() {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+        }
+
+        // Format status
+        function formatStatus(status) {
+            const statusMap = {
+                'new_lead': 'New Lead',
+                'qualified_lead': 'Qualified Lead',
+                'warm_prospect': 'Warm Prospect',
+                'hot_prospect': 'Hot Prospect',
+                'active_client': 'Active Client',
+                'bni_member': 'BNI Member',
+                'inactive': 'Inactive'
+            };
+            return statusMap[status] || status;
+        }
+
+        // Format source
+        function formatSource(source) {
+            const sourceMap = {
+                'manual': 'Manual Entry',
+                'booking': 'From Booking',
+                'referral': 'Referral',
+                'bni': 'BNI',
+                'import': 'Import'
+            };
+            return sourceMap[source] || source;
+        }
+
+        // Format interaction type
+        function formatInteractionType(type) {
+            const typeMap = {
+                'meeting': 'Meeting',
+                'call': 'Call',
+                'email': 'Email',
+                'referral_given': 'Referral Given',
+                'referral_received': 'Referral Received',
+                'follow_up': 'Follow-up',
+                'social_media': 'Social Media',
+                'event': 'Event'
+            };
+            return typeMap[type] || type;
+        }
+
+        // Get outcome color
+        function getOutcomeColor(outcome) {
+            const colorMap = {
+                'positive': 'bg-green-100 text-green-800',
+                'neutral': 'bg-gray-100 text-gray-800',
+                'negative': 'bg-red-100 text-red-800',
+                'referral_potential': 'bg-yellow-100 text-yellow-800'
+            };
+            return colorMap[outcome] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Initialize event listeners
+        function initializeEventListeners() {
+            // Edit contact button
+            document.getElementById('edit-contact-btn').addEventListener('click', showEditContactModal);
+            
+            // Edit contact form
+            document.getElementById('edit-contact-form').addEventListener('submit', handleEditContact);
+            
+            // Cancel edit contact
+            document.getElementById('cancel-edit-contact').addEventListener('click', hideEditContactModal);
+            
+            // Desktop buttons
+            document.getElementById('add-interaction-btn').addEventListener('click', showAddInteractionModal);
+            document.getElementById('add-referral-btn').addEventListener('click', showAddReferralModal);
+            
+            // Mobile dropdown buttons
+            document.getElementById('mobile-actions-btn').addEventListener('click', toggleMobileActionsMenu);
+            document.getElementById('mobile-add-interaction-btn').addEventListener('click', () => {
+                showAddInteractionModal();
+                hideMobileActionsMenu();
+            });
+            document.getElementById('mobile-add-referral-btn').addEventListener('click', () => {
+                showAddReferralModal();
+                hideMobileActionsMenu();
+            });
+            
+            // Cancel add interaction
+            document.getElementById('cancel-add-interaction').addEventListener('click', hideAddInteractionModal);
+            
+            // Add interaction form
+            document.getElementById('add-interaction-form').addEventListener('submit', handleAddInteraction);
+            
+            // Interaction type change handler for follow-up fields
+            document.getElementById('add-interaction-form').querySelector('select[name="type"]').addEventListener('change', handleInteractionTypeChange);
+            
+            // Cancel add referral
+            document.getElementById('cancel-add-referral').addEventListener('click', hideAddReferralModal);
+            
+            // Add referral form
+            document.getElementById('add-referral-form').addEventListener('submit', handleAddReferral);
+            
+            // Referral type change handler
+            document.getElementById('add-referral-form').querySelector('select[name="referral_type"]').addEventListener('change', handleReferralTypeChange);
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                const mobileMenu = document.getElementById('mobile-actions-menu');
+                const mobileBtn = document.getElementById('mobile-actions-btn');
+                if (mobileMenu && !mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+                    hideMobileActionsMenu();
+                }
+            });
+        }
+        
+        // Mobile actions menu functions
+        function toggleMobileActionsMenu() {
+            const menu = document.getElementById('mobile-actions-menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+            } else {
+                menu.classList.add('hidden');
+            }
+        }
+        
+        function hideMobileActionsMenu() {
+            const menu = document.getElementById('mobile-actions-menu');
+            menu.classList.add('hidden');
+        }
+
+        // Show add interaction modal
+        function showAddInteractionModal() {
+            document.getElementById('add-interaction-modal').classList.remove('hidden');
+        }
+
+        // Hide add interaction modal
+        function hideAddInteractionModal() {
+            document.getElementById('add-interaction-modal').classList.add('hidden');
+            document.getElementById('add-interaction-form').reset();
+            // Hide follow-up fields when modal is closed
+            document.getElementById('follow-up-datetime-fields').classList.add('hidden');
+        }
+
+        // Handle interaction type change to show/hide follow-up fields
+        function handleInteractionTypeChange(e) {
+            const selectedType = e.target.value;
+            const followUpFields = document.getElementById('follow-up-datetime-fields');
+            
+            if (selectedType === 'follow_up') {
+                followUpFields.classList.remove('hidden');
+                // Set default date to tomorrow
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const dateInput = followUpFields.querySelector('input[name="follow_up_date"]');
+                dateInput.value = tomorrow.toISOString().split('T')[0];
+                // Set default time to 10:00 AM
+                const timeInput = followUpFields.querySelector('input[name="follow_up_time"]');
+                timeInput.value = '10:00';
+            } else {
+                followUpFields.classList.add('hidden');
+                // Clear the fields when hidden
+                followUpFields.querySelector('input[name="follow_up_date"]').value = '';
+                followUpFields.querySelector('input[name="follow_up_time"]').value = '';
+            }
+        }
+
+        // Show edit contact modal
+        function showEditContactModal() {
+            if (!contact) return;
+            
+            // Populate the edit form with current contact data
+            document.getElementById('edit-contact-name').value = contact.name;
+            document.getElementById('edit-contact-email').value = contact.email || '';
+            document.getElementById('edit-contact-phone').value = contact.phone || '';
+            document.getElementById('edit-contact-company').value = contact.company || '';
+            document.getElementById('edit-contact-position').value = contact.position || '';
+            document.getElementById('edit-contact-industry').value = contact.industry || '';
+            document.getElementById('edit-contact-status').value = contact.status;
+            document.getElementById('edit-contact-referral-potential').value = contact.referral_potential;
+            document.getElementById('edit-contact-notes').value = contact.notes || '';
+            
+            // Populate BNI fields
+            document.getElementById('edit-contact-bni-member').checked = contact.bni_member === true;
+            document.getElementById('edit-contact-bni-chapter').value = contact.bni_chapter || '';
+            
+            // Show the modal
+            document.getElementById('edit-contact-modal').classList.remove('hidden');
+        }
+
+        // Hide edit contact modal
+        function hideEditContactModal() {
+            document.getElementById('edit-contact-modal').classList.add('hidden');
+            document.getElementById('edit-contact-form').reset();
+        }
+
+        // Handle edit contact form submission
+        async function handleEditContact(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const contactData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch(`/crm/${contactId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(contactData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideEditContactModal();
+                    loadContactDetails(); // Reload to show updated data
+                    toast.show({
+                        type: 'success',
+                        title: 'Contact updated!',
+                        message: `${contactData.name} has been updated.`
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to update contact'
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating contact:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to update contact'
+                });
+            }
+        }
+
+        // Handle add interaction form submission
+        async function handleAddInteraction(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const interactionData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch(`/crm/${contactId}/interactions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(interactionData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideAddInteractionModal();
+                    loadContactDetails(); // Reload to show new interaction
+                    toast.show({
+                        type: 'success',
+                        title: 'Interaction added!',
+                        message: 'The interaction has been recorded.'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to add interaction'
+                    });
+                }
+            } catch (error) {
+                console.error('Error adding interaction:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to add interaction'
+                });
+            }
+        }
+
+        // Show add referral modal
+        async function showAddReferralModal() {
+            // Load all contacts for the dropdown
+            await loadContactsForReferral();
+            document.getElementById('add-referral-modal').classList.remove('hidden');
+        }
+
+        // Hide add referral modal
+        function hideAddReferralModal() {
+            document.getElementById('add-referral-modal').classList.add('hidden');
+            document.getElementById('add-referral-form').reset();
+            // Reset form sections
+            document.getElementById('receiver-contact-section').classList.remove('hidden');
+            document.getElementById('giver-contact-section').classList.add('hidden');
+        }
+
+        // Load contacts for referral dropdown
+        async function loadContactsForReferral() {
+            try {
+                const response = await fetch('/crm/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const contacts = data.contacts.filter(c => c.id != contactId); // Exclude current contact
+                    
+                    // Populate receiver dropdown
+                    const receiverSelect = document.querySelector('select[name="receiver_contact_id"]');
+                    receiverSelect.innerHTML = '<option value="">Select a contact...</option>';
+                    contacts.forEach(contact => {
+                        const option = document.createElement('option');
+                        option.value = contact.id;
+                        option.textContent = `${contact.name}${contact.company ? ` (${contact.company})` : ''}`;
+                        receiverSelect.appendChild(option);
+                    });
+                    
+                    // Populate giver dropdown
+                    const giverSelect = document.querySelector('select[name="giver_contact_id"]');
+                    giverSelect.innerHTML = '<option value="">Select a contact...</option>';
+                    contacts.forEach(contact => {
+                        const option = document.createElement('option');
+                        option.value = contact.id;
+                        option.textContent = `${contact.name}${contact.company ? ` (${contact.company})` : ''}`;
+                        giverSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading contacts for referral:', error);
+            }
+        }
+
+        // Handle referral type change
+        function handleReferralTypeChange(e) {
+            const referralType = e.target.value;
+            const receiverSection = document.getElementById('receiver-contact-section');
+            const giverSection = document.getElementById('giver-contact-section');
+            
+            if (referralType === 'given') {
+                // This contact gave a referral to someone else
+                receiverSection.classList.remove('hidden');
+                giverSection.classList.add('hidden');
+                document.querySelector('select[name="receiver_contact_id"]').required = true;
+                document.querySelector('select[name="giver_contact_id"]').required = false;
+            } else if (referralType === 'received') {
+                // This contact received a referral from someone else
+                receiverSection.classList.add('hidden');
+                giverSection.classList.remove('hidden');
+                document.querySelector('select[name="receiver_contact_id"]').required = false;
+                document.querySelector('select[name="giver_contact_id"]').required = true;
+            }
+        }
+
+
+        // Handle add referral form submission
+        async function handleAddReferral(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const referralData = Object.fromEntries(formData.entries());
+            
+            try {
+                // Determine giver and receiver based on referral type
+                if (referralData.referral_type === 'given') {
+                    // This contact referred someone to you - create new contact
+                    referralData.giver_contact_id = contactId;
+                    
+                    // Create new contact for the person who was referred
+                    const newContactData = {
+                        name: referralData.receiver_name,
+                        email: referralData.receiver_email || null,
+                        phone: referralData.receiver_phone || null,
+                        company: referralData.receiver_company || null,
+                        source: 'referral',
+                        status: 'new_lead',
+                        referral_potential: 3
+                    };
+                    
+                    const contactResponse = await fetch('/crm/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(newContactData)
+                    });
+                    
+                    const contactResult = await contactResponse.json();
+                    
+                    if (!contactResult.success) {
+                        throw new Error(contactResult.error || 'Failed to create new contact');
+                    }
+                    
+                    referralData.receiver_contact_id = contactResult.contact.id;
+                    
+                } else if (referralData.referral_type === 'received') {
+                    // You referred someone to this contact - select existing contact
+                    referralData.giver_contact_id = referralData.giver_contact_id;
+                    referralData.receiver_contact_id = contactId;
+                }
+                
+                // Remove fields that are not needed in the referral API
+                delete referralData.referral_type;
+                delete referralData.receiver_name;
+                delete referralData.receiver_email;
+                delete referralData.receiver_phone;
+                delete referralData.receiver_company;
+                
+                const response = await fetch('/crm/referrals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(referralData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideAddReferralModal();
+                    loadContactDetails(); // Reload to show new referral
+                    toast.show({
+                        type: 'success',
+                        title: 'Referral added!',
+                        message: 'The referral has been recorded and new contact created.'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to add referral'
+                    });
+                }
+            } catch (error) {
+                console.error('Error adding referral:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: error.message || 'Failed to add referral'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

@@ -311,6 +311,15 @@
                 return;
             }
 
+            // Get the submit button and disable it immediately
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            
+            // Disable button and show loading state
+            submitButton.disabled = true;
+            submitButton.textContent = 'Booking...';
+            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+
             const formData = {
                 date: selectedDate,
                 start_time: selectedTime.start,
@@ -341,6 +350,12 @@
             })
             .catch(error => {
                 console.error('Error creating booking:', error);
+                
+                // Re-enable button on error
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                
                 alert(error.error || 'Failed to create booking. Please try again.');
             });
         });

@@ -18,33 +18,61 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="/dashboard" class="text-xl font-bold">isked</a>
-                </div>
-                <div class="flex items-center">
-                    <a href="/dashboard" class="text-gray-600 hover:text-gray-900">
-                        Back to Dashboard
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- Navigation -->
+    <%- include('partials/navigation', { currentPage: 'settings', user: user }) %>
 
-    <main class="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div class="space-y-8">
-            <!-- Header -->
-            <div>
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="py-4">
                 <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
                 <p class="mt-2 text-sm text-gray-600">
                     Manage your account details and preferences
                 </p>
             </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="space-y-8">
+
+            <!-- Account Information Section -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900">Account Information</h2>
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    <!-- Email Address -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <div>
+                            <input type="email" value="<%= user.email %>" readonly
+                                class="block w-full bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
+                            <span class="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Verified
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Full Name -->
+                    <div>
+                        <label for="full-name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Full Name
+                        </label>
+                        <input type="text" id="full-name" name="full-name"
+                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 cursor-not-allowed px-3 py-2"
+                            value="<%= user.full_name || '' %>"
+                            placeholder="Enter your full name"
+                            readonly>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Contact support to change your full name
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Booking Information Section -->
-            <div class="bg-white shadow rounded-lg">
+            <div class="bg-white shadow rounded-lg mt-8">
                 <div class="px-6 py-5 border-b border-gray-200">
                     <h2 class="text-lg font-medium text-gray-900">Booking Information</h2>
                 </div>
@@ -261,40 +289,77 @@
                 </div>
             </div>
 
-            <!-- Account Information Section -->
+            <!-- Availability Settings Section -->
             <div class="bg-white shadow rounded-lg mt-8">
                 <div class="px-6 py-5 border-b border-gray-200">
-                    <h2 class="text-lg font-medium text-gray-900">Account Information</h2>
+                    <h2 class="text-lg font-medium text-gray-900">Availability Settings</h2>
+                    <p class="mt-1 text-sm text-gray-500">Configure your working hours and break times</p>
                 </div>
-                <div class="px-6 py-5 space-y-6">
-                    <!-- Email Address -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                        <div>
-                            <input type="email" value="<%= user.email %>" readonly
-                                class="block w-full bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2">
-                            <span class="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Verified
-                            </span>
+                <div class="px-6 py-5">
+                    <form id="availability-form" method="POST" action="/settings/availability">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-medium mb-4">Working Days</h3>
+                            <div class="space-y-4">
+                                <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3 border-b last:border-0">
+                                        <div class="flex items-center w-full sm:w-1/3">
+                                            <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="w-4 h-4 mr-3">
+                                            <label for="day-<%= index %>" class="text-gray-700"><%= day %></label>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                                            <input type="time" class="work-start border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="09:00" disabled>
+                                            <span class="text-gray-500 px-2">to</span>
+                                            <input type="time" class="work-end border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="17:00" disabled>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Full Name -->
-                    <div>
-                        <label for="full-name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Full Name
-                        </label>
-                        <input type="text" id="full-name" name="full-name"
-                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 cursor-not-allowed px-3 py-2"
-                            value="<%= user.full_name || '' %>"
-                            placeholder="Enter your full name"
-                            readonly>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Contact support to change your full name
-                        </p>
-                    </div>
+                        <div class="mb-8">
+                            <h3 class="text-lg font-medium mb-4">Universal Breaks</h3>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3">
+                                <div class="flex items-center w-full sm:w-1/3">
+                                    <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
+                                    <label for="break-enabled" class="text-gray-700">Enable Break Time</label>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                                    <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
+                                    <span class="text-gray-500 px-2">to</span>
+                                    <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
+                                </div>
+                            </div>
+
+                            <!-- Buffer Between Bookings -->
+                            <div class="mt-6 border-t pt-6">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                    <div class="w-full sm:w-1/3">
+                                        <label for="buffer-minutes" class="text-gray-700 font-medium">Buffer Between Bookings</label>
+                                        <p class="text-sm text-gray-500 mt-1">Add padding time after each booking</p>
+                                    </div>
+                                    <div class="w-full sm:w-2/3">
+                                        <select id="buffer-minutes" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="0">No buffer</option>
+                                            <option value="10">10 minutes</option>
+                                            <option value="15">15 minutes</option>
+                                            <option value="30">30 minutes</option>
+                                            <option value="45">45 minutes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                            Save Settings
+                        </button>
+                        
+                        <!-- Hidden inputs for working hours -->
+                        <div id="hidden-inputs"></div>
+                    </form>
                 </div>
             </div>
+
         </div>
     </main>
 
@@ -305,8 +370,10 @@
             initDisplayNameEditing();
             initMeetingLinkEditing();
             initCopyLink();
+            initAvailabilitySettings();
             initGoogleCalendarIntegration();
             handleUrlMessages();
+            handleAvailabilitySuccess();
         });
 
         // Handle success/error messages from URL parameters
@@ -1096,7 +1163,297 @@
             const checkbox = document.getElementById('google-calendar-blocking-enabled');
             checkbox.checked = !blockingEnabled;
         });
-    }
+        }
+
+        // Handle availability success message
+        function handleAvailabilitySuccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            
+            if (success === 'availability_saved') {
+                toast.show({
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Availability settings saved successfully!'
+                });
+                
+                // Clean up URL
+                const url = new URL(window.location);
+                url.searchParams.delete('success');
+                window.history.replaceState({}, '', url);
+            }
+        }
+
+        // Initialize availability settings functionality
+        function initAvailabilitySettings() {
+            console.log('Initializing availability settings...');
+            
+            // Handle working days checkboxes
+            const dayCheckboxes = document.querySelectorAll('input[name="working_days"]');
+            dayCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const dayRow = this.closest('.flex');
+                    const startTime = dayRow.querySelector('.work-start');
+                    const endTime = dayRow.querySelector('.work-end');
+                    
+                    if (this.checked) {
+                        startTime.disabled = false;
+                        endTime.disabled = false;
+                    } else {
+                        startTime.disabled = true;
+                        endTime.disabled = true;
+                    }
+                });
+            });
+
+            // Handle break time checkbox
+            const breakCheckbox = document.getElementById('break-enabled');
+            const breakStart = document.getElementById('break-start');
+            const breakEnd = document.getElementById('break-end');
+            
+            breakCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    breakStart.disabled = false;
+                    breakEnd.disabled = false;
+                } else {
+                    breakStart.disabled = true;
+                    breakEnd.disabled = true;
+                }
+            });
+
+            // Handle form submission - use traditional form POST
+            const availabilityForm = document.getElementById('availability-form');
+            availabilityForm.addEventListener('submit', function(e) {
+                console.log('Availability form submitted');
+                
+                const submitBtn = this.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Saving...';
+                
+                // Clear existing hidden inputs
+                const hiddenInputs = document.getElementById('hidden-inputs');
+                hiddenInputs.innerHTML = '';
+                
+                // Add hidden inputs for working hours
+                const workingDays = Array.from(document.querySelectorAll('input[name="working_days"]:checked'));
+                workingDays.forEach(checkbox => {
+                    const dayIndex = checkbox.value;
+                    const dayRow = checkbox.closest('.flex.flex-col');
+                    const startTime = dayRow ? dayRow.querySelector('.work-start') : null;
+                    const endTime = dayRow ? dayRow.querySelector('.work-end') : null;
+                    
+                    if (startTime && endTime) {
+                        const startInput = document.createElement('input');
+                        startInput.type = 'hidden';
+                        startInput.name = `day_${dayIndex}_start`;
+                        startInput.value = startTime.value;
+                        hiddenInputs.appendChild(startInput);
+                        
+                        const endInput = document.createElement('input');
+                        endInput.type = 'hidden';
+                        endInput.name = `day_${dayIndex}_end`;
+                        endInput.value = endTime.value;
+                        hiddenInputs.appendChild(endInput);
+                    }
+                });
+                
+                // Add hidden input for buffer minutes
+                const bufferInput = document.createElement('input');
+                bufferInput.type = 'hidden';
+                bufferInput.name = 'buffer_minutes';
+                bufferInput.value = document.getElementById('buffer-minutes').value;
+                hiddenInputs.appendChild(bufferInput);
+                
+                // Add hidden input for break enabled
+                const breakEnabledInput = document.createElement('input');
+                breakEnabledInput.type = 'hidden';
+                breakEnabledInput.name = 'break_enabled';
+                breakEnabledInput.value = document.getElementById('break-enabled').checked;
+                hiddenInputs.appendChild(breakEnabledInput);
+                
+                // Add hidden inputs for break times
+                const breakStartInput = document.createElement('input');
+                breakStartInput.type = 'hidden';
+                breakStartInput.name = 'break_start';
+                breakStartInput.value = document.getElementById('break-start').value;
+                hiddenInputs.appendChild(breakStartInput);
+                
+                const breakEndInput = document.createElement('input');
+                breakEndInput.type = 'hidden';
+                breakEndInput.name = 'break_end';
+                breakEndInput.value = document.getElementById('break-end').value;
+                hiddenInputs.appendChild(breakEndInput);
+                
+                // Let the form submit naturally - no preventDefault
+                // The server will handle the POST request and redirect back
+            });
+            
+            // Load existing availability settings from embedded data
+            loadAvailabilitySettingsFromData();
+        }
+
+        // Load existing availability settings from embedded data
+        function loadAvailabilitySettingsFromData() {
+            console.log('🔄 Loading availability settings from embedded data...');
+            
+            // Get the embedded availability settings
+            const data = <%- JSON.stringify(availabilitySettings || {}) %>;
+            console.log('📊 Embedded availability data:', data);
+            console.log('📊 Working days array:', data.working_days);
+            console.log('📊 Working days type:', typeof data.working_days);
+            console.log('📊 Working days length:', data.working_days ? data.working_days.length : 'undefined');
+            
+            if (data && Object.keys(data).length > 0) {
+                console.log('✅ Loading availability settings:', data);
+                
+                // Set working days
+                if (data.working_days && data.working_days.length > 0) {
+                    console.log('📅 Setting working days:', data.working_days);
+                    data.working_days.forEach(dayIndex => {
+                        const checkbox = document.getElementById(`day-${dayIndex}`);
+                        console.log(`🔍 Looking for day-${dayIndex}, found:`, checkbox);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            checkbox.dispatchEvent(new Event('change'));
+                            
+                            // Set working hours - find the parent row and then the time inputs
+                            const dayRow = checkbox.closest('.flex.flex-col');
+                            console.log(`🔍 Day row for day-${dayIndex}:`, dayRow);
+                            const startTime = dayRow ? dayRow.querySelector('.work-start') : null;
+                            const endTime = dayRow ? dayRow.querySelector('.work-end') : null;
+                            console.log(`🔍 Start time for day-${dayIndex}:`, startTime);
+                            console.log(`🔍 End time for day-${dayIndex}:`, endTime);
+                            
+                            if (data[`day_${dayIndex}_start`] && startTime) {
+                                startTime.value = data[`day_${dayIndex}_start`];
+                            }
+                            if (data[`day_${dayIndex}_end`] && endTime) {
+                                endTime.value = data[`day_${dayIndex}_end`];
+                            }
+                        }
+                    });
+                }
+                
+                // Set break settings
+                if (data.break_enabled) {
+                    console.log('☕ Setting break settings, enabled:', data.break_enabled);
+                    const breakCheckbox = document.getElementById('break-enabled');
+                    console.log('🔍 Found break checkbox:', breakCheckbox);
+                    if (breakCheckbox) {
+                        breakCheckbox.checked = true;
+                        breakCheckbox.dispatchEvent(new Event('change'));
+                        
+                        if (data.break_start) {
+                            document.getElementById('break-start').value = data.break_start;
+                        }
+                        if (data.break_end) {
+                            document.getElementById('break-end').value = data.break_end;
+                        }
+                    }
+                }
+                
+                // Set buffer minutes
+                if (data.buffer_minutes !== undefined) {
+                    console.log('⏱️ Setting buffer minutes:', data.buffer_minutes);
+                    const bufferSelect = document.getElementById('buffer-minutes');
+                    console.log('🔍 Found buffer select:', bufferSelect);
+                    if (bufferSelect) {
+                        bufferSelect.value = data.buffer_minutes;
+                    }
+                }
+            } else {
+                console.log('ℹ️ No availability settings found in embedded data');
+            }
+        }
+
+        // Load existing availability settings
+        function loadAvailabilitySettings() {
+            console.log('🔄 Loading availability settings...');
+            fetch('/settings/availability', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+                .then(response => {
+                    console.log('📡 Response status:', response.status);
+                    console.log('📡 Response headers:', response.headers);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📊 Received data:', data);
+                    if (data.success) {
+                        console.log('✅ Loading availability settings:', data);
+                        
+                        // Set working days
+                        if (data.working_days) {
+                            console.log('📅 Setting working days:', data.working_days);
+                            data.working_days.forEach(dayIndex => {
+                                const checkbox = document.getElementById(`day-${dayIndex}`);
+                                console.log(`🔍 Looking for day-${dayIndex}, found:`, checkbox);
+                                if (checkbox) {
+                                    checkbox.checked = true;
+                                    checkbox.dispatchEvent(new Event('change'));
+                                    
+                                    // Set working hours
+                                    const dayRow = checkbox.closest('.flex');
+                                    const startTime = dayRow.querySelector('.work-start');
+                                    const endTime = dayRow.querySelector('.work-end');
+                                    
+                                    if (data[`day_${dayIndex}_start`]) {
+                                        startTime.value = data[`day_${dayIndex}_start`];
+                                    }
+                                    if (data[`day_${dayIndex}_end`]) {
+                                        endTime.value = data[`day_${dayIndex}_end`];
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Set break settings
+                        if (data.break_enabled) {
+                            console.log('☕ Setting break settings, enabled:', data.break_enabled);
+                            const breakCheckbox = document.getElementById('break-enabled');
+                            console.log('🔍 Found break checkbox:', breakCheckbox);
+                            if (breakCheckbox) {
+                                breakCheckbox.checked = true;
+                                breakCheckbox.dispatchEvent(new Event('change'));
+                                
+                                if (data.break_start) {
+                                    document.getElementById('break-start').value = data.break_start;
+                                }
+                                if (data.break_end) {
+                                    document.getElementById('break-end').value = data.break_end;
+                                }
+                            }
+                        }
+                        
+                        // Set buffer minutes
+                        if (data.buffer_minutes !== undefined) {
+                            console.log('⏱️ Setting buffer minutes:', data.buffer_minutes);
+                            const bufferSelect = document.getElementById('buffer-minutes');
+                            console.log('🔍 Found buffer select:', bufferSelect);
+                            if (bufferSelect) {
+                                bufferSelect.value = data.buffer_minutes;
+                            }
+                        }
+                    } else {
+                        console.error('Failed to load availability settings:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading availability settings:', error);
+                    console.error('❌ Error details:', {
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name
+                    });
+                });
+        }
     </script>
 </body>
 </html> 

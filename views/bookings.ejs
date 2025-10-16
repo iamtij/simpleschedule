@@ -1,0 +1,964 @@
+<%
+// Helper function to format time for display (12-hour format with AM/PM)
+function formatTimeForDisplay(timeString) {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+}
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Bookings</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/js/toast.js" defer></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <%- include('partials/navigation', { currentPage: 'bookings', user: user }) %>
+
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Bookings</h1>
+                    <p class="text-gray-600 mt-1">Manage your appointments and meetings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total Bookings</p>
+                        <p class="text-2xl font-semibold text-gray-900"><%= pagination.totalBookings %></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Confirmed</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="confirmed-count">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Pending</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="pending-count">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-red-100 rounded-lg">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Cancelled</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="cancelled-count">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div class="flex flex-col space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-900">All Bookings</h3>
+                        <button id="refresh-btn" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span class="hidden sm:inline">Refresh</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filters -->
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                        <!-- Search Input -->
+                        <div class="relative flex-1">
+                            <input type="text" id="search-bookings" placeholder="Search bookings..." 
+                                   class="pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                            <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 sm:flex-shrink-0">
+                            <select id="sort-order" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="date-asc" selected>Date (Oldest First)</option>
+                                <option value="date-desc">Date (Newest First)</option>
+                            </select>
+                            <select id="status-filter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">All Status</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="pending">Pending</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                            <th class="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="bookings-table-body">
+                        <% if (bookings.length === 0) { %>
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                                <div class="flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="text-lg font-medium">No bookings found</p>
+                                    <p class="text-sm">Your appointments will appear here</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <% } else { %>
+                        <% bookings.forEach(function(booking) { %>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900"><%= booking.client_name %></div>
+                                    <div class="text-sm text-gray-500"><%= booking.client_email %></div>
+                                    <% if (booking.client_phone) { %>
+                                    <div class="text-sm text-gray-500"><%= booking.client_phone %></div>
+                                    <% } %>
+                                    <!-- Show status on mobile -->
+                                    <div class="sm:hidden mt-2">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                            <%= booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
+                                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                                'bg-red-100 text-red-800' %>">
+                                            <%= booking.status || 'pending' %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    <%= new Date(booking.date).toLocaleDateString('en-US', { 
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                    }) %>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    <%= formatTimeForDisplay(booking.start_time) %> - <%= formatTimeForDisplay(booking.end_time) %>
+                                </div>
+                                <!-- Show notes on mobile -->
+                                <div class="md:hidden mt-2">
+                                    <div class="text-sm text-gray-900 max-w-xs truncate">
+                                        <%= booking.notes || '-' %>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                    <%= booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
+                                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                        'bg-red-100 text-red-800' %>">
+                                    <%= booking.status || 'pending' %>
+                                </span>
+                            </td>
+                            <td class="hidden md:table-cell px-4 sm:px-6 py-4">
+                                <div class="text-sm text-gray-900 max-w-xs truncate">
+                                    <%= booking.notes || '-' %>
+                                </div>
+                                <% if (booking.google_calendar_link) { %>
+                                <div class="text-xs text-blue-600 mt-1">
+                                    <a href="<%= booking.google_calendar_link %>" target="_blank" class="hover:underline">
+                                        View in Google Calendar
+                                    </a>
+                                </div>
+                                <% } %>
+                            </td>
+                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex space-x-2 sm:space-x-3">
+                                    <button onclick="editBooking(<%= booking.id %>)" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50" title="Edit Booking">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+                                    <button onclick="createContact(<%= booking.id %>)" class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50" title="Create Contact">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                    </button>
+                                    <button onclick="deleteBooking(<%= booking.id %>)" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Delete Booking">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <% if (pagination.totalPages > 1) { %>
+            <div class="px-6 py-4 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Showing page <%= pagination.currentPage %> of <%= pagination.totalPages %> 
+                        (<%= pagination.totalBookings %> total bookings)
+                    </div>
+                    <div class="flex space-x-2">
+                        <% if (pagination.hasPrev) { %>
+                        <a href="?page=<%= pagination.prevPage %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Previous
+                        </a>
+                        <% } %>
+                        <% if (pagination.hasNext) { %>
+                        <a href="?page=<%= pagination.nextPage %>" class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Next
+                        </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+    </main>
+
+    <!-- Create Contact Modal -->
+    <div id="create-contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Create Contact from Booking</h3>
+                </div>
+                <form id="create-contact-form" class="px-6 py-4 space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                            <input type="text" name="name" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" name="email" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input type="tel" name="phone" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                            <input type="text" name="company" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                            <select name="source" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="booking">Booking</option>
+                                <option value="referral">Referral</option>
+                                <option value="website">Website</option>
+                                <option value="social_media">Social Media</option>
+                                <option value="networking">Networking</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select name="status" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="new_lead">New Lead</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="qualified">Qualified</option>
+                                <option value="proposal">Proposal</option>
+                                <option value="negotiation">Negotiation</option>
+                                <option value="closed_won">Closed Won</option>
+                                <option value="closed_lost">Closed Lost</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Potential</label>
+                        <select name="referral_potential" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="1">1 - Low</option>
+                            <option value="2">2 - Below Average</option>
+                            <option value="3">3 - Average</option>
+                            <option value="4">4 - Above Average</option>
+                            <option value="5">5 - High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea name="notes" rows="2" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button id="cancel-create-contact" class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="save-create-contact" class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        Create Contact
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Delete Booking</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <p class="text-gray-600">Are you sure you want to delete this booking? This action cannot be undone.</p>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button id="cancel-delete" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Booking Modal -->
+    <div id="edit-booking-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Edit Booking</h3>
+                </div>
+                <form id="edit-booking-form" class="px-4 sm:px-6 py-4 space-y-4">
+                    <input type="hidden" id="edit-booking-id" name="booking_id">
+                    
+                    <!-- Read-only Client Information -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">Client Name</label>
+                            <div class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" id="readonly-client-name">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">Client Email</label>
+                            <div class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" id="readonly-client-email">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">Client Phone</label>
+                            <div class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" id="readonly-client-phone">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Read-only Date & Time -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">Date</label>
+                            <div class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" id="readonly-date">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">Time</label>
+                            <div class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" id="readonly-time">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Editable Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                        <select name="status" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Editable Notes -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea name="notes" rows="4" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+                    </div>
+                </form>
+                <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                    <button id="cancel-edit-booking" class="w-full sm:w-auto px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="save-edit-booking" class="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Make bookings data available to JavaScript
+        let allBookings = <%- JSON.stringify(bookings) %>;
+        let filteredBookings = [...allBookings];
+        let deleteBookingId = null;
+        let currentBookingId = null;
+
+        // Utility functions for date/time formatting
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        function formatTimeShort(timeString) {
+            if (!timeString) return '';
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Sorting functions
+        function sortBookings(bookings, sortOrder) {
+            const sorted = [...bookings];
+            
+            switch(sortOrder) {
+                case 'date-asc':
+                    sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    break;
+                case 'date-desc':
+                    sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    break;
+                default:
+                    return sorted;
+            }
+            
+            return sorted;
+        }
+
+        function filterBookings(bookings, status) {
+            if (!status) return bookings;
+            return bookings.filter(booking => booking.status === status);
+        }
+
+        function searchBookings(bookings, searchTerm) {
+            if (!searchTerm.trim()) return bookings;
+            
+            const term = searchTerm.toLowerCase();
+            return bookings.filter(booking => {
+                return (
+                    booking.client_name?.toLowerCase().includes(term) ||
+                    booking.client_email?.toLowerCase().includes(term) ||
+                    booking.client_phone?.includes(term) ||
+                    booking.notes?.toLowerCase().includes(term)
+                );
+            });
+        }
+
+        function renderBookingsTable(bookings) {
+            const tbody = document.getElementById('bookings-table-body');
+            tbody.innerHTML = '';
+            
+            if (bookings.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-lg font-medium">No bookings found</p>
+                                <p class="text-sm">Your appointments will appear here</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">${booking.client_name}</div>
+                            <div class="text-sm text-gray-500">${booking.client_email}</div>
+                            ${booking.client_phone ? `<div class="text-sm text-gray-500">${booking.client_phone}</div>` : ''}
+                            <!-- Show status on mobile -->
+                            <div class="sm:hidden mt-2">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                    ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
+                                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                      'bg-red-100 text-red-800'}">
+                                    ${booking.status || 'pending'}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">
+                            ${formatDate(booking.date)}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}
+                        </div>
+                        <!-- Show notes on mobile -->
+                        <div class="md:hidden mt-2">
+                            <div class="text-sm text-gray-900 max-w-xs truncate">
+                                ${booking.notes || '-'}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                            ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                              'bg-red-100 text-red-800'}">
+                            ${booking.status || 'pending'}
+                        </span>
+                    </td>
+                    <td class="hidden md:table-cell px-4 sm:px-6 py-4">
+                        <div class="text-sm text-gray-900 max-w-xs truncate">
+                            ${booking.notes || '-'}
+                        </div>
+                        ${booking.google_calendar_link ? `
+                        <div class="text-xs text-blue-600 mt-1">
+                            <a href="${booking.google_calendar_link}" target="_blank" class="hover:underline">
+                                View in Google Calendar
+                            </a>
+                        </div>
+                        ` : ''}
+                    </td>
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div class="flex space-x-2 sm:space-x-3">
+                            <button onclick="editBooking(${booking.id})" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50" title="Edit Booking">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="createContact(${booking.id})" class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50" title="Create Contact">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteBooking(${booking.id})" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Delete Booking">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function applyFiltersAndSort() {
+            const sortOrder = document.getElementById('sort-order').value;
+            const statusFilter = document.getElementById('status-filter').value;
+            const searchTerm = document.getElementById('search-bookings').value;
+            
+            // Show/hide clear button based on search input
+            const clearButton = document.getElementById('clear-search');
+            if (searchTerm.trim()) {
+                clearButton.classList.remove('hidden');
+            } else {
+                clearButton.classList.add('hidden');
+            }
+            
+            // Apply filters in order: search -> status -> sort
+            let filtered = searchBookings(allBookings, searchTerm);
+            filtered = filterBookings(filtered, statusFilter);
+            filteredBookings = sortBookings(filtered, sortOrder);
+            
+            // Update table display
+            renderBookingsTable(filteredBookings);
+            
+            // Update stats with filtered data
+            updateStats(filteredBookings);
+        }
+
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            applyFiltersAndSort(); // Initialize table with default sorting
+        });
+
+        function updateStats(bookingsToUse = allBookings) {
+            const confirmed = bookingsToUse.filter(b => b.status === 'confirmed').length;
+            const pending = bookingsToUse.filter(b => b.status === 'pending' || !b.status).length;
+            const cancelled = bookingsToUse.filter(b => b.status === 'cancelled').length;
+            
+            document.getElementById('confirmed-count').textContent = confirmed;
+            document.getElementById('pending-count').textContent = pending;
+            document.getElementById('cancelled-count').textContent = cancelled;
+        }
+
+        // Create contact function
+        function createContact(bookingId) {
+            console.log('Creating contact for booking ID:', bookingId);
+            
+            // Set the current booking ID for later use
+            currentBookingId = bookingId;
+            
+            // Find the booking data from the current bookings array
+            const booking = allBookings.find(b => b.id === bookingId);
+            if (!booking) {
+                console.error('Booking not found:', bookingId);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Booking not found'
+                });
+                return;
+            }
+
+            console.log('Found booking:', booking);
+
+            // Populate the form with booking data
+            const form = document.getElementById('create-contact-form');
+            if (!form) {
+                console.error('Form not found');
+                return;
+            }
+
+            form.querySelector('input[name="name"]').value = booking.client_name || '';
+            form.querySelector('input[name="email"]').value = booking.client_email || '';
+            form.querySelector('input[name="phone"]').value = booking.client_phone || '';
+            form.querySelector('select[name="source"]').value = 'booking';
+            form.querySelector('select[name="status"]').value = 'new_lead';
+            form.querySelector('select[name="referral_potential"]').value = '3';
+            
+            // Add booking info to notes
+            const notesTextarea = form.querySelector('textarea[name="notes"]');
+            const bookingInfo = `Created from booking on ${formatDate(booking.date)} at ${formatTime(booking.start_time)}`;
+            if (booking.notes) {
+                notesTextarea.value = `${booking.notes}\n\n${bookingInfo}`;
+            } else {
+                notesTextarea.value = bookingInfo;
+            }
+
+            // Show the modal
+            document.getElementById('create-contact-modal').classList.remove('hidden');
+        }
+
+        function editBooking(bookingId) {
+            console.log('Editing booking ID:', bookingId);
+            
+            // Find the booking data from the current bookings array
+            const booking = allBookings.find(b => b.id === bookingId);
+            if (!booking) {
+                console.error('Booking not found:', bookingId);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Booking not found'
+                });
+                return;
+            }
+
+            console.log('Found booking:', booking);
+
+            // Populate the form with booking data
+            const form = document.getElementById('edit-booking-form');
+            if (!form) {
+                console.error('Form not found');
+                return;
+            }
+
+            // Set the hidden booking ID
+            document.getElementById('edit-booking-id').value = bookingId;
+            
+            // Populate read-only fields
+            document.getElementById('readonly-client-name').textContent = booking.client_name || '—';
+            document.getElementById('readonly-client-email').textContent = booking.client_email || '—';
+            document.getElementById('readonly-client-phone').textContent = booking.client_phone || '—';
+            
+            // Format and display date
+            const formattedDate = new Date(booking.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            document.getElementById('readonly-date').textContent = formattedDate;
+            
+            // Format and display time
+            const startTime = formatTimeShort(booking.start_time);
+            const endTime = formatTimeShort(booking.end_time);
+            document.getElementById('readonly-time').textContent = `${startTime} - ${endTime}`;
+            
+            // Populate editable fields
+            form.querySelector('select[name="status"]').value = booking.status || 'pending';
+            form.querySelector('textarea[name="notes"]').value = booking.notes || '';
+
+            // Show the modal
+            document.getElementById('edit-booking-modal').classList.remove('hidden');
+        }
+
+        function deleteBooking(bookingId) {
+            deleteBookingId = bookingId;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        // Create contact modal handlers
+        document.getElementById('cancel-create-contact').addEventListener('click', function() {
+            document.getElementById('create-contact-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-create-contact').addEventListener('click', async function() {
+            console.log('Save create contact clicked');
+            
+            const form = document.getElementById('create-contact-form');
+            const formData = new FormData(form);
+            const contactData = Object.fromEntries(formData.entries());
+
+            // Add the booking_id to the contact data
+            contactData.booking_id = currentBookingId;
+
+            console.log('Contact data:', contactData);
+
+            try {
+                const response = await fetch('/crm/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(contactData)
+                });
+
+                const data = await response.json();
+                console.log('Response:', data);
+
+                if (data.success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Contact created!',
+                        message: `${contactData.name} has been added to your contacts with a meeting interaction.`
+                    });
+
+                    // Close modal and reset form
+                    document.getElementById('create-contact-modal').classList.add('hidden');
+                    form.reset();
+                    currentBookingId = null;
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to create contact'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to create contact'
+                });
+            }
+        });
+
+        // Edit booking modal handlers
+        document.getElementById('cancel-edit-booking').addEventListener('click', function() {
+            document.getElementById('edit-booking-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-edit-booking').addEventListener('click', async function() {
+            console.log('Save edit booking clicked');
+            
+            const form = document.getElementById('edit-booking-form');
+            const formData = new FormData(form);
+            const bookingData = Object.fromEntries(formData.entries());
+            const bookingId = bookingData.booking_id;
+
+            console.log('Booking data:', bookingData);
+
+            try {
+                const response = await fetch(`/bookings/${bookingId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const data = await response.json();
+                console.log('Response:', data);
+
+                if (data.success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Booking updated!',
+                        message: 'The booking has been updated successfully.'
+                    });
+
+                    // Close modal and reset form
+                    document.getElementById('edit-booking-modal').classList.add('hidden');
+                    form.reset();
+                    
+                    // Reload the page to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to update booking'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to update booking'
+                });
+            }
+        });
+
+        // Delete modal handlers
+        document.getElementById('cancel-delete').addEventListener('click', function() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            deleteBookingId = null;
+        });
+
+        document.getElementById('confirm-delete').addEventListener('click', async function() {
+            if (!deleteBookingId) return;
+            
+            try {
+                const response = await fetch(`/bookings/${deleteBookingId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Booking deleted!',
+                        message: 'The booking has been removed.'
+                    });
+                    
+                    // Reload the page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to delete booking'
+                    });
+                }
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to delete booking'
+                });
+            }
+            
+            document.getElementById('delete-modal').classList.add('hidden');
+            deleteBookingId = null;
+        });
+
+        // Sort and filter event listeners
+        document.getElementById('sort-order').addEventListener('change', applyFiltersAndSort);
+        document.getElementById('status-filter').addEventListener('change', applyFiltersAndSort);
+        document.getElementById('search-bookings').addEventListener('input', applyFiltersAndSort);
+        
+        // Clear search button
+        document.getElementById('clear-search').addEventListener('click', function() {
+            document.getElementById('search-bookings').value = '';
+            applyFiltersAndSort();
+        });
+
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', function() {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

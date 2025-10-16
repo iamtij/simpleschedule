@@ -4,6 +4,7 @@ const db = require('../db');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
 const googleCalendarService = require('../services/googleCalendar');
+const timezone = require('../utils/timezone');
 
 // Helper function to convert time string (HH:MM) to minutes since midnight
 function timeToMinutes(timeStr) {
@@ -228,9 +229,22 @@ router.post('/:username', async (req, res) => {
         if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
             console.log('Google Calendar is connected and blocking is enabled, checking for conflicts...');
             
-            // Format the booking time for Google Calendar API
-            const bookingStartTime = `${bookingDate.toISOString().split('T')[0]}T${start_time}:00`;
-            const bookingEndTime = `${bookingDate.toISOString().split('T')[0]}T${end_time}:00`;
+            // Get user's timezone for proper time formatting
+            const userResult = await db.query('SELECT timezone FROM users WHERE id = $1', [userId]);
+            const userTimezone = timezone.getUserTimezone(userResult.rows[0]?.timezone);
+            
+            // Format the booking time for Google Calendar API with proper timezone
+            const bookingStartTime = `${bookingDate.toISOString().split('T')[0]}T${start_time}:00${timezone.getDefaultUtcOffset()}`;
+            const bookingEndTime = `${bookingDate.toISOString().split('T')[0]}T${end_time}:00${timezone.getDefaultUtcOffset()}`;
+            
+            console.log('🔍 Booking Conflict Check:', {
+                bookingStartTime,
+                bookingEndTime,
+                userTimezone,
+                date,
+                start_time,
+                end_time
+            });
             
             const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
                 userId,
@@ -291,8 +305,11 @@ router.post('/:username', async (req, res) => {
         if (tokens && tokens.google_access_token) {
             console.log('Google Calendar is connected, creating event...');
             
+            // Get user's timezone for Google Calendar event
+            const userResult = await db.query('SELECT timezone FROM users WHERE id = $1', [userId]);
+            const userTimezone = timezone.getUserTimezone(userResult.rows[0]?.timezone);
+            
             // Create Google Calendar event
-            // Use Asia/Manila timezone since the user is in Philippines
             let description = `Booking from isked\nClient: ${booking.client_name}\nEmail: ${booking.client_email}`;
             
             if (booking.client_phone) {
@@ -310,11 +327,20 @@ router.post('/:username', async (req, res) => {
             const eventDetails = {
                 title: `Meeting with ${booking.client_name}`,
                 description: description,
-                startTime: `${booking.date}T${booking.start_time}:00`,
-                endTime: `${booking.date}T${booking.end_time}:00`,
-                timeZone: 'Asia/Manila',
+                startTime: `${booking.date}T${booking.start_time}:00${timezone.getDefaultUtcOffset()}`,
+                endTime: `${booking.date}T${booking.end_time}:00${timezone.getDefaultUtcOffset()}`,
+                timeZone: userTimezone,
                 attendees: [{ email: booking.client_email }],
             };
+            
+            console.log('🔍 Google Calendar Event Details:', {
+                startTime: eventDetails.startTime,
+                endTime: eventDetails.endTime,
+                timeZone: eventDetails.timeZone,
+                bookingDate: booking.date,
+                startTime: booking.start_time,
+                endTime: booking.end_time
+            });
             
             const googleEvent = await googleCalendarService.createCalendarEvent(userId, eventDetails);
             console.log('✅ Google Calendar event created successfully!');
@@ -382,7 +408,7 @@ router.get('/:username/slots', async (req, res) => {
         
         const userId = userResult.rows[0].id;
         const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
-        const userTimezone = userResult.rows[0].timezone || 'UTC';
+        const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
         const date = req.query.date;
         const clientTimezone = req.query.timezone || userTimezone;
         
@@ -394,13 +420,14 @@ router.get('/:username/slots', async (req, res) => {
         const [year, month, day] = date.split('-').map(Number);
         const requestedDate = new Date(Date.UTC(year, month - 1, day));
         
-        // Get current time in client's timezone
+        // Get current time in client's timezone - simplified for performance
         const now = new Date();
-        const clientOffset = now.getTimezoneOffset();
-        const clientTime = new Date(now.getTime() - clientOffset * 60000);
         
         // Check if the requested date is in the past (in client's timezone)
-        if (requestedDate < clientTime) {
+        const targetDate = new Date(Date.UTC(year, month - 1, day));
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (targetDate < today) {
             return res.json({ slots: [] });
         }
         
@@ -411,7 +438,7 @@ router.get('/:username/slots', async (req, res) => {
             day,
             requestedDate: requestedDate.toISOString(),
             dayOfWeek: requestedDate.getUTCDay(),
-            clientTime: clientTime.toISOString(),
+            clientTime: now.toISOString(),
             clientTimezone
         });
         
@@ -434,11 +461,22 @@ router.get('/:username/slots', async (req, res) => {
             return res.json({ slots: [] });
         }
 
-        // Get breaks for the day
-        const breaksResult = await db.query(
+        // Get breaks for the day (both day-specific and universal breaks)
+        const dayBreaksResult = await db.query(
             'SELECT start_time, end_time FROM breaks WHERE user_id = $1 AND day_of_week = $2',
             [userId, dayOfWeek]
         );
+        
+        // Get universal breaks
+        const universalBreaksResult = await db.query(
+            'SELECT start_time, end_time FROM universal_breaks WHERE user_id = $1 AND enabled = true',
+            [userId]
+        );
+        
+        // Combine both types of breaks
+        const breaksResult = {
+            rows: [...dayBreaksResult.rows, ...universalBreaksResult.rows]
+        };
 
         // Get existing bookings for the date
         const bookingsResult = await db.query(
@@ -472,25 +510,56 @@ router.get('/:username/slots', async (req, res) => {
                 
                 if (conflictInfo.hasConflicts) {
                     console.log(`Found ${conflictInfo.conflicts.length} Google Calendar conflicts for ${date}`);
-                    googleCalendarConflicts = conflictInfo.conflicts.map(conflict => ({
-                        start: timeToMinutes(new Date(conflict.start).toLocaleTimeString('en-US', { 
-                            hour12: false, 
-                            timeZone: 'Asia/Manila',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }).slice(0, 5)),
-                        end: timeToMinutes(new Date(conflict.end).toLocaleTimeString('en-US', { 
-                            hour12: false, 
-                            timeZone: 'Asia/Manila',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }).slice(0, 5))
-                    }));
+                    googleCalendarConflicts = conflictInfo.conflicts.map(conflict => {
+                        const startDate = new Date(conflict.start);
+                        const endDate = new Date(conflict.end);
+                        
+                        console.log(`🔍 Raw Google Calendar Conflict:`, {
+                            originalStart: conflict.start,
+                            originalEnd: conflict.end,
+                            userTimezone: userTimezone
+                        });
+                        
+                        // Parse the conflict times directly as they come from Google Calendar
+                        // Google Calendar returns times in the user's timezone
+                        console.log(`🔍 Parsing conflict data:`, {
+                            conflictStart: conflict.start,
+                            conflictEnd: conflict.end,
+                            startType: typeof conflict.start,
+                            endType: typeof conflict.end
+                        });
+                        
+                        let startTimeStr, endTimeStr;
+                        
+                        if (typeof conflict.start === 'string' && conflict.start.includes('T')) {
+                            // Standard ISO format: 2025-10-21T09:00:00+08:00
+                            startTimeStr = conflict.start.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
+                            endTimeStr = conflict.end.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
+                        } else if (typeof conflict.start === 'string') {
+                            // Date-only format: 2025-10-21 (all-day event)
+                            console.log(`⚠️ All-day event detected: ${conflict.start} - ${conflict.end}`);
+                            // Skip all-day events as they shouldn't block specific time slots
+                            return null;
+                        } else {
+                            console.log(`⚠️ Unexpected conflict format:`, conflict);
+                            return null;
+                        }
+                        
+                        console.log(`📅 Google Calendar Conflict: ${startTimeStr}-${endTimeStr} (${timeToMinutes(startTimeStr)}-${timeToMinutes(endTimeStr)} minutes)`);
+                        
+                        const conflictInMinutes = {
+                            start: timeToMinutes(startTimeStr),
+                            end: timeToMinutes(endTimeStr)
+                        };
+                        
+                        return conflictInMinutes;
+                    }).filter(conflict => conflict !== null);
                 }
             }
-        } catch (googleError) {
-            console.error('Failed to check Google Calendar conflicts for availability:', googleError.message);
-            // Continue without Google Calendar blocking if there's an error
+        } catch (error) {
+            console.error('Error checking Google Calendar conflicts:', error.message);
+            // Continue without Google Calendar conflicts if there's an error
+            googleCalendarConflicts = [];
         }
 
         // Generate available time slots
@@ -509,8 +578,8 @@ router.get('/:username/slots', async (req, res) => {
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
         // Current time in minutes since midnight in client's timezone
-        const currentTimeMinutes = clientTime.getHours() * 60 + clientTime.getMinutes();
-        const isToday = requestedDate.toDateString() === clientTime.toDateString();
+        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+        const isToday = requestedDate.toDateString() === now.toDateString();
 
         // Generate slots with proper intervals
         for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
@@ -522,11 +591,17 @@ router.get('/:username/slots', async (req, res) => {
                 continue;
             }
             
-            // Check if slot overlaps with any breaks
+            // Check if slot overlaps with any breaks (including buffer time)
             const overlapsBreak = breaks.some(b => {
                 const breakStart = timeToMinutes(b.start_time);
                 const breakEnd = timeToMinutes(b.end_time);
-                return (slotStart < breakEnd && slotEnd > breakStart);
+                
+                // Apply buffer time to the break boundaries
+                const breakStartWithBuffer = breakStart - bufferTime;
+                const breakEndWithBuffer = breakEnd + bufferTime;
+                
+                // Check if slot overlaps with the expanded break zone (including buffer)
+                return (slotStart < breakEndWithBuffer && slotEnd > breakStartWithBuffer);
             });
             
             // Check if slot overlaps with any bookings
@@ -536,19 +611,53 @@ router.get('/:username/slots', async (req, res) => {
                 return (slotStart < bookingEnd && slotEnd > bookingStart);
             });
             
-            // Check if slot overlaps with any Google Calendar events
+            // Check if slot overlaps with any Google Calendar events (including buffer time)
             const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
-                return (slotStart < conflict.end && slotEnd > conflict.start);
+                // Apply buffer time to the conflict boundaries
+                const conflictStartWithBuffer = conflict.start - bufferTime;
+                const conflictEndWithBuffer = conflict.end + bufferTime;
+                
+                // Debug logging for buffer time logic
+                const slotStartTime = minutesToTime(slotStart);
+                const slotEndTime = minutesToTime(slotEnd);
+                const conflictStartTime = minutesToTime(conflict.start);
+                const conflictEndTime = minutesToTime(conflict.end);
+                const conflictStartWithBufferTime = minutesToTime(conflictStartWithBuffer);
+                const conflictEndWithBufferTime = minutesToTime(conflictEndWithBuffer);
+                
+                const overlaps = (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
+                
+                // Always log the conflict check for debugging
+                console.log(`🔍 Checking conflict: Slot ${slotStartTime}-${slotEndTime} vs Google Calendar ${conflictStartTime}-${conflictEndTime} (with ${bufferTime}min buffer: ${conflictStartWithBufferTime}-${conflictEndWithBufferTime}) = ${overlaps ? 'OVERLAPS' : 'NO OVERLAP'}`);
+                
+                if (overlaps) {
+                    console.log(`🚫 BLOCKED: Slot ${slotStartTime}-${slotEndTime} overlaps with Google Calendar conflict ${conflictStartTime}-${conflictEndTime} (with ${bufferTime}min buffer: ${conflictStartWithBufferTime}-${conflictEndWithBufferTime})`);
+                }
+                
+                // Check if slot overlaps with the expanded conflict zone (including buffer)
+                return overlaps;
             });
             
             // Only check if the actual meeting fits within working hours
             const fitsInWorkingHours = slotEnd <= workEnd;
             
+            const slotStartTime = minutesToTime(slotStart);
+            const slotEndTime = minutesToTime(slotEnd);
+            
             if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
+                console.log(`✅ AVAILABLE: Slot ${slotStartTime}-${slotEndTime} is available`);
                 slots.push({
-                    start_time: minutesToTime(slotStart),
-                    end_time: minutesToTime(slotEnd)
+                    start_time: slotStartTime,
+                    end_time: slotEndTime
                 });
+            } else {
+                const reasons = [];
+                if (overlapsBreak) reasons.push('overlaps break');
+                if (overlapsBooking) reasons.push('overlaps booking');
+                if (overlapsGoogleCalendar) reasons.push('overlaps Google Calendar');
+                if (!fitsInWorkingHours) reasons.push('doesn\'t fit in working hours');
+                
+                console.log(`❌ BLOCKED: Slot ${slotStartTime}-${slotEndTime} blocked because: ${reasons.join(', ')}`);
             }
         }
 

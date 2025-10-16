@@ -75,14 +75,21 @@ const dashboardRoutes = require('./routes/dashboard');
 const testRoutes = require('./routes/test');
 const adminRoutes = require('./routes/admin');
 const googleAuthRoutes = require('./routes/googleAuth');
+const crmRoutes = require('./routes/crm');
 
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/booking', bookingRoutes);
-app.use('/dashboard', dashboardRoutes);
 app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
+app.use('/crm', crmRoutes);
 app.use('/', googleAuthRoutes); // Google auth routes are mounted at root level
+
+// Import root-level routes for cleaner URLs
+const rootRoutes = require('./routes/root');
+
+// Mount root-level routes
+app.use('/', rootRoutes);
 
 // Home route
 app.get('/', (req, res) => {

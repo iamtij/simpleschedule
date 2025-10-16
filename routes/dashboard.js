@@ -10,6 +10,48 @@ const requireLogin = (req, res, next) => {
   next();
 };
 
+// Contact detail page
+router.get('/contacts/:id', requireLogin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get user data
+    const userResult = await db.query(
+      'SELECT id, email, username, full_name, display_name FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.redirect('/');
+    }
+    const user = userResult.rows[0];
+
+    res.render('contact-detail', { user, contactId: id });
+  } catch (error) {
+    console.error('Contact detail page error:', error);
+    return res.redirect('/dashboard/contacts');
+  }
+});
+
+// Contacts page
+router.get('/contacts', requireLogin, async (req, res) => {
+  try {
+    // Get user data
+    const userResult = await db.query(
+      'SELECT id, email, username, full_name, display_name FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.redirect('/');
+    }
+    const user = userResult.rows[0];
+
+    res.render('contacts', { user });
+  } catch (error) {
+    console.error('Contacts page error:', error);
+    return res.redirect('/');
+  }
+});
+
 // Dashboard home
 router.get('/', requireLogin, async (req, res) => {
   try {
@@ -75,56 +117,8 @@ router.get('/availability', requireLogin, async (req, res) => {
 });
 
 // Update availability
-router.post('/availability', requireLogin, async (req, res) => {
-  const userId = req.session.userId;
-  const { availability, breaks, buffer_minutes } = req.body;
-  
-  try {
-    // Start a transaction
-    await db.query('BEGIN');
-
-    // Update buffer_minutes in users table and set has_set_availability to true
-    await db.query(
-      'UPDATE users SET buffer_minutes = $1, has_set_availability = TRUE WHERE id = $2',
-      [buffer_minutes, userId]
-    );
-
-    // Delete existing availability
-    await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
-    
-    // Insert new availability
-    for (const a of availability) {
-      await db.query(
-        'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-        [userId, a.day_of_week, a.start_time, a.end_time]
-      );
-    }
-
-    // Delete existing breaks
-    await db.query('DELETE FROM breaks WHERE user_id = $1', [userId]);
-    
-    // Insert new breaks
-    for (const b of breaks) {
-      await db.query(
-        'INSERT INTO breaks (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-        [userId, b.day_of_week, b.start_time, b.end_time]
-      );
-    }
-
-    // Commit transaction
-    await db.query('COMMIT');
-    
-    res.json({ success: true });
-  } catch (error) {
-    // Rollback in case of error
-    await db.query('ROLLBACK');
-    console.error('Error updating availability:', error);
-    res.status(500).json({ success: false, error: 'Failed to update availability' });
-  }
-});
-
-// Get bookings
-router.get('/bookings', requireLogin, async (req, res) => {
+// Get bookings for calendar (API endpoint)
+router.get('/bookings/api', requireLogin, async (req, res) => {
   try {
     // Get bookings
     const result = await db.query(`
@@ -176,6 +170,75 @@ router.get('/bookings', requireLogin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching bookings:', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+// Get bookings page
+router.get('/bookings', requireLogin, async (req, res) => {
+  try {
+    // Get user info
+    const userResult = await db.query(
+      'SELECT id, username, display_name, email FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.redirect('/');
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Get bookings with pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const countResult = await db.query(
+      'SELECT COUNT(*) FROM bookings WHERE user_id = $1',
+      [req.session.userId]
+    );
+    const totalBookings = parseInt(countResult.rows[0].count);
+    
+    // Get bookings
+    const result = await db.query(`
+      SELECT 
+        id,
+        client_name,
+        client_email,
+        client_phone,
+        date,
+        start_time,
+        end_time,
+        notes,
+        status,
+        google_event_id,
+        google_calendar_link,
+        created_at
+      FROM bookings 
+      WHERE user_id = $1 
+      ORDER BY date DESC, start_time DESC
+      LIMIT $2 OFFSET $3
+    `, [req.session.userId, limit, offset]);
+    
+    const totalPages = Math.ceil(totalBookings / limit);
+    
+    res.render('bookings', { 
+      user,
+      bookings: result.rows,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalBookings,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+        nextPage: page + 1,
+        prevPage: page - 1
+      }
+    });
+  } catch (error) {
+    console.error('Bookings page error:', error);
+    return res.redirect('/dashboard');
   }
 });
 
@@ -295,6 +358,60 @@ router.patch('/bookings/:id/notes', requireLogin, async (req, res) => {
   }
 });
 
+// Update booking details (status, notes, etc.)
+router.patch('/bookings/:id', requireLogin, async (req, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+
+  try {
+    // First verify the booking belongs to the user
+    const bookingCheck = await db.query(
+      'SELECT id FROM bookings WHERE id = $1 AND user_id = $2',
+      [id, req.session.userId]
+    );
+
+    if (bookingCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Build update query dynamically based on provided fields
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (status !== undefined) {
+      updates.push(`status = $${paramCount}`);
+      values.push(status);
+      paramCount++;
+    }
+
+    if (notes !== undefined) {
+      updates.push(`notes = $${paramCount}`);
+      values.push(notes);
+      paramCount++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    // Add updated_at timestamp
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    // Add the booking ID as the last parameter
+    values.push(id);
+
+    const query = `UPDATE bookings SET ${updates.join(', ')} WHERE id = $${paramCount}`;
+    
+    await db.query(query, values);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ error: 'Failed to update booking' });
+  }
+});
+
 // Get account details
 router.get('/account', requireLogin, async (req, res) => {
   try {
@@ -381,7 +498,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name, meeting_link FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes FROM users WHERE id = $1',
             [req.session.userId]
         );
 
@@ -391,8 +508,39 @@ router.get('/settings', requireLogin, async (req, res) => {
             return res.redirect('/auth/login');
         }
 
+        // Get availability data
+        const availabilityResult = await db.query(
+            'SELECT day_of_week, start_time, end_time FROM availability WHERE user_id = $1 ORDER BY day_of_week',
+            [req.session.userId]
+        );
+
+        // Get universal breaks
+        const breaksResult = await db.query(
+            'SELECT enabled, start_time, end_time FROM universal_breaks WHERE user_id = $1',
+            [req.session.userId]
+        );
+
+        // Format the availability data
+        const workingDays = availabilityResult.rows.map(row => row.day_of_week);
+        const availabilityData = {};
+        
+        availabilityResult.rows.forEach(row => {
+            availabilityData[`day_${row.day_of_week}_start`] = row.start_time;
+            availabilityData[`day_${row.day_of_week}_end`] = row.end_time;
+        });
+
+        const availabilitySettings = {
+            working_days: workingDays,
+            buffer_minutes: userResult.rows[0].buffer_minutes || 0,
+            break_enabled: breaksResult.rows[0]?.enabled || false,
+            break_start: breaksResult.rows[0]?.start_time || '12:00',
+            break_end: breaksResult.rows[0]?.end_time || '13:00',
+            ...availabilityData
+        };
+
         res.render('account-settings', {
             user: userResult.rows[0],
+            availabilitySettings: availabilitySettings,
             title: 'Account Settings'
         });
     } catch (error) {
@@ -402,6 +550,130 @@ router.get('/settings', requireLogin, async (req, res) => {
             error: { status: 500 }
         });
     }
+});
+
+// GET /dashboard/availability - Load availability settings
+router.get('/availability', requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    console.log('🔍 Availability endpoint called, userId:', userId);
+
+    // Get working days from availability table
+    const availabilityResult = await db.query(
+      'SELECT day_of_week, start_time, end_time FROM availability WHERE user_id = $1 ORDER BY day_of_week',
+      [userId]
+    );
+
+    // Get universal breaks
+    const breaksResult = await db.query(
+      'SELECT enabled, start_time, end_time FROM universal_breaks WHERE user_id = $1',
+      [userId]
+    );
+
+    // Get buffer minutes from users table
+    const userResult = await db.query(
+      'SELECT buffer_minutes FROM users WHERE id = $1',
+      [userId]
+    );
+
+    // Format the response
+    const workingDays = availabilityResult.rows.map(row => row.day_of_week);
+    const availability = {};
+    
+    // Add working hours for each day
+    availabilityResult.rows.forEach(row => {
+      availability[`day_${row.day_of_week}_start`] = row.start_time;
+      availability[`day_${row.day_of_week}_end`] = row.end_time;
+    });
+
+    const response = {
+      success: true,
+      working_days: workingDays,
+      buffer_minutes: userResult.rows[0]?.buffer_minutes || 0,
+      break_enabled: breaksResult.rows[0]?.enabled || false,
+      break_start: breaksResult.rows[0]?.start_time || '12:00',
+      break_end: breaksResult.rows[0]?.end_time || '13:00',
+      ...availability
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error loading availability settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to load availability settings' });
+  }
+});
+
+// POST /dashboard/availability - Save availability settings
+router.post('/availability', requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    console.log('🔍 POST availability endpoint called, userId:', userId);
+    console.log('📊 Request body:', req.body);
+    
+    const {
+      working_days = [],
+      break_enabled = false,
+      break_start = '12:00',
+      break_end = '13:00',
+      buffer_minutes = 0
+    } = req.body;
+
+    // Start a transaction
+    await db.query('BEGIN');
+
+    try {
+      // Clear existing availability settings
+      await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
+
+      // Insert new working days
+      for (const dayIndex of working_days) {
+        const startTime = req.body[`day_${dayIndex}_start`] || '09:00';
+        const endTime = req.body[`day_${dayIndex}_end`] || '17:00';
+        
+        await db.query(
+          'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
+          [userId, dayIndex, startTime, endTime]
+        );
+      }
+
+      // Update or insert universal breaks
+      const existingBreak = await db.query(
+        'SELECT id FROM universal_breaks WHERE user_id = $1',
+        [userId]
+      );
+
+      if (existingBreak.rows.length > 0) {
+        await db.query(
+          'UPDATE universal_breaks SET enabled = $1, start_time = $2, end_time = $3, updated_at = CURRENT_TIMESTAMP WHERE user_id = $4',
+          [break_enabled, break_start, break_end, userId]
+        );
+      } else {
+        await db.query(
+          'INSERT INTO universal_breaks (user_id, enabled, start_time, end_time) VALUES ($1, $2, $3, $4)',
+          [userId, break_enabled, break_start, break_end]
+        );
+      }
+
+      // Update buffer minutes in users table
+      await db.query(
+        'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
+        [buffer_minutes, userId]
+      );
+
+      // Commit transaction
+      await db.query('COMMIT');
+
+      // Redirect back to settings page with success message
+      res.redirect('/dashboard/settings?success=availability_saved');
+    } catch (error) {
+      // Rollback transaction on error
+      await db.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error saving availability settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to save availability settings' });
+  }
 });
 
 module.exports = router; 

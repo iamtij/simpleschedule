@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 const db = require('../db');
+const timezone = require('../utils/timezone');
 
 class GoogleCalendarService {
     constructor() {
@@ -198,11 +199,7 @@ class GoogleCalendarService {
             
             // Ensure timezone is included in the time strings
             const formatTimeWithTimezone = (timeStr) => {
-                if (timeStr.includes('+') || timeStr.includes('Z')) {
-                    return timeStr; // Already has timezone
-                }
-                // Add Asia/Manila timezone (+08:00) if no timezone specified
-                return timeStr + '+08:00';
+                return timezone.formatTimeWithTimezone(timeStr);
             };
             
             const response = await calendar.events.list({
@@ -232,11 +229,7 @@ class GoogleCalendarService {
                     
                     // Ensure timezone is included in the time strings
                     const formatTimeWithTimezone = (timeStr) => {
-                        if (timeStr.includes('+') || timeStr.includes('Z')) {
-                            return timeStr; // Already has timezone
-                        }
-                        // Add Asia/Manila timezone (+08:00) if no timezone specified
-                        return timeStr + '+08:00';
+                        return timezone.formatTimeWithTimezone(timeStr);
                     };
                     
                     const response = await calendar.events.list({
@@ -323,8 +316,19 @@ class GoogleCalendarService {
                     
                     // Find events that conflict with the requested time slot
                     const conflictingEvents = events.filter(event => {
-                        const eventStart = new Date(event.start.dateTime || event.start.date);
-                        const eventEnd = new Date(event.end.dateTime || event.end.date);
+                        // Skip all-day events as they shouldn't block specific time slots
+                        if (event.start.date && !event.start.dateTime) {
+                            console.log(`⚠️ Skipping all-day event: ${event.summary || 'Untitled'} (${event.start.date})`);
+                            return false;
+                        }
+                        
+                        // Only check events with specific times
+                        if (!event.start.dateTime || !event.end.dateTime) {
+                            return false;
+                        }
+                        
+                        const eventStart = new Date(event.start.dateTime);
+                        const eventEnd = new Date(event.end.dateTime);
                         
                         // Check for overlap
                         return (eventStart < new Date(endTime) && eventEnd > new Date(startTime));
@@ -397,11 +401,11 @@ class GoogleCalendarService {
                 description: eventDetails.description || '',
                 start: {
                     dateTime: eventDetails.startTime,
-                    timeZone: eventDetails.timeZone || 'UTC'
+                    timeZone: eventDetails.timeZone || timezone.getDefaultTimezone()
                 },
                 end: {
                     dateTime: eventDetails.endTime,
-                    timeZone: eventDetails.timeZone || 'UTC'
+                    timeZone: eventDetails.timeZone || timezone.getDefaultTimezone()
                 },
                 attendees: eventDetails.attendees || [],
                 reminders: {
