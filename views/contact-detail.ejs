@@ -46,13 +46,13 @@
                     </a>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Contact Details</h1>
-                        <p class="text-sm text-gray-600">View and manage contact information</p>
+                        <p class="text-sm text-gray-600 mt-1">View and manage contact information</p>
                     </div>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div class="flex gap-3">
                     <!-- Primary Action - Always Visible -->
-                    <button id="edit-contact-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
-                        <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="edit-contact-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
                         <span class="hidden sm:inline">Edit Contact</span>
@@ -73,32 +73,6 @@
                             Add Referral
                         </button>
                     </div>
-                    
-                    <!-- Mobile Actions Dropdown -->
-                    <div class="sm:hidden relative">
-                        <button id="mobile-actions-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center w-full">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                            </svg>
-                            More Actions
-                        </button>
-                        
-                        <!-- Mobile Dropdown Menu -->
-                        <div id="mobile-actions-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 hidden z-50 border border-gray-200">
-                            <button id="mobile-add-interaction-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                <svg class="w-4 h-4 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Add Interaction
-                            </button>
-                            <button id="mobile-add-referral-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                <svg class="w-4 h-4 mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Add Referral
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -116,27 +90,55 @@
         <div id="contact-details" class="hidden">
             <!-- Contact Header -->
             <div class="bg-white rounded-lg shadow mb-6">
-                <div class="px-6 py-6">
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center">
+                <div class="px-4 sm:px-6 py-6">
+                    <!-- Mobile Layout -->
+                    <div class="sm:hidden">
+                        <div class="flex items-center mb-4">
                             <div class="flex-shrink-0 h-16 w-16">
                                 <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
                                     <span id="contact-initial" class="text-2xl font-medium text-blue-600"></span>
                                 </div>
                             </div>
-                            <div class="ml-6">
-                                <h2 id="contact-name" class="text-2xl font-bold text-gray-900"></h2>
-                                <p id="contact-company" class="text-lg text-gray-600"></p>
-                                <p id="contact-position" class="text-sm text-gray-500"></p>
+                            <div class="ml-4 flex-1 min-w-0">
+                                <h2 id="contact-name" class="text-xl font-bold text-gray-900 truncate"></h2>
+                                <p id="contact-company" class="text-sm text-gray-600 truncate"></p>
+                                <p id="contact-position" class="text-xs text-gray-500 truncate"></p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-4">
+                        <div class="flex justify-between items-center">
                             <div class="text-center">
                                 <span class="status-badge" id="contact-status-badge"></span>
                             </div>
                             <div class="text-center">
                                 <div class="flex items-center justify-center">
-                                    <span id="contact-referral-stars" class="referral-stars text-xl"></span>
+                                    <span id="contact-referral-stars" class="referral-stars text-lg"></span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Referral Potential</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Desktop Layout -->
+                    <div class="hidden sm:flex items-start justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-16 w-16">
+                                <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <span id="contact-initial-desktop" class="text-2xl font-medium text-blue-600"></span>
+                                </div>
+                            </div>
+                            <div class="ml-6">
+                                <h2 id="contact-name-desktop" class="text-2xl font-bold text-gray-900"></h2>
+                                <p id="contact-company-desktop" class="text-lg text-gray-600"></p>
+                                <p id="contact-position-desktop" class="text-sm text-gray-500"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="text-center">
+                                <span class="status-badge" id="contact-status-badge-desktop"></span>
+                            </div>
+                            <div class="text-center">
+                                <div class="flex items-center justify-center">
+                                    <span id="contact-referral-stars-desktop" class="referral-stars text-xl"></span>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">Referral Potential</p>
                             </div>
@@ -150,10 +152,10 @@
                 <!-- Contact Info -->
                 <div class="lg:col-span-2">
                     <div class="bg-white rounded-lg shadow">
-                        <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-medium text-gray-900">Contact Information</h3>
                         </div>
-                        <div class="px-6 py-4 space-y-4">
+                        <div class="px-4 sm:px-6 py-4 space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-500">Email</label>
@@ -189,10 +191,10 @@
 
                     <!-- Interactions -->
                     <div class="bg-white rounded-lg shadow mt-6">
-                        <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-medium text-gray-900">Recent Interactions</h3>
                         </div>
-                        <div class="px-6 py-4">
+                        <div class="px-4 sm:px-6 py-4">
                             <div id="interactions-list">
                                 <!-- Interactions will be loaded here -->
                             </div>
@@ -204,10 +206,10 @@
                 <div class="space-y-6">
                     <!-- Quick Stats -->
                     <div class="bg-white rounded-lg shadow">
-                        <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-medium text-gray-900">Quick Stats</h3>
                         </div>
-                        <div class="px-6 py-4 space-y-4">
+                        <div class="px-4 sm:px-6 py-4 space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-500">Last Contact</label>
                                 <p id="contact-last-contact" class="mt-1 text-sm text-gray-900"></p>
@@ -225,10 +227,10 @@
 
                     <!-- Referrals -->
                     <div class="bg-white rounded-lg shadow">
-                        <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-medium text-gray-900">Referrals</h3>
                         </div>
-                        <div class="px-6 py-4">
+                        <div class="px-4 sm:px-6 py-4">
                             <div id="referrals-list">
                                 <!-- Referrals will be loaded here -->
                             </div>
@@ -475,6 +477,42 @@
         </div>
     </div>
 
+    <!-- Floating Action Button for Mobile -->
+    <div class="sm:hidden fixed bottom-6 right-6 z-50">
+        <!-- FAB Main Button -->
+        <button id="fab-main-btn" class="bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center group">
+            <svg id="fab-plus-icon" class="w-6 h-6 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <svg id="fab-close-icon" class="w-6 h-6 transition-transform duration-300 rotate-45 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+        </button>
+        
+        <!-- FAB Action Buttons -->
+        <div id="fab-actions" class="absolute bottom-16 right-0 space-y-3 opacity-0 scale-0 transition-all duration-300 transform origin-bottom-right">
+            <!-- Add Interaction Button -->
+            <button id="fab-add-interaction-btn" class="bg-green-600 hover:bg-green-700 text-white w-12 h-12 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center group">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span class="absolute right-14 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    Add Interaction
+                </span>
+            </button>
+            
+            <!-- Add Referral Button -->
+            <button id="fab-add-referral-btn" class="bg-purple-600 hover:bg-purple-700 text-white w-12 h-12 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center group">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span class="absolute right-14 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    Add Referral
+                </span>
+            </button>
+        </div>
+    </div>
+
     <script>
         const contactId = '<%= contactId %>';
         let contact = null;
@@ -511,19 +549,32 @@
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('contact-details').classList.remove('hidden');
             
-            // Contact header
+            // Contact header - Mobile elements
             document.getElementById('contact-initial').textContent = contact.name.charAt(0).toUpperCase();
             document.getElementById('contact-name').textContent = contact.name;
             document.getElementById('contact-company').textContent = contact.company || 'No company';
             document.getElementById('contact-position').textContent = contact.position || 'No position';
             
-            // Status and referral potential
+            // Contact header - Desktop elements
+            document.getElementById('contact-initial-desktop').textContent = contact.name.charAt(0).toUpperCase();
+            document.getElementById('contact-name-desktop').textContent = contact.name;
+            document.getElementById('contact-company-desktop').textContent = contact.company || 'No company';
+            document.getElementById('contact-position-desktop').textContent = contact.position || 'No position';
+            
+            // Status and referral potential - Mobile
             const statusBadge = document.getElementById('contact-status-badge');
             statusBadge.textContent = formatStatus(contact.status);
             statusBadge.className = `status-badge status-${contact.status.replace('_', '-')}`;
             
             const referralStars = '★'.repeat(contact.referral_potential) + '☆'.repeat(5 - contact.referral_potential);
             document.getElementById('contact-referral-stars').textContent = referralStars;
+            
+            // Status and referral potential - Desktop
+            const statusBadgeDesktop = document.getElementById('contact-status-badge-desktop');
+            statusBadgeDesktop.textContent = formatStatus(contact.status);
+            statusBadgeDesktop.className = `status-badge status-${contact.status.replace('_', '-')}`;
+            
+            document.getElementById('contact-referral-stars-desktop').textContent = referralStars;
             
             // Contact information
             document.getElementById('contact-email').textContent = contact.email || 'No email';
@@ -687,15 +738,15 @@
             document.getElementById('add-interaction-btn').addEventListener('click', showAddInteractionModal);
             document.getElementById('add-referral-btn').addEventListener('click', showAddReferralModal);
             
-            // Mobile dropdown buttons
-            document.getElementById('mobile-actions-btn').addEventListener('click', toggleMobileActionsMenu);
-            document.getElementById('mobile-add-interaction-btn').addEventListener('click', () => {
+            // FAB buttons
+            document.getElementById('fab-main-btn').addEventListener('click', toggleFAB);
+            document.getElementById('fab-add-interaction-btn').addEventListener('click', () => {
                 showAddInteractionModal();
-                hideMobileActionsMenu();
+                hideFAB();
             });
-            document.getElementById('mobile-add-referral-btn').addEventListener('click', () => {
+            document.getElementById('fab-add-referral-btn').addEventListener('click', () => {
                 showAddReferralModal();
-                hideMobileActionsMenu();
+                hideFAB();
             });
             
             // Cancel add interaction
@@ -716,29 +767,42 @@
             // Referral type change handler
             document.getElementById('add-referral-form').querySelector('select[name="referral_type"]').addEventListener('change', handleReferralTypeChange);
             
-            // Close mobile menu when clicking outside
+            // Close FAB when clicking outside
             document.addEventListener('click', function(e) {
-                const mobileMenu = document.getElementById('mobile-actions-menu');
-                const mobileBtn = document.getElementById('mobile-actions-btn');
-                if (mobileMenu && !mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
-                    hideMobileActionsMenu();
+                const fabContainer = document.getElementById('fab-main-btn').parentElement;
+                if (!fabContainer.contains(e.target)) {
+                    hideFAB();
                 }
             });
         }
         
-        // Mobile actions menu functions
-        function toggleMobileActionsMenu() {
-            const menu = document.getElementById('mobile-actions-menu');
-            if (menu.classList.contains('hidden')) {
-                menu.classList.remove('hidden');
+        // FAB functions
+        function toggleFAB() {
+            const fabActions = document.getElementById('fab-actions');
+            const plusIcon = document.getElementById('fab-plus-icon');
+            const closeIcon = document.getElementById('fab-close-icon');
+            
+            if (fabActions.classList.contains('opacity-0')) {
+                // Show FAB actions
+                fabActions.classList.remove('opacity-0', 'scale-0');
+                fabActions.classList.add('opacity-100', 'scale-100');
+                plusIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
             } else {
-                menu.classList.add('hidden');
+                // Hide FAB actions
+                hideFAB();
             }
         }
         
-        function hideMobileActionsMenu() {
-            const menu = document.getElementById('mobile-actions-menu');
-            menu.classList.add('hidden');
+        function hideFAB() {
+            const fabActions = document.getElementById('fab-actions');
+            const plusIcon = document.getElementById('fab-plus-icon');
+            const closeIcon = document.getElementById('fab-close-icon');
+            
+            fabActions.classList.remove('opacity-100', 'scale-100');
+            fabActions.classList.add('opacity-0', 'scale-0');
+            plusIcon.classList.remove('hidden');
+            closeIcon.classList.add('hidden');
         }
 
         // Show add interaction modal

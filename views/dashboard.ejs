@@ -406,9 +406,12 @@
 
     <div class="min-h-screen bg-gray-50">
         <!-- Header -->
-        <header class="bg-white shadow">
-            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+                    <p class="text-sm text-gray-600 mt-1">Overview of your schedule and appointments</p>
+                </div>
                 <!-- ... existing header content ... -->
             </div>
         </header>
@@ -506,9 +509,8 @@
         <% } %>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-7xl mx-auto px-4 py-6">
-                <!-- Dashboard Summary Cards -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Dashboard Summary Cards -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     <!-- Today's Appointments -->
                     <div class="bg-white rounded-lg shadow p-6">
@@ -548,8 +550,6 @@
                     <div id="calendar"></div>
                 </div>
 
-
-            </div>
         </main>
     </div>
 

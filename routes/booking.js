@@ -325,7 +325,7 @@ router.post('/:username', async (req, res) => {
             }
             
             const eventDetails = {
-                title: `Meeting with ${booking.client_name}`,
+                title: `${booking.client_name}`,
                 description: description,
                 startTime: `${booking.date}T${booking.start_time}:00${timezone.getDefaultUtcOffset()}`,
                 endTime: `${booking.date}T${booking.end_time}:00${timezone.getDefaultUtcOffset()}`,
@@ -674,6 +674,24 @@ router.get('/:username/slots', async (req, res) => {
         console.error('Error getting available slots:', error);
         res.status(500).json({ error: 'Failed to get available slots' });
     }
+});
+
+// Get user's booking playground page for testing new implementations
+router.get('/playground/:username', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, username, full_name, display_name, email FROM users WHERE username = $1',
+      [req.params.username]
+    );
+    
+    if (!result.rows[0]) {
+      return res.status(404).render('error', { message: 'User not found' });
+    }
+    res.render('booking-playground', { user: result.rows[0] });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).render('error', { message: 'Server error' });
+  }
 });
 
 module.exports = router; 

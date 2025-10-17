@@ -396,8 +396,20 @@ class GoogleCalendarService {
                 calendarId = result.rows[0]?.google_calendar_id || 'primary';
             }
             
+            // Get owner's name from database for the event title
+            const ownerResult = await db.query(
+                'SELECT full_name, display_name FROM users WHERE id = $1',
+                [userId]
+            );
+            const ownerName = ownerResult.rows[0]?.display_name || ownerResult.rows[0]?.full_name || 'Meeting';
+            
+            // Create event title based on perspective
+            // For the owner: show client's name
+            // For the client: show owner's name
+            const eventTitle = eventDetails.title || ownerName;
+            
             const event = {
-                summary: eventDetails.title,
+                summary: eventTitle,
                 description: eventDetails.description || '',
                 start: {
                     dateTime: eventDetails.startTime,
