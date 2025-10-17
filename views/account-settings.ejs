@@ -1186,22 +1186,23 @@
 
         // Initialize availability settings functionality
         function initAvailabilitySettings() {
-            console.log('Initializing availability settings...');
-            
             // Handle working days checkboxes
             const dayCheckboxes = document.querySelectorAll('input[name="working_days"]');
             dayCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    const dayRow = this.closest('.flex');
-                    const startTime = dayRow.querySelector('.work-start');
-                    const endTime = dayRow.querySelector('.work-end');
+                    // Find the parent container that holds both checkbox and time inputs
+                    const dayContainer = this.closest('.flex.flex-col');
+                    const startTime = dayContainer ? dayContainer.querySelector('.work-start') : null;
+                    const endTime = dayContainer ? dayContainer.querySelector('.work-end') : null;
                     
-                    if (this.checked) {
-                        startTime.disabled = false;
-                        endTime.disabled = false;
-                    } else {
-                        startTime.disabled = true;
-                        endTime.disabled = true;
+                    if (startTime && endTime) {
+                        if (this.checked) {
+                            startTime.disabled = false;
+                            endTime.disabled = false;
+                        } else {
+                            startTime.disabled = true;
+                            endTime.disabled = true;
+                        }
                     }
                 });
             });
