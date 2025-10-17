@@ -40,6 +40,18 @@
                 border-radius: 6px;
             }
             
+            /* Bigger month/year on mobile */
+            .calendar-widget .flatpickr-current-month {
+                font-size: 20px !important;
+                font-weight: 700 !important;
+            }
+            
+            .calendar-widget .flatpickr-current-month .numInputWrapper input,
+            .calendar-widget .flatpickr-current-month .cur-month {
+                font-size: 20px !important;
+                font-weight: 700 !important;
+            }
+            
             .booking-container {
                 margin: 16px;
                 border-radius: 8px;
@@ -70,6 +82,18 @@
         
         /* Small mobile optimizations */
         @media (max-width: 480px) {
+            /* Even bigger month/year on small mobile */
+            .calendar-widget .flatpickr-current-month {
+                font-size: 22px !important;
+                font-weight: 700 !important;
+            }
+            
+            .calendar-widget .flatpickr-current-month .numInputWrapper input,
+            .calendar-widget .flatpickr-current-month .cur-month {
+                font-size: 22px !important;
+                font-weight: 700 !important;
+            }
+            
             .booking-container {
                 margin: 8px;
             }
@@ -326,57 +350,6 @@
             transform: translateY(-1px);
         }
         
-        /* Summary Section */
-        .summary-section {
-            padding: 16px;
-            background: #f8fafc;
-            border-top: 1px solid #e5e7eb;
-        }
-        
-        .appointment-summary {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        
-        .appointment-date {
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 2px;
-        }
-        
-        .appointment-time {
-            font-size: 12px;
-            color: #6b7280;
-        }
-        
-        .continue-btn {
-            background: #3b82f6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 600;
-            transition: all 0.15s ease;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            font-size: 14px;
-        }
-        
-        .continue-btn:hover:not(:disabled) {
-            background: #2563eb;
-            transform: translateY(-1px);
-        }
-        
-        .continue-btn:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            transform: none;
-        }
         
         /* Loading States */
         .loading-spinner {
@@ -445,16 +418,6 @@
                 font-size: 13px;
             }
             
-            .summary-section {
-                padding: 16px;
-                text-align: center;
-            }
-            
-            .appointment-summary {
-                width: 100%;
-                margin: 0;
-                max-width: none;
-            }
         }
 
         /* Desktop Design */
@@ -478,12 +441,6 @@
                 border-top: none;
             }
             
-            .summary-section {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                border-top: 1px solid #e5e7eb;
-                margin-top: 0;
-            }
         }
         
         
@@ -539,18 +496,6 @@
                 </div>
             </div>
 
-            <!-- Summary Section -->
-            <div class="summary-section" style="display: none;">
-                <div class="appointment-summary">
-                    <p class="text-sm text-gray-600 mb-2">Selected Appointment</p>
-                    <div id="appointment-details">
-                        <div class="text-lg font-medium text-gray-500">No date selected</div>
-                    </div>
-                </div>
-                <button id="continue-btn" class="continue-btn" disabled>
-                    Continue
-                </button>
-            </div>
 
         </div>
         
@@ -558,11 +503,8 @@
         <div class="client-form-section" style="display: none;">
             <div class="w-full px-6 py-8">
                 <div class="max-w-7xl mx-auto">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="mb-6">
                         <h2 class="text-xl font-semibold text-gray-900">Complete Your Booking</h2>
-                        <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                            ← Back to Calendar
-                        </button>
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -583,6 +525,13 @@
                                         Select a time
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <!-- Back to Calendar Button -->
+                            <div class="mt-6 text-center">
+                                <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800 underline text-sm font-medium">
+                                    ← Back to Calendar
+                                </button>
                             </div>
                         </div>
 
@@ -650,12 +599,6 @@
             </div>
         </div>
 
-        <!-- Back to Original Booking Page -->
-        <div class="text-center mt-8">
-            <a href="/booking/<%= user.username %>" class="text-blue-600 hover:text-blue-800 underline text-sm">
-                ← Back to Original Booking Page
-            </a>
-        </div>
 
     </div>
 
@@ -680,27 +623,24 @@
                 console.error('❌ Error loading initial month availability:', error);
             });
             
-            // Handle Continue button click
-            document.getElementById('continue-btn').addEventListener('click', function() {
-                if (selectedDate && selectedTime) {
-                    // Hide calendar, time slots, and summary, show client form
-                    document.querySelector('.calendar-section').style.display = 'none';
-                    document.querySelector('.time-slots-section').style.display = 'none';
-                    document.querySelector('.summary-section').style.display = 'none';
-                    document.querySelector('.client-form-section').style.display = 'block';
-                    
-                    // Pre-fill the form with selected appointment details
-                    updateFormWithSelectedAppointment();
-                }
-            });
 
             // Handle Back to Calendar button
             document.getElementById('back-to-calendar-btn').addEventListener('click', function() {
-                // Show calendar, time slots, and summary, hide client form
+                // Show calendar and time slots, hide client form
                 document.querySelector('.calendar-section').style.display = 'block';
                 document.querySelector('.time-slots-section').style.display = 'block';
-                document.querySelector('.summary-section').style.display = 'block';
                 document.querySelector('.client-form-section').style.display = 'none';
+                
+                // Reset selected time
+                selectedTime = null;
+                
+                // Clear time slot selections
+                document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // Clear form fields
+                document.getElementById('client-info-form').reset();
             });
 
             // Handle form submission - populate hidden fields before submit
@@ -771,7 +711,6 @@
                             
                             loadTimeSlots();
                             // Don't update appointment summary until time is selected
-                            updateAppointmentSummary();
                         }
                     },
                     onMonthChange: function(selectedDates, dateStr, instance) {
@@ -816,7 +755,6 @@
                 selectedTime = null;
                 updateDebugInfo();
                 loadTimeSlots();
-                updateAppointmentSummary();
                 
                 
             } catch (error) {
@@ -827,12 +765,12 @@
         }
         
         async function loadMonthAvailability(year, month) {
-            const loadingElement = document.getElementById('calendar-loading');
             const loadingOverlay = document.getElementById('calendar-loading-overlay');
             
             // Show loading overlay for seamless experience
-            loadingOverlay.classList.add('active');
-            loadingElement.style.display = 'inline-block';
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('active');
+            }
             
             try {
                 // Get the first and last day of the month
@@ -881,8 +819,9 @@
                 console.error('Error loading month availability:', error);
             } finally {
                 // Hide loading indicators
-                loadingElement.style.display = 'none';
-                loadingOverlay.classList.remove('active');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('active');
+                }
             }
         }
         
@@ -1006,8 +945,17 @@
             event.target.classList.add('selected');
             
             selectedTime = time;
-            updateDebugInfo();
-            updateAppointmentSummary();
+            
+            // Go directly to booking confirmation form
+            setTimeout(() => {
+                // Hide calendar and time slots, show client form
+                document.querySelector('.calendar-section').style.display = 'none';
+                document.querySelector('.time-slots-section').style.display = 'none';
+                document.querySelector('.client-form-section').style.display = 'block';
+                
+                // Pre-fill the form with selected appointment details
+                updateFormWithSelectedAppointment();
+            }, 300); // Small delay for visual feedback
         }
         
         
@@ -1045,34 +993,6 @@
             return timeStr;
         }
         
-        function updateAppointmentSummary() {
-            const summarySection = document.querySelector('.summary-section');
-            const detailsElement = document.getElementById('appointment-details');
-            const continueBtn = document.getElementById('continue-btn');
-            
-            if (selectedDate && selectedTime) {
-                // Show the summary section when both date and time are selected
-                summarySection.style.display = 'block';
-                
-                const date = new Date(selectedDate);
-                const formattedDate = date.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                detailsElement.innerHTML = `
-                    <div class="text-lg font-semibold">${formattedDate}</div>
-                    <div class="text-sm text-gray-600">${formatTimeRange(selectedTime)}</div>
-                `;
-                continueBtn.disabled = false;
-            } else {
-                // Hide the summary section when only date is selected or no selection
-                summarySection.style.display = 'none';
-                continueBtn.disabled = true;
-            }
-        }
         
         function updateDebugInfo() {
             document.getElementById('debug-date').textContent = selectedDate || 'None';
