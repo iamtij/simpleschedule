@@ -501,17 +501,13 @@ router.get('/:username/slots', async (req, res) => {
                 continue;
             }
             
-            // Check if slot overlaps with any breaks (including buffer time)
+            // Check if slot overlaps with any breaks (no buffer time applied to breaks)
             const overlapsBreak = breaks.some(b => {
                 const breakStart = timeToMinutes(b.start_time);
                 const breakEnd = timeToMinutes(b.end_time);
                 
-                // Apply buffer time to the break boundaries
-                const breakStartWithBuffer = breakStart - bufferTime;
-                const breakEndWithBuffer = breakEnd + bufferTime;
-                
-                // Check if slot overlaps with the expanded break zone (including buffer)
-                return (slotStart < breakEndWithBuffer && slotEnd > breakStartWithBuffer);
+                // Check if slot overlaps with the break zone (no buffer applied to breaks)
+                return (slotStart < breakEnd && slotEnd > breakStart);
             });
             
             // Check if slot overlaps with any bookings
