@@ -746,13 +746,13 @@ function formatTimeForDisplay(timeString) {
             // Update table display
             renderBookingsTable(filteredBookings);
             
-            // Update stats with filtered data
-            updateStats(filteredBookings);
+            // Update stats with ALL bookings (not filtered) - metrics should remain static
+            updateStats(allBookings);
         }
 
         // Initialize page on load
         document.addEventListener('DOMContentLoaded', function() {
-            updateStats();
+            updateStats(allBookings); // Always use all bookings for metrics
             applyFiltersAndSort(); // Initialize table with default sorting
         });
 
