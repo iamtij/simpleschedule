@@ -567,10 +567,30 @@ function formatTimeForDisplay(timeString) {
             
             switch(sortOrder) {
                 case 'date-asc':
-                    sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    sorted.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        
+                        // If dates are the same, sort by start time
+                        if (dateA.getTime() === dateB.getTime()) {
+                            return a.start_time.localeCompare(b.start_time);
+                        }
+                        
+                        return dateA - dateB;
+                    });
                     break;
                 case 'date-desc':
-                    sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    sorted.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        
+                        // If dates are the same, sort by start time (descending)
+                        if (dateA.getTime() === dateB.getTime()) {
+                            return b.start_time.localeCompare(a.start_time);
+                        }
+                        
+                        return dateB - dateA;
+                    });
                     break;
                 default:
                     return sorted;
