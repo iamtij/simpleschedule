@@ -28,7 +28,6 @@ router.get('/auth/google', requireLogin, async (req, res) => {
             [stateToken, req.session.userId, 'google']
         );
         
-        console.log('OAuth state stored in database for user:', req.session.userId);
         
         // Add state to auth URL
         const stateParam = `&state=${stateToken}`;
@@ -98,7 +97,6 @@ router.get('/auth/google/callback', async (req, res) => {
             [state]
         );
         
-        console.log('OAuth state verified for user:', userId);
         
         // Exchange code for tokens
         const tokens = await googleCalendarService.getTokens(code);
@@ -106,7 +104,6 @@ router.get('/auth/google/callback', async (req, res) => {
         // Save tokens for user
         await googleCalendarService.setUserTokens(userId, tokens);
         
-        console.log('Google Calendar connected successfully for user:', userId);
         res.redirect('/dashboard/settings?success=google_connected');
         
     } catch (error) {

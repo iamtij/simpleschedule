@@ -52,7 +52,6 @@ async function sendBookingConfirmationSMS(booking, host) {
     }
 
     if (!booking.client_phone) {
-        console.log('No phone number provided for booking:', booking.id);
         return; // Skip if no phone number provided
     }
 

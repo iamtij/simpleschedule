@@ -768,7 +768,6 @@ function formatTimeForDisplay(timeString) {
 
         // Create contact function
         function createContact(bookingId) {
-            console.log('Creating contact for booking ID:', bookingId);
             
             // Set the current booking ID for later use
             currentBookingId = bookingId;
@@ -785,7 +784,6 @@ function formatTimeForDisplay(timeString) {
                 return;
             }
 
-            console.log('Found booking:', booking);
 
             // Populate the form with booking data
             const form = document.getElementById('create-contact-form');
@@ -815,7 +813,6 @@ function formatTimeForDisplay(timeString) {
         }
 
         function editBooking(bookingId) {
-            console.log('Editing booking ID:', bookingId);
             
             // Find the booking data from the current bookings array
             const booking = allBookings.find(b => b.id === bookingId);
@@ -829,7 +826,6 @@ function formatTimeForDisplay(timeString) {
                 return;
             }
 
-            console.log('Found booking:', booking);
 
             // Populate the form with booking data
             const form = document.getElementById('edit-booking-form');
@@ -936,14 +932,12 @@ function formatTimeForDisplay(timeString) {
         });
 
         document.getElementById('save-edit-booking').addEventListener('click', async function() {
-            console.log('Save edit booking clicked');
             
             const form = document.getElementById('edit-booking-form');
             const formData = new FormData(form);
             const bookingData = Object.fromEntries(formData.entries());
             const bookingId = bookingData.booking_id;
 
-            console.log('Booking data:', bookingData);
 
             try {
                 const response = await fetch(`/bookings/${bookingId}`, {

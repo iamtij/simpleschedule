@@ -556,7 +556,6 @@ router.get('/settings', requireLogin, async (req, res) => {
 router.get('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    console.log('🔍 Availability endpoint called, userId:', userId);
 
     // Get working days from availability table
     const availabilityResult = await db.query(
@@ -607,7 +606,6 @@ router.get('/availability', requireLogin, async (req, res) => {
 router.post('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    console.log('🔍 POST availability endpoint called, userId:', userId);
     console.log('📊 Request body:', req.body);
     
     const {

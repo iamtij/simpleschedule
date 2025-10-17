@@ -57,7 +57,11 @@ router.get('/', requireLogin, async (req, res) => {
                 name ILIKE $${paramCount} OR 
                 email ILIKE $${paramCount} OR 
                 company ILIKE $${paramCount} OR
-                phone ILIKE $${paramCount}
+                phone ILIKE $${paramCount} OR
+                industry ILIKE $${paramCount} OR
+                position ILIKE $${paramCount} OR
+                notes ILIKE $${paramCount} OR
+                bni_chapter ILIKE $${paramCount}
             )`;
             query += searchCondition;
             countQuery += searchCondition;
@@ -257,7 +261,8 @@ router.get('/:id', requireLogin, async (req, res) => {
         // Get interactions for this contact
         const interactionsResult = await db.query(
             `SELECT 
-                id, type, subject, notes, outcome, referral_value, date, booking_id
+                id, type, subject, notes, outcome, referral_value, date, booking_id,
+                follow_up_date, follow_up_time, status
              FROM interactions 
              WHERE contact_id = $1 AND user_id = $2
              ORDER BY date DESC
@@ -322,7 +327,6 @@ router.post('/', requireLogin, async (req, res) => {
             }
         }
         
-        console.log('Creating contact with data:', { name, email, booking_id, userId: req.session.userId });
         
         if (!name) {
             return res.status(400).json({
@@ -333,7 +337,6 @@ router.post('/', requireLogin, async (req, res) => {
         
         // Check for duplicate email if email is provided
         if (email && email.trim() !== '') {
-            console.log('Checking for duplicate email:', email.trim());
             const existingContact = await db.query(
                 'SELECT id, name FROM contacts WHERE email = $1 AND user_id = $2',
                 [email.trim(), req.session.userId]
@@ -342,7 +345,6 @@ router.post('/', requireLogin, async (req, res) => {
             console.log('Existing contacts found:', existingContact.rows.length);
             
             if (existingContact.rows.length > 0) {
-                console.log('Duplicate email found, rejecting:', existingContact.rows[0]);
                 return res.status(400).json({
                     success: false,
                     error: `Contact with email "${email}" already exists: ${existingContact.rows[0].name}`
@@ -385,7 +387,6 @@ router.post('/', requireLogin, async (req, res) => {
         
         // If this contact was created from a booking, automatically create an interaction
         if (booking_id) {
-            console.log('Creating interaction for booking_id:', booking_id, 'contact_id:', newContact.id);
             try {
                 await db.query(
                     `INSERT INTO interactions 
@@ -407,7 +408,6 @@ router.post('/', requireLogin, async (req, res) => {
                 // Don't fail the contact creation if interaction fails
             }
         } else {
-            console.log('No booking_id provided, skipping interaction creation');
         }
         
         res.json({
@@ -542,10 +542,10 @@ router.post('/:id/interactions', requireLogin, async (req, res) => {
         
         const result = await db.query(
             `INSERT INTO interactions 
-             (contact_id, user_id, type, subject, notes, outcome, referral_value, booking_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             (contact_id, user_id, type, subject, notes, outcome, referral_value, booking_id, follow_up_date, follow_up_time)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING *`,
-            [id, req.session.userId, type, subject, notes, outcome, referral_value, booking_id]
+            [id, req.session.userId, type, subject, notes, outcome, referral_value, booking_id, follow_up_date || null, follow_up_time || null]
         );
         
         // Update contact's last_contact_date
@@ -578,6 +578,65 @@ router.post('/:id/interactions', requireLogin, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to add interaction'
+        });
+    }
+});
+
+// Mark interaction as done (clear follow-up date and mark status)
+router.put('/:contactId/interactions/:interactionId/mark-done', requireLogin, async (req, res) => {
+    try {
+        const { contactId, interactionId } = req.params;
+        const userId = req.session.userId;
+        
+        // Verify the contact belongs to the user
+        const contactResult = await db.query(
+            'SELECT id FROM contacts WHERE id = $1 AND user_id = $2',
+            [contactId, userId]
+        );
+        
+        if (contactResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Contact not found'
+            });
+        }
+        
+        // Update the interaction to mark as done
+        const updateResult = await db.query(
+            `UPDATE interactions 
+             SET follow_up_date = NULL, 
+                 follow_up_time = NULL,
+                 status = 'completed'
+             WHERE id = $1 AND contact_id = $2 AND user_id = $3
+             RETURNING id, type, subject, notes, date, outcome, status`,
+            [interactionId, contactId, userId]
+        );
+        
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Interaction not found'
+            });
+        }
+        
+        // Also clear the contact's next_follow_up since this follow-up is now completed
+        await db.query(
+            `UPDATE contacts 
+             SET next_follow_up = NULL 
+             WHERE id = $1 AND user_id = $2`,
+            [contactId, userId]
+        );
+        
+        res.json({
+            success: true,
+            interaction: updateResult.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Error marking interaction as done:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to mark interaction as done'
         });
     }
 });

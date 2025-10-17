@@ -223,7 +223,6 @@ class GoogleCalendarService {
             
             // If there's an error with the selected calendar, try with primary calendar
             if (calendarId !== 'primary') {
-                console.log('Retrying with primary calendar...');
                 try {
                     const calendar = await this.getCalendarService(userId);
                     
@@ -305,12 +304,10 @@ class GoogleCalendarService {
                 cal.accessRole === 'owner'
             );
             
-            console.log(`Checking conflicts across ${ownedCalendars.length} owned calendars`);
             
             // Batch check calendars in parallel instead of sequential
             const conflictPromises = ownedCalendars.map(async (cal) => {
                 try {
-                    console.log(`Checking calendar: ${cal.summary} (${cal.id})`);
                     
                     const events = await this.getCalendarEvents(userId, startTime, endTime, cal.id);
                     
@@ -318,7 +315,6 @@ class GoogleCalendarService {
                     const conflictingEvents = events.filter(event => {
                         // Skip all-day events as they shouldn't block specific time slots
                         if (event.start.date && !event.start.dateTime) {
-                            console.log(`⚠️ Skipping all-day event: ${event.summary || 'Untitled'} (${event.start.date})`);
                             return false;
                         }
                         
@@ -342,14 +338,10 @@ class GoogleCalendarService {
                         calendarId: cal.id
                     }));
                     
-                    if (conflictingEvents.length > 0) {
-                        console.log(`Found ${conflictingEvents.length} conflicts in ${cal.summary}`);
-                    }
                     
                     return conflictingEvents;
                     
                 } catch (calError) {
-                    console.error(`Error checking calendar ${cal.summary}:`, calError.message);
                     // Continue checking other calendars even if one fails
                     return [];
                 }
@@ -457,7 +449,6 @@ class GoogleCalendarService {
             this.eventsCache.delete(key);
         });
         
-        console.log(`Cleared ${keysToDelete.length} cache entries for user ${userId}`);
     }
 
     /**

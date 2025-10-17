@@ -96,12 +96,6 @@ router.get('/:username/availability', async (req, res) => {
         const utcDate = new Date(date);
         const dayOfWeek = utcDate.getUTCDay();
         
-        console.log('Debug - Availability Request:', {
-            date,
-            utcDate: utcDate.toISOString(),
-            dayOfWeek,
-            userId
-        });
         
         // Get user's availability for this day
         const availabilityResult = await db.query(
@@ -109,10 +103,6 @@ router.get('/:username/availability', async (req, res) => {
             [userId, dayOfWeek]
         );
 
-        console.log('Debug - Availability DB Result:', {
-            hasAvailability: availabilityResult.rows.length > 0,
-            availability: availabilityResult.rows
-        });
 
         // If no availability set for this day
         if (!availabilityResult.rows || availabilityResult.rows.length === 0) {
@@ -151,13 +141,6 @@ router.post('/:username', async (req, res) => {
     const { date, start_time, end_time, client_name, client_email, client_phone, notes } = req.body;
     const username = req.params.username;
     
-    console.log('Debug - Booking Request:', {
-        date,
-        start_time,
-        end_time,
-        client_name,
-        client_email
-    });
     
     // Get the user ID from username
     const userResult = await db.query(
@@ -166,7 +149,6 @@ router.post('/:username', async (req, res) => {
     );
 
     if (!userResult.rows[0]) {
-        console.error('User not found:', username);
         return res.status(404).json({ error: 'User not found' });
     }
 
@@ -175,7 +157,6 @@ router.post('/:username', async (req, res) => {
 
     // Validate required fields
     if (!date || !start_time || !end_time || !client_name || !client_email) {
-        console.error('Missing required fields:', { date, start_time, end_time, client_name, client_email });
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -184,11 +165,6 @@ router.post('/:username', async (req, res) => {
     const bookingDate = new Date(Date.UTC(year, month - 1, day));
     const dayOfWeek = bookingDate.getUTCDay();
 
-    console.log('Debug - Date Processing:', {
-        inputDate: date,
-        parsedDate: bookingDate.toISOString(),
-        dayOfWeek
-    });
 
     // Verify this time slot is actually available
     const availabilityResult = await db.query(
@@ -197,7 +173,6 @@ router.post('/:username', async (req, res) => {
     );
 
     if (availabilityResult.rows.length === 0) {
-        console.error('No availability for this day:', { date, dayOfWeek });
         return res.status(400).json({ error: 'This time slot is not available' });
     }
 
@@ -215,19 +190,16 @@ router.post('/:username', async (req, res) => {
     );
 
     if (conflictCheck.rows.length > 0) {
-        console.error('Time slot no longer available:', { date, start_time, end_time });
         return res.status(409).json({ error: 'This time slot is no longer available' });
     }
 
     // Check for Google Calendar conflicts if sync is enabled and blocking is enabled
     try {
-        console.log('Checking Google Calendar conflicts...');
         const googleCalendarService = require('../services/googleCalendar');
         const tokens = await googleCalendarService.getUserTokens(userId);
         const googleCalendarBlockingEnabled = host.google_calendar_blocking_enabled;
         
         if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
-            console.log('Google Calendar is connected and blocking is enabled, checking for conflicts...');
             
             // Get user's timezone for proper time formatting
             const userResult = await db.query('SELECT timezone FROM users WHERE id = $1', [userId]);
@@ -237,14 +209,6 @@ router.post('/:username', async (req, res) => {
             const bookingStartTime = `${bookingDate.toISOString().split('T')[0]}T${start_time}:00${timezone.getDefaultUtcOffset()}`;
             const bookingEndTime = `${bookingDate.toISOString().split('T')[0]}T${end_time}:00${timezone.getDefaultUtcOffset()}`;
             
-            console.log('🔍 Booking Conflict Check:', {
-                bookingStartTime,
-                bookingEndTime,
-                userTimezone,
-                date,
-                start_time,
-                end_time
-            });
             
             const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
                 userId,
@@ -253,26 +217,20 @@ router.post('/:username', async (req, res) => {
             );
             
             if (conflictInfo.hasConflicts) {
-                console.log('❌ Google Calendar conflicts detected:', conflictInfo.conflicts);
                 return res.status(409).json({ 
                     error: 'This time slot conflicts with existing Google Calendar events',
                     conflicts: conflictInfo.conflicts,
                     conflictType: 'google_calendar'
                 });
             } else {
-                console.log('✅ No Google Calendar conflicts found');
             }
         } else {
             if (!tokens || !tokens.google_access_token) {
-                console.log('Google Calendar not connected, skipping conflict check');
             } else if (!googleCalendarBlockingEnabled) {
-                console.log('Google Calendar blocking is disabled, skipping conflict check');
             }
         }
     } catch (googleError) {
-        console.error('Failed to check Google Calendar conflicts:', googleError.message);
         // Don't fail the booking if Google Calendar check fails
-        console.log('Continuing with booking despite Google Calendar check failure');
     }
 
     // Insert the booking
@@ -288,22 +246,12 @@ router.post('/:username', async (req, res) => {
     booking.formatted_start_time = formatTime(booking.start_time);
     booking.formatted_end_time = formatTime(booking.end_time);
 
-    console.log('Debug - Created Booking:', {
-        id: booking.id,
-        date: booking.date,
-        start: booking.start_time,
-        end: booking.end_time,
-        formatted_start: booking.formatted_start_time,
-        formatted_end: booking.formatted_end_time
-    });
 
     // Sync to Google Calendar if connected
     try {
-        console.log('Attempting Google Calendar sync...');
         const tokens = await googleCalendarService.getUserTokens(userId);
         
         if (tokens && tokens.google_access_token) {
-            console.log('Google Calendar is connected, creating event...');
             
             // Get user's timezone for Google Calendar event
             const userResult = await db.query('SELECT timezone FROM users WHERE id = $1', [userId]);
@@ -333,19 +281,8 @@ router.post('/:username', async (req, res) => {
                 attendees: [{ email: booking.client_email }],
             };
             
-            console.log('🔍 Google Calendar Event Details:', {
-                startTime: eventDetails.startTime,
-                endTime: eventDetails.endTime,
-                timeZone: eventDetails.timeZone,
-                bookingDate: booking.date,
-                startTime: booking.start_time,
-                endTime: booking.end_time
-            });
             
             const googleEvent = await googleCalendarService.createCalendarEvent(userId, eventDetails);
-            console.log('✅ Google Calendar event created successfully!');
-            console.log(`   Event ID: ${googleEvent.id}`);
-            console.log(`   Event Link: ${googleEvent.htmlLink}`);
             
             // Update booking with Google Event ID and link (separate from notes)
             await db.query(
@@ -358,10 +295,8 @@ router.post('/:username', async (req, res) => {
             booking.google_event_id = googleEvent.id;
             
         } else {
-            console.log('Google Calendar not connected, skipping sync');
         }
     } catch (googleError) {
-        console.error('Failed to sync to Google Calendar:', googleError.message);
         // Don't fail the booking if Google Calendar sync fails
     }
 
@@ -377,20 +312,27 @@ router.post('/:username', async (req, res) => {
             if (host.is_pro && (!host.pro_expires_at || new Date(host.pro_expires_at) > new Date())) {
                 notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
             } else {
-                console.log('SMS notification skipped - host is not a pro user or subscription expired');
             }
         }
 
         await Promise.all(notifications);
     } catch (notificationError) {
-        console.error('Failed to send notifications:', notificationError);
         // Don't fail the booking if notifications fail
     }
 
-    // Render the confirmation page with booking and host details
-    res.render('booking-confirmation', {
-        booking,
-        host
+    // Return JSON response for AJAX handling
+    res.json({
+        success: true,
+        id: booking.id,
+        date: booking.date,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        formatted_date: booking.date, // You can format this if needed
+        formatted_start_time: booking.formatted_start_time,
+        formatted_end_time: booking.formatted_end_time,
+        client_name: booking.client_name,
+        client_email: booking.client_email,
+        google_calendar_link: booking.google_calendar_link
     });
 });
 
@@ -431,16 +373,6 @@ router.get('/:username/slots', async (req, res) => {
             return res.json({ slots: [] });
         }
         
-        console.log('Debug - Date Processing:', {
-            inputDate: date,
-            year,
-            month,
-            day,
-            requestedDate: requestedDate.toISOString(),
-            dayOfWeek: requestedDate.getUTCDay(),
-            clientTime: now.toISOString(),
-            clientTimezone
-        });
         
         // Get day of week in UTC (0-6, where 0 is Sunday)
         const dayOfWeek = requestedDate.getUTCDay();
@@ -451,11 +383,6 @@ router.get('/:username/slots', async (req, res) => {
             [userId, dayOfWeek]
         );
 
-        console.log('Debug - Availability Result:', {
-            hasAvailability: availabilityResult.rows.length > 0,
-            availability: availabilityResult.rows,
-            dayOfWeek
-        });
 
         if (availabilityResult.rows.length === 0) {
             return res.json({ slots: [] });
@@ -496,7 +423,6 @@ router.get('/:username/slots', async (req, res) => {
             const googleCalendarBlockingEnabled = userResult.rows[0]?.google_calendar_blocking_enabled ?? true;
             
             if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
-                console.log('Checking Google Calendar conflicts for availability...');
                 
                 // Get conflicts for the entire day
                 const dayStart = `${date}T00:00:00`;
@@ -509,25 +435,13 @@ router.get('/:username/slots', async (req, res) => {
                 );
                 
                 if (conflictInfo.hasConflicts) {
-                    console.log(`Found ${conflictInfo.conflicts.length} Google Calendar conflicts for ${date}`);
                     googleCalendarConflicts = conflictInfo.conflicts.map(conflict => {
                         const startDate = new Date(conflict.start);
                         const endDate = new Date(conflict.end);
                         
-                        console.log(`🔍 Raw Google Calendar Conflict:`, {
-                            originalStart: conflict.start,
-                            originalEnd: conflict.end,
-                            userTimezone: userTimezone
-                        });
                         
                         // Parse the conflict times directly as they come from Google Calendar
                         // Google Calendar returns times in the user's timezone
-                        console.log(`🔍 Parsing conflict data:`, {
-                            conflictStart: conflict.start,
-                            conflictEnd: conflict.end,
-                            startType: typeof conflict.start,
-                            endType: typeof conflict.end
-                        });
                         
                         let startTimeStr, endTimeStr;
                         
@@ -537,15 +451,12 @@ router.get('/:username/slots', async (req, res) => {
                             endTimeStr = conflict.end.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
                         } else if (typeof conflict.start === 'string') {
                             // Date-only format: 2025-10-21 (all-day event)
-                            console.log(`⚠️ All-day event detected: ${conflict.start} - ${conflict.end}`);
                             // Skip all-day events as they shouldn't block specific time slots
                             return null;
                         } else {
-                            console.log(`⚠️ Unexpected conflict format:`, conflict);
                             return null;
                         }
                         
-                        console.log(`📅 Google Calendar Conflict: ${startTimeStr}-${endTimeStr} (${timeToMinutes(startTimeStr)}-${timeToMinutes(endTimeStr)} minutes)`);
                         
                         const conflictInMinutes = {
                             start: timeToMinutes(startTimeStr),
@@ -557,7 +468,6 @@ router.get('/:username/slots', async (req, res) => {
                 }
             }
         } catch (error) {
-            console.error('Error checking Google Calendar conflicts:', error.message);
             // Continue without Google Calendar conflicts if there's an error
             googleCalendarConflicts = [];
         }
@@ -627,12 +537,7 @@ router.get('/:username/slots', async (req, res) => {
                 
                 const overlaps = (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
                 
-                // Always log the conflict check for debugging
-                console.log(`🔍 Checking conflict: Slot ${slotStartTime}-${slotEndTime} vs Google Calendar ${conflictStartTime}-${conflictEndTime} (with ${bufferTime}min buffer: ${conflictStartWithBufferTime}-${conflictEndWithBufferTime}) = ${overlaps ? 'OVERLAPS' : 'NO OVERLAP'}`);
                 
-                if (overlaps) {
-                    console.log(`🚫 BLOCKED: Slot ${slotStartTime}-${slotEndTime} overlaps with Google Calendar conflict ${conflictStartTime}-${conflictEndTime} (with ${bufferTime}min buffer: ${conflictStartWithBufferTime}-${conflictEndWithBufferTime})`);
-                }
                 
                 // Check if slot overlaps with the expanded conflict zone (including buffer)
                 return overlaps;
@@ -645,7 +550,6 @@ router.get('/:username/slots', async (req, res) => {
             const slotEndTime = minutesToTime(slotEnd);
             
             if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
-                console.log(`✅ AVAILABLE: Slot ${slotStartTime}-${slotEndTime} is available`);
                 slots.push({
                     start_time: slotStartTime,
                     end_time: slotEndTime
@@ -657,17 +561,9 @@ router.get('/:username/slots', async (req, res) => {
                 if (overlapsGoogleCalendar) reasons.push('overlaps Google Calendar');
                 if (!fitsInWorkingHours) reasons.push('doesn\'t fit in working hours');
                 
-                console.log(`❌ BLOCKED: Slot ${slotStartTime}-${slotEndTime} blocked because: ${reasons.join(', ')}`);
             }
         }
 
-        console.log('Debug - Generated Slots:', {
-            numberOfSlots: slots.length,
-            slots: slots.map(s => `${s.start_time}-${s.end_time}`),
-            date,
-            dayOfWeek,
-            clientTimezone
-        });
 
         res.json({ slots });
     } catch (error) {
@@ -688,6 +584,48 @@ router.get('/playground/:username', async (req, res) => {
       return res.status(404).render('error', { message: 'User not found' });
     }
     res.render('booking-playground', { user: result.rows[0] });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).render('error', { message: 'Server error' });
+  }
+});
+
+// Get booking confirmation page
+router.get('/:username/confirmation/:bookingId', async (req, res) => {
+  try {
+    const { username, bookingId } = req.params;
+    
+    // Get user information
+    const userResult = await db.query(
+      'SELECT id, username, full_name, display_name, email, meeting_link FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (!userResult.rows[0]) {
+      return res.status(404).render('error', { message: 'User not found' });
+    }
+    
+    const host = userResult.rows[0];
+    
+    // Get booking information
+    const bookingResult = await db.query(
+      `SELECT id, date, start_time, end_time, client_name, client_email, client_phone, notes, google_event_id, google_calendar_link
+       FROM bookings 
+       WHERE id = $1 AND user_id = $2`,
+      [bookingId, host.id]
+    );
+    
+    if (!bookingResult.rows[0]) {
+      return res.status(404).render('error', { message: 'Booking not found' });
+    }
+    
+    const booking = bookingResult.rows[0];
+    
+    // Format the booking times
+    booking.formatted_start_time = formatTime(booking.start_time);
+    booking.formatted_end_time = formatTime(booking.end_time);
+    
+    res.render('booking-confirmation', { booking, host });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });

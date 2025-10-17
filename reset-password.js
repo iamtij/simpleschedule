@@ -22,7 +22,6 @@ async function resetPassword() {
             [hash, 'tjtalusan@gmail.com']
         );
 
-        console.log('Password updated for user:', result.rows[0]);
     } catch (err) {
         console.error('Error resetting password:', err);
     } finally {

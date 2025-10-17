@@ -147,10 +147,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
     const bookingsResult = await db.query(finalQuery, queryParams);
     
     const bookings = bookingsResult.rows;
-    console.log('🔍 Search results:', bookings.length, 'bookings found');
-    if (searchTerm.trim()) {
-      console.log('🔍 Filtered bookings:', bookings.map(b => ({ id: b.id, name: b.client_name, email: b.client_email })));
-    }
     
     // Pagination info
     const pagination = {
@@ -279,7 +275,6 @@ router.get('/settings', requireLogin, async (req, res) => {
 // API routes for root level
 router.get('/bookings/api', requireLogin, async (req, res) => {
   try {
-    console.log('📅 Fetching bookings for user:', req.session.userId);
     
         const bookingsResult = await db.query(
           `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, notes, status
@@ -289,7 +284,6 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
           [req.session.userId]
         );
     
-    console.log('📊 Raw bookings from database:', bookingsResult.rows);
     
         const events = bookingsResult.rows.map(booking => {
       // Convert the date to the correct date (handle timezone properly)
@@ -301,7 +295,6 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
       const day = String(bookingDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      console.log(`🗓️ Date conversion: ${booking.date} -> ${dateStr}`);
       
       const event = {
         id: booking.id,
@@ -337,7 +330,6 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
 // Availability API route
 router.get('/settings/availability', requireLogin, async (req, res) => {
   try {
-    console.log('🔍 Availability endpoint called, userId:', req.session.userId);
     
     // Get availability data
     const availabilityResult = await db.query(
@@ -389,7 +381,6 @@ router.get('/settings/availability', requireLogin, async (req, res) => {
 // POST availability route
 router.post('/settings/availability', requireLogin, async (req, res) => {
   try {
-    console.log('💾 Saving availability settings for user:', req.session.userId);
     console.log('📊 Request body:', req.body);
     
     const userId = req.session.userId;

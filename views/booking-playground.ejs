@@ -6,7 +6,9 @@
     <title>Book an Appointment with <%= user.display_name || user.full_name || user.username %></title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="/js/toast.js"></script>
     <style>
         /* Clean, Minimal Design */
         .booking-container {
@@ -69,15 +71,13 @@
                 border-radius: 6px;
             }
             
-            /* Bigger combined month/year on mobile */
+            /* Keep header size consistent on mobile */
             .calendar-widget .flatpickr-current-month {
                 font-size: 0 !important; /* Hide original text */
                 padding-bottom: 0 !important;
             }
             
             .calendar-widget .flatpickr-current-month::before {
-                font-size: 20px !important;
-                font-weight: 700 !important;
                 padding-bottom: 6px !important;
             }
             
@@ -111,15 +111,13 @@
         
         /* Small mobile optimizations */
         @media (max-width: 480px) {
-            /* Even bigger combined month/year on small mobile */
+            /* Keep header size consistent on small mobile */
             .calendar-widget .flatpickr-current-month {
                 font-size: 0 !important; /* Hide original text */
                 padding-bottom: 0 !important;
             }
             
             .calendar-widget .flatpickr-current-month::before {
-                font-size: 22px !important;
-                font-weight: 700 !important;
                 padding-bottom: 6px !important;
             }
             
@@ -754,7 +752,6 @@
             // Load current month availability
             const today = new Date();
             loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
-                console.log(`✅ Initial month availability loaded, initializing calendar`);
                 // Initialize calendar with availability data after loading
                 setTimeout(() => {
                     initializeCalendar();
@@ -783,44 +780,139 @@
                 document.getElementById('client-info-form').reset();
             });
 
-            // Handle form submission - populate hidden fields before submit
-            document.getElementById('client-info-form').addEventListener('submit', function(e) {
-                console.log('Form submission started');
-                console.log('Selected date:', selectedDate);
-                console.log('Selected time:', selectedTime);
+            // Handle form submission with AJAX and conflict checking
+            document.getElementById('client-info-form').addEventListener('submit', async function(e) {
+                e.preventDefault(); // Prevent default form submission
                 
-                if (!selectedDate || !selectedTime) {
-                    e.preventDefault();
-                    alert('Please select a date and time before confirming your booking.');
+                const submitButton = document.getElementById('submit-booking-btn');
+                
+                // Check if button is already disabled (prevents double submission)
+                if (submitButton.disabled) {
                     return false;
                 }
                 
-                // Populate hidden fields with booking data
-                document.getElementById('booking-date').value = selectedDate;
+                // Validate required fields
+                if (!selectedDate || !selectedTime) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Missing Information',
+                        message: 'Please select a date and time before confirming your booking.'
+                    });
+                    return false;
+                }
+                
+                // Disable button immediately to prevent double-clicking
+                submitButton.disabled = true;
+                submitButton.textContent = 'Creating Booking...';
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
                 
                 // Parse the time slot to get start and end times
                 const timeParts = selectedTime.split('-');
-                document.getElementById('booking-start-time').value = timeParts[0];
-                document.getElementById('booking-end-time').value = timeParts[1];
+                const startTime = timeParts[0];
+                const endTime = timeParts[1];
                 
-                // Verify the hidden fields are populated
-                console.log('Hidden field values after population:');
-                console.log('Date:', document.getElementById('booking-date').value);
-                console.log('Start time:', document.getElementById('booking-start-time').value);
-                console.log('End time:', document.getElementById('booking-end-time').value);
-                
-                console.log('Form submission data:', {
+                // Prepare form data
+                const formData = {
                     date: selectedDate,
-                    start_time: timeParts[0],
-                    end_time: timeParts[1],
+                    start_time: startTime,
+                    end_time: endTime,
                     client_name: document.getElementById('client-name').value,
                     client_email: document.getElementById('client-email').value,
                     client_phone: document.getElementById('client-phone').value,
                     notes: document.getElementById('client-notes').value
-                });
+                };
                 
-                // Let the form submit normally
-                console.log('Submitting form...');
+                
+                try {
+                    const response = await fetch(`/booking/<%= user.username %>`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        // Booking successful
+                        toast.show({
+                            type: 'success',
+                            title: 'Booking Confirmed!',
+                            message: `Your appointment on ${result.formatted_date} at ${result.formatted_start_time} has been confirmed.`
+                        });
+                        
+                        // Redirect to confirmation page or show success message
+                        setTimeout(() => {
+                            window.location.href = `/booking/<%= user.username %>/confirmation/${result.id}`;
+                        }, 2000);
+                        
+                    } else {
+                        // Handle different types of errors
+                        if (response.status === 409) {
+                            // Conflict error
+                            if (result.conflictType === 'google_calendar') {
+                                toast.show({
+                                    type: 'error',
+                                    title: 'Time Slot No Longer Available',
+                                    message: 'This time slot conflicts with existing Google Calendar events. Please select a different time.'
+                                });
+                            } else {
+                                toast.show({
+                                    type: 'error',
+                                    title: 'Time Slot No Longer Available',
+                                    message: 'This time slot has been booked by someone else. Please select a different time.'
+                                });
+                            }
+                            
+                            // Go back to calendar to select a new time
+                            setTimeout(() => {
+                                document.querySelector('.calendar-section').style.display = 'block';
+                                document.querySelector('.time-slots-section').style.display = 'block';
+                                document.querySelector('.client-form-section').style.display = 'none';
+                                
+                                // Reset selected time
+                                selectedTime = null;
+                                document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                                    btn.classList.remove('selected');
+                                });
+                            }, 3000);
+                            
+                        } else if (response.status === 400) {
+                            // Validation error
+                            toast.show({
+                                type: 'error',
+                                title: 'Invalid Request',
+                                message: result.error || 'Please check your information and try again.'
+                            });
+                        } else {
+                            // Other errors
+                            toast.show({
+                                type: 'error',
+                                title: 'Booking Failed',
+                                message: result.error || 'An error occurred while creating your booking. Please try again.'
+                            });
+                        }
+                        
+                        // Re-enable the button
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Confirm Booking';
+                        submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                    
+                } catch (error) {
+                    console.error('Booking submission error:', error);
+                    toast.show({
+                        type: 'error',
+                        title: 'Network Error',
+                        message: 'Unable to connect to the server. Please check your internet connection and try again.'
+                    });
+                    
+                    // Re-enable the button
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Confirm Booking';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
             });
         });
         
@@ -858,14 +950,12 @@
                         }
                     },
                     onMonthChange: function(selectedDates, dateStr, instance) {
-                        console.log(`📅 Month changed to ${instance.currentMonth + 1}/${instance.currentYear}`);
                         // Update combined month/year display
                         updateMonthYearDisplay();
                         // Load availability for the new month when user navigates
                         const currentMonth = instance.currentMonth;
                         const currentYear = instance.currentYear;
                         loadMonthAvailability(currentYear, currentMonth).then(() => {
-                            console.log(`✅ Month availability loaded, re-initializing calendar`);
                             // Re-initialize calendar with updated availability after loading
                             setTimeout(() => {
                                 initializeCalendar();
@@ -875,14 +965,12 @@
                         });
                     },
                     onYearChange: function(selectedDates, dateStr, instance) {
-                        console.log(`📅 Year changed to ${instance.currentYear}`);
                         // Update combined month/year display
                         updateMonthYearDisplay();
                         // Load availability for the new year when user navigates
                         const currentMonth = instance.currentMonth;
                         const currentYear = instance.currentYear;
                         loadMonthAvailability(currentYear, currentMonth).then(() => {
-                            console.log(`✅ Year availability loaded, re-initializing calendar`);
                             // Re-initialize calendar with updated availability after loading
                             setTimeout(() => {
                                 initializeCalendar();
@@ -967,7 +1055,6 @@
                         .then(data => {
                             const hasSlots = data.slots && data.slots.length > 0;
                             availabilityCache.set(dateStr, hasSlots);
-                            console.log(`Loaded availability for ${dateStr}: ${hasSlots} (${data.slots ? data.slots.length : 0} slots)`);
                         })
                         .catch(error => {
                             console.error(`Error fetching availability for ${dateStr}:`, error);
@@ -979,9 +1066,7 @@
                 
                 // Process all dates for the month in parallel
                 if (promises.length > 0) {
-                    console.log(`🔄 Loading availability for ${datesToLoad.length} dates in ${year}-${month + 1}`);
                     await Promise.all(promises);
-                    console.log(`✅ Completed loading availability for ${year}-${month + 1}`);
                 }
                 
                 updateDebugInfo();
@@ -1011,7 +1096,6 @@
                 const firstDay = new Date(currentYear, currentMonth, 1);
                 const lastDay = new Date(currentYear, currentMonth + 1, 0);
                 
-                console.log(`🔍 Checking dates from ${firstDay.toLocaleDateString('en-CA')} to ${lastDay.toLocaleDateString('en-CA')}`);
                 
                 // Check dates in the current calendar view
                 for (let day = firstDay.getDate(); day <= lastDay.getDate(); day++) {
@@ -1023,14 +1107,12 @@
                     const isPastDate = date.getTime() < today.getTime();
                     const shouldDisable = !hasAvailability || isPastDate;
                     
-                    console.log(`📅 Date ${dateStr}: hasAvailability=${hasAvailability}, isPastDate=${isPastDate}, shouldDisable=${shouldDisable}`);
                     
                     if (shouldDisable) {
                         datesToDisable.push(new Date(date));
                     }
                 }
                 
-                console.log(`🚫 Disabling ${datesToDisable.length} dates:`, datesToDisable.map(d => d.toLocaleDateString('en-CA')));
                 
                 // Use a more robust approach to disable dates
                 // First, clear any existing disable configuration
@@ -1062,13 +1144,11 @@
                                 dayElement.style.opacity = '0.3';
                                 dayElement.style.cursor = 'not-allowed';
                                 dayElement.style.pointerEvents = 'none';
-                                console.log(`🔒 Manually disabled ${dateStr} in DOM`);
                             }
                         }
                     });
                 }, 100);
                 
-                console.log(`✅ Calendar updated for ${currentYear}-${currentMonth + 1}: ${datesToDisable.length} dates disabled`);
                 
             } catch (error) {
                 console.error('❌ Error initializing calendar with availability:', error);
@@ -1203,49 +1283,6 @@
                 document.getElementById('selected-time-display').textContent = formattedTimeSlot;
             }
         }
-        
-        // Handle form submission - prevent double-clicking and disable button
-        document.getElementById('client-info-form').addEventListener('submit', function(e) {
-            const submitButton = document.getElementById('submit-booking-btn');
-            
-            // Check if button is already disabled (prevents double submission)
-            if (submitButton.disabled) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Validate required fields
-            if (!selectedDate || !selectedTime) {
-                e.preventDefault();
-                alert('Please select a date and time before confirming your booking.');
-                return false;
-            }
-            
-            // Disable button immediately to prevent double-clicking
-            submitButton.disabled = true;
-            submitButton.textContent = 'Creating Booking...';
-            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-            
-            // Populate hidden fields with booking data
-            document.getElementById('booking-date').value = selectedDate;
-            
-            // Parse the time slot to get start and end times
-            const timeParts = selectedTime.split('-');
-            document.getElementById('booking-start-time').value = timeParts[0];
-            document.getElementById('booking-end-time').value = timeParts[1];
-            
-            console.log('Form submission started - button disabled');
-            console.log('Selected date:', selectedDate);
-            console.log('Selected time:', selectedTime);
-            console.log('Hidden fields populated:', {
-                date: document.getElementById('booking-date').value,
-                start_time: document.getElementById('booking-start-time').value,
-                end_time: document.getElementById('booking-end-time').value
-            });
-            
-            // Allow form to submit normally
-            return true;
-        });
         
         
     </script>

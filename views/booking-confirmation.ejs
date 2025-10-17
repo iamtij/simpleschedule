@@ -26,8 +26,14 @@
                         <span class="text-gray-600">Date:</span>
                         <span class="font-medium text-gray-800">
                             <% 
-                            const [year, month, day] = booking.date.split('-').map(Number);
-                            const bookingDate = new Date(Date.UTC(year, month - 1, day));
+                            // Handle both string and Date object formats
+                            let bookingDate;
+                            if (typeof booking.date === 'string') {
+                                const [year, month, day] = booking.date.split('-').map(Number);
+                                bookingDate = new Date(Date.UTC(year, month - 1, day));
+                            } else {
+                                bookingDate = new Date(booking.date);
+                            }
                             %>
                             <%= bookingDate.toLocaleDateString('en-US', { 
                                 weekday: 'short',
@@ -80,7 +86,15 @@
             <div class="space-y-4">
                 <% 
                 const formatDateForGCal = (date) => {
-                    return date.replace(/-/g, '');
+                    if (typeof date === 'string') {
+                        return date.replace(/-/g, '');
+                    } else {
+                        // Handle Date object
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}${month}${day}`;
+                    }
                 };
                 const formatTimeForGCal = (time) => {
                     return time.replace(/:/g, '');
