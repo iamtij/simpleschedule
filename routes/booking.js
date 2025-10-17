@@ -63,7 +63,7 @@ router.get('/:username', async (req, res) => {
     if (!result.rows[0]) {
       return res.status(404).render('error', { message: 'User not found' });
     }
-    res.render('booking-page', { user: result.rows[0] });
+    res.render('booking-playground', { user: result.rows[0] });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });
