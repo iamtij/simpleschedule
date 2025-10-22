@@ -337,16 +337,19 @@ router.post('/booking/:username/check-conflicts', async (req, res) => {
             // Use the optimized calendar list method with caching
             const calendarList = await googleCalendarService.getCalendarList(req.session.userId);
             
-            // Filter to only show "My Calendars" (owner calendars)
-            const myCalendars = calendarList.filter(cal => 
-                cal.accessRole === 'owner'
+            // Filter to show calendars where user has write access (owner, writer, or freeBusyReader)
+            const availableCalendars = calendarList.filter(cal => 
+                cal.accessRole === 'owner' || 
+                cal.accessRole === 'writer' || 
+                cal.accessRole === 'freeBusyReader'
             ).map(cal => ({
                 id: cal.id,
                 summary: cal.summary,
-                primary: cal.primary || false
+                primary: cal.primary || false,
+                accessRole: cal.accessRole
             }));
 
-            res.json({ success: true, calendars: myCalendars });
+            res.json({ success: true, calendars: availableCalendars });
         } catch (error) {
             console.error('Error fetching Google Calendar list:', error);
             res.status(500).json({ success: false, error: error.message });

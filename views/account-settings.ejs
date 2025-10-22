@@ -1034,7 +1034,12 @@
             calendars.forEach(calendar => {
                 const option = document.createElement('option');
                 option.value = calendar.id;
-                option.textContent = calendar.summary + (calendar.primary ? ' (Primary)' : '');
+                let displayText = calendar.summary;
+                if (calendar.primary) displayText += ' (Primary)';
+                if (calendar.accessRole && calendar.accessRole !== 'owner') {
+                    displayText += ` (${calendar.accessRole})`;
+                }
+                option.textContent = displayText;
                 select.appendChild(option);
             });
             
