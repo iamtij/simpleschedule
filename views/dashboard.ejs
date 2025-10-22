@@ -441,7 +441,7 @@
                             </div>
                             <p class="ml-3 text-sm text-gray-700">
                                 Set your availability
-                                <a href="#availability-settings" onclick="scrollToAvailability()" class="text-blue-600 hover:text-blue-800 font-medium">Configure now →</a>
+                                <a href="/settings" class="text-blue-600 hover:text-blue-800 font-medium">Configure now →</a>
                             </p>
                         </div>
                         <% } else { %>
@@ -1011,19 +1011,6 @@
             }
         }
 
-        function scrollToAvailability() {
-            const availabilitySection = document.getElementById('availability-settings');
-            const availabilityContent = document.getElementById('availability-content');
-            
-            // Show availability content if hidden
-            if (availabilityContent.classList.contains('hidden')) {
-                availabilityContent.classList.remove('hidden');
-                document.getElementById('toggle-arrow').classList.add('rotate-180');
-            }
-            
-            // Scroll to section with smooth animation
-            availabilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
 
 
         // Update checklist item status
