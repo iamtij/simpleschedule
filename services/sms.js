@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
-const SEMAPHORE_SENDER = 'ISKED';
+const SEMAPHORE_SENDER = 'isked';
 const SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages';
 
 function formatPhoneNumber(phone) {
