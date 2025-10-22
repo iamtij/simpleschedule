@@ -87,6 +87,7 @@ const crmRoutes = require('./routes/crm');
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/booking', bookingRoutes);
+app.use('/dashboard', dashboardRoutes); // Mount dashboard routes
 app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
