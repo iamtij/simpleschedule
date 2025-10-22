@@ -619,7 +619,6 @@
                         .then(response => response.json())
                         .then(events => {
                             // Events are already properly formatted by the API
-                            console.log('📅 Calendar received events:', events);
                             successCallback(events);
                         })
                         .catch(error => failureCallback(error));

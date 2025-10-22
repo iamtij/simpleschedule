@@ -4,6 +4,13 @@ const session = require('express-session');
 const config = require('./config');
 const path = require('path');
 
+// Disable console.log in production to prevent Railway log rate limits
+if (config.env === 'production') {
+    console.log = () => {};
+    console.info = () => {};
+    console.debug = () => {};
+}
+
 const app = express();
 
 // Production security headers

@@ -342,7 +342,6 @@ router.post('/', requireLogin, async (req, res) => {
                 [email.trim(), req.session.userId]
             );
             
-            console.log('Existing contacts found:', existingContact.rows.length);
             
             if (existingContact.rows.length > 0) {
                 return res.status(400).json({
@@ -402,7 +401,6 @@ router.post('/', requireLogin, async (req, res) => {
                         booking_id
                     ]
                 );
-                console.log('Interaction created successfully');
             } catch (interactionError) {
                 console.error('Error creating interaction:', interactionError);
                 // Don't fail the contact creation if interaction fails

@@ -606,7 +606,6 @@ router.get('/availability', requireLogin, async (req, res) => {
 router.post('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    console.log('📊 Request body:', req.body);
     
     const {
       working_days = [],

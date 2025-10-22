@@ -123,8 +123,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
     }
     
     // Get total count for pagination (with search)
-    console.log('🔍 Count query conditions:', searchConditions);
-    console.log('🔍 Count query params:', queryParams);
     const countResult = await db.query(
       `SELECT COUNT(*) FROM bookings ${searchConditions}`,
       queryParams
@@ -141,8 +139,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
        ORDER BY date DESC, start_time DESC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     
-    console.log('🔍 Final SQL query:', finalQuery);
-    console.log('🔍 Final query params:', queryParams);
     
     const bookingsResult = await db.query(finalQuery, queryParams);
     
@@ -315,11 +311,9 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
           end_time: booking.end_time
         }
       };
-      console.log('🎯 Mapped event:', event);
       return event;
     });
     
-    console.log('📋 Final events array:', events);
     res.json(events);
   } catch (error) {
     console.error('Error fetching bookings:', error);
@@ -381,7 +375,6 @@ router.get('/settings/availability', requireLogin, async (req, res) => {
 // POST availability route
 router.post('/settings/availability', requireLogin, async (req, res) => {
   try {
-    console.log('📊 Request body:', req.body);
     
     const userId = req.session.userId;
     
@@ -402,7 +395,6 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
 
       // Insert new working days
       const workingDaysArray = Array.isArray(working_days) ? working_days : [];
-      console.log('📅 Working days to insert:', workingDaysArray);
       
       for (const dayIndex of workingDaysArray) {
         const startTime = req.body[`day_${dayIndex}_start`] || '09:00';
@@ -412,7 +404,6 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
           'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
           [userId, dayIndex, startTime, endTime]
         );
-        console.log(`✅ Inserted day ${dayIndex}: ${startTime} - ${endTime}`);
       }
 
       // Update or insert universal breaks
@@ -428,13 +419,11 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
           'UPDATE universal_breaks SET enabled = $1, start_time = $2, end_time = $3, updated_at = CURRENT_TIMESTAMP WHERE user_id = $4',
           [breakEnabled, break_start, break_end, userId]
         );
-        console.log('✅ Updated universal break:', break_start, '-', break_end, 'enabled:', breakEnabled);
       } else {
         await db.query(
           'INSERT INTO universal_breaks (user_id, enabled, start_time, end_time) VALUES ($1, $2, $3, $4)',
           [userId, breakEnabled, break_start, break_end]
         );
-        console.log('✅ Inserted universal break:', break_start, '-', break_end, 'enabled:', breakEnabled);
       }
 
       // Update buffer minutes in users table
@@ -442,11 +431,9 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
         'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
         [parseInt(buffer_minutes) || 0, userId]
       );
-      console.log('✅ Updated buffer minutes:', buffer_minutes);
 
       await db.query('COMMIT');
       
-      console.log('🎉 Availability settings saved successfully');
       res.redirect('/settings?success=availability_saved');
       
     } catch (error) {
