@@ -561,6 +561,27 @@ function formatTimeForDisplay(timeString) {
             return `${displayHour}:${minutes} ${ampm}`;
         }
 
+        // Convert URLs in text to clickable links
+        function convertUrlsToLinks(text) {
+            if (!text) return text;
+            
+            // Regular expression to match URLs (http, https, www, and common domains)
+            const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+            
+            return text.replace(urlRegex, function(url) {
+                // Add protocol if missing
+                let href = url;
+                if (!url.match(/^https?:\/\//)) {
+                    href = 'http://' + url;
+                }
+                
+                // Escape HTML to prevent XSS
+                const escapedUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${escapedUrl}</a>`;
+            });
+        }
+
         // Sorting functions
         function sortBookings(bookings, sortOrder) {
             const sorted = [...bookings];
@@ -717,7 +738,7 @@ function formatTimeForDisplay(timeString) {
                     </td>
                     <td class="hidden md:table-cell px-4 sm:px-6 py-4">
                         <div class="text-sm text-gray-900 max-w-xs truncate">
-                            ${booking.notes || '-'}
+                            ${convertUrlsToLinks(booking.notes || '-')}
                         </div>
                         ${booking.google_calendar_link ? `
                         <div class="text-xs text-blue-600 mt-1">

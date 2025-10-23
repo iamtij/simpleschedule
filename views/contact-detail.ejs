@@ -593,7 +593,10 @@
             document.getElementById('contact-source').textContent = formatSource(contact.source);
             document.getElementById('contact-bni-member').textContent = contact.bni_member ? 'Yes' : 'No';
             document.getElementById('contact-bni-chapter').textContent = contact.bni_chapter || 'Not specified';
-            document.getElementById('contact-notes').textContent = contact.notes || 'No notes';
+            // Display notes with clickable links
+            const notesElement = document.getElementById('contact-notes');
+            const notes = contact.notes || 'No notes';
+            notesElement.innerHTML = convertUrlsToLinks(notes);
             
             // Quick stats
             document.getElementById('contact-last-contact').textContent = 
@@ -629,7 +632,7 @@
                                 ${interaction.subject ? `<span class="text-sm font-medium text-gray-900">${interaction.subject}</span>` : ''}
                                 ${interaction.status === 'completed' ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ Done</span>` : ''}
                             </div>
-                            ${interaction.notes ? `<p class="mt-1 text-sm text-gray-600">${interaction.notes}</p>` : ''}
+                            ${interaction.notes ? `<p class="mt-1 text-sm text-gray-600">${convertUrlsToLinks(interaction.notes)}</p>` : ''}
                             ${interaction.follow_up_date ? `
                                 <div class="mt-2 flex items-center space-x-2">
                                     <span class="text-xs text-orange-600 font-medium">Follow-up: ${new Date(interaction.follow_up_date).toLocaleDateString()}${interaction.follow_up_time ? ` at ${formatTimeAMPM(interaction.follow_up_time)}` : ''}</span>
@@ -705,6 +708,27 @@
                 'inactive': 'Inactive'
             };
             return statusMap[status] || status;
+        }
+
+        // Convert URLs in text to clickable links
+        function convertUrlsToLinks(text) {
+            if (!text) return text;
+            
+            // Regular expression to match URLs (http, https, www, and common domains)
+            const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+            
+            return text.replace(urlRegex, function(url) {
+                // Add protocol if missing
+                let href = url;
+                if (!url.match(/^https?:\/\//)) {
+                    href = 'http://' + url;
+                }
+                
+                // Escape HTML to prevent XSS
+                const escapedUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${escapedUrl}</a>`;
+            });
         }
 
         // Format source
