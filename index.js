@@ -83,6 +83,7 @@ const testRoutes = require('./routes/test');
 const adminRoutes = require('./routes/admin');
 const googleAuthRoutes = require('./routes/googleAuth');
 const crmRoutes = require('./routes/crm');
+const telegramRoutes = require('./routes/telegram');
 
 // Mount routes
 app.use('/auth', authRoutes);
@@ -91,6 +92,7 @@ app.use('/dashboard', dashboardRoutes); // Mount dashboard routes
 app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
+app.use('/api/telegram', telegramRoutes);
 app.use('/', googleAuthRoutes); // Google auth routes are mounted at root level
 
 // Import root-level routes for cleaner URLs

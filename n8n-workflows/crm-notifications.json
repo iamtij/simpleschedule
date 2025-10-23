@@ -1,0 +1,225 @@
+{
+  "name": "CRM Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "crm-notification",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "crm-notification-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contact-data",
+              "name": "contact",
+              "value": "={{ $json.contact }}",
+              "type": "object"
+            },
+            {
+              "id": "user-id",
+              "name": "userId",
+              "value": "={{ $json.userId }}",
+              "type": "number"
+            },
+            {
+              "id": "action",
+              "name": "action",
+              "value": "={{ $json.action }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-crm-data",
+      "name": "Set CRM Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.APP_URL }}/api/users/{{ $json.userId }}/telegram",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "id": "get-telegram-info",
+      "name": "Get Telegram Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "telegram-enabled",
+              "leftValue": "={{ $json.telegram_enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-telegram-enabled",
+      "name": "Check Telegram Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "action-text",
+              "name": "actionText",
+              "value": "={{ $json.action === 'created' ? '➕ New Contact Added' : $json.action === 'updated' ? '✏️ Contact Updated' : $json.action === 'interaction' ? '💬 New Interaction Logged' : 'Contact Update' }}",
+              "type": "string"
+            },
+            {
+              "id": "status-text",
+              "name": "statusText",
+              "value": "={{ $json.contact.status === 'new_lead' ? 'New Lead' : $json.contact.status === 'qualified_lead' ? 'Qualified Lead' : $json.contact.status === 'warm_prospect' ? 'Warm Prospect' : $json.contact.status === 'hot_prospect' ? 'Hot Prospect' : $json.contact.status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-message-data",
+      "name": "Format Message Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "{{ $json.actionText }}\n\n👤 <b>{{ $json.contact.name }}</b>\n{{ $json.contact.company ? `🏢 ${$json.contact.company}` : '' }}\n{{ $json.contact.position ? `💼 ${$json.contact.position}` : '' }}\n📊 Status: {{ $json.statusText }}\n⭐ Referral: {{ $json.contact.referral_potential }}/5\n\n<a href=\"{{ $env.APP_URL }}/contacts/{{ $json.contact.id }}\">View Contact</a>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send-crm-notification",
+      "name": "Send CRM Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set CRM Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set CRM Data": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram Info": {
+      "main": [
+        [
+          {
+            "node": "Check Telegram Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Telegram Enabled": {
+      "main": [
+        [
+          {
+            "node": "Format Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message Data": {
+      "main": [
+        [
+          {
+            "node": "Send CRM Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}
+
+

@@ -297,85 +297,6 @@
         </div>
     </div>
 
-    <!-- Edit Contact Modal -->
-    <div id="edit-contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50 overflow-y-auto">
-        <div class="flex items-start justify-center min-h-screen p-4 py-8">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full my-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Edit Contact</h3>
-                </div>
-                <form id="edit-contact-form" class="px-6 py-4 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                        <input type="text" id="edit-contact-name" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input type="email" id="edit-contact-email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <input type="tel" id="edit-contact-phone" name="phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                        <input type="text" id="edit-contact-company" name="company" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                        <input type="text" id="edit-contact-position" name="position" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                        <input type="text" id="edit-contact-industry" name="industry" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="edit-contact-status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="new_lead">New Lead</option>
-                            <option value="qualified_lead">Qualified Lead</option>
-                            <option value="warm_prospect">Warm Prospect</option>
-                            <option value="hot_prospect">Hot Prospect</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">BNI Member</label>
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="edit-contact-bni-member" name="bni_member" value="true" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-gray-700">Yes</span>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">BNI Chapter</label>
-                        <input type="text" id="edit-contact-bni-chapter" name="bni_chapter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., BNI Manila">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Potential</label>
-                        <select id="edit-contact-referral-potential" name="referral_potential" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="1">1 - Cold</option>
-                            <option value="2">2 - Warm</option>
-                            <option value="3">3 - Good</option>
-                            <option value="4">4 - Hot</option>
-                            <option value="5">5 - Fire</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea id="edit-contact-notes" name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
-                    </div>
-                </form>
-                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button type="button" id="cancel-edit-contact" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit" form="edit-contact-form" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Update Contact
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Delete Contact Confirmation Modal -->
     <div id="delete-contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -434,16 +355,6 @@
             loadStats();
             initializeEventListeners();
             
-            // Check if we need to open edit modal from URL parameter
-            const editId = urlParams.get('edit');
-            if (editId) {
-                // Wait for contacts to load, then open edit modal
-                setTimeout(() => {
-                    editContact(parseInt(editId));
-                    // Clean up URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }, 500);
-            }
         });
 
         // Toast notifications are available globally via /js/toast.js
@@ -603,11 +514,6 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                 </svg>
                             </button>
-                            <button onclick="editContact(${contact.id})" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50" title="Edit Contact">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                            </button>
                             <button onclick="deleteContact(${contact.id})" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Delete Contact">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -705,12 +611,6 @@
             // Add contact form
             document.getElementById('add-contact-form').addEventListener('submit', handleAddContact);
             
-            // Edit contact form
-            document.getElementById('edit-contact-form').addEventListener('submit', handleEditContact);
-            
-            // Cancel edit contact
-            document.getElementById('cancel-edit-contact').addEventListener('click', hideEditContactModal);
-            
             // Delete contact buttons
             document.getElementById('cancel-delete-contact').addEventListener('click', hideDeleteContactModal);
             document.getElementById('confirm-delete-contact').addEventListener('click', confirmDeleteContact);
@@ -753,12 +653,6 @@
         function hideAddContactModal() {
             document.getElementById('add-contact-modal').classList.add('hidden');
             document.getElementById('add-contact-form').reset();
-        }
-        
-        // Hide edit contact modal
-        function hideEditContactModal() {
-            document.getElementById('edit-contact-modal').classList.add('hidden');
-            document.getElementById('edit-contact-form').reset();
         }
         
         // Hide delete contact modal
@@ -810,51 +704,6 @@
             }
         }
         
-        // Handle edit contact form submission
-        async function handleEditContact(e) {
-            e.preventDefault();
-            
-            const contactId = e.target.dataset.contactId;
-            const formData = new FormData(e.target);
-            const contactData = Object.fromEntries(formData.entries());
-            
-            try {
-                const response = await fetch(`/crm/${contactId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(contactData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    hideEditContactModal();
-                    loadContacts();
-                    loadStats();
-                    toast.show({
-                        type: 'success',
-                        title: 'Contact updated!',
-                        message: `${contactData.name} has been updated.`
-                    });
-                } else {
-                    toast.show({
-                        type: 'error',
-                        title: 'Error',
-                        message: data.error || 'Failed to update contact'
-                    });
-                }
-            } catch (error) {
-                console.error('Error updating contact:', error);
-                toast.show({
-                    type: 'error',
-                    title: 'Error',
-                    message: 'Failed to update contact'
-                });
-            }
-        }
-
         // Handle search
         function handleSearch(e) {
             const searchTerm = e.target.value.trim();
@@ -1029,36 +878,6 @@
         // View contact
         function viewContact(id) {
             window.location.href = `/contacts/${id}`;
-        }
-
-        // Edit contact
-        function editContact(id) {
-            const contact = contacts.find(c => c.id === id);
-            if (!contact) {
-                console.error('Contact not found');
-                return;
-            }
-            
-            // Populate the edit form
-            document.getElementById('edit-contact-name').value = contact.name;
-            document.getElementById('edit-contact-email').value = contact.email || '';
-            document.getElementById('edit-contact-phone').value = contact.phone || '';
-            document.getElementById('edit-contact-company').value = contact.company || '';
-            document.getElementById('edit-contact-position').value = contact.position || '';
-            document.getElementById('edit-contact-industry').value = contact.industry || '';
-            document.getElementById('edit-contact-status').value = contact.status;
-            document.getElementById('edit-contact-referral-potential').value = contact.referral_potential;
-            document.getElementById('edit-contact-notes').value = contact.notes || '';
-            
-            // Populate BNI fields
-            document.getElementById('edit-contact-bni-member').checked = contact.bni_member === true;
-            document.getElementById('edit-contact-bni-chapter').value = contact.bni_chapter || '';
-            
-            // Store the contact ID for the form submission
-            document.getElementById('edit-contact-form').dataset.contactId = id;
-            
-            // Show the edit modal
-            document.getElementById('edit-contact-modal').classList.remove('hidden');
         }
 
         // Delete contact

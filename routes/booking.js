@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
+const telegramService = require('../services/telegram');
 const googleCalendarService = require('../services/googleCalendar');
 const timezone = require('../utils/timezone');
 
@@ -318,6 +319,15 @@ router.post('/:username', async (req, res) => {
         await Promise.all(notifications);
     } catch (notificationError) {
         // Don't fail the booking if notifications fail
+    }
+
+    // Send Telegram notification if enabled
+    if (host.telegram_notifications_enabled && host.telegram_chat_id) {
+        try {
+            await telegramService.sendBookingNotification(booking, host, host.telegram_chat_id);
+        } catch (telegramError) {
+            console.error('Telegram notification error:', telegramError);
+        }
     }
 
     // Return JSON response for AJAX handling

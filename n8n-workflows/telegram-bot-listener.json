@@ -1,0 +1,395 @@
+{
+  "name": "Telegram Bot Listener",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "start-command",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "bookings-command",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/bookings",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "contacts-command",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/contacts",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "help-command",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/help",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "switch-command",
+      "name": "Switch Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.APP_URL }}/api/telegram/webhook",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "x-n8n-webhook-secret": "={{ $env.N8N_WEBHOOK_SECRET }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "command",
+              "value": "get_bookings"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ { \"date\": $json.message.text.split(' ')[1] || new Date().toISOString().split('T')[0] } }}"
+            }
+          ]
+        }
+      },
+      "id": "http-bookings",
+      "name": "Get Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.APP_URL }}/api/telegram/webhook",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "x-n8n-webhook-secret": "={{ $env.N8N_WEBHOOK_SECRET }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "command",
+              "value": "get_contacts"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ { \"search\": $json.message.text.split(' ')[1] || '' } }}"
+            }
+          ]
+        }
+      },
+      "id": "http-contacts",
+      "name": "Get Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "🤖 SimpleSchedule Bot Commands:\n\n/start - Link your account\n/bookings - View today's bookings\n/bookings tomorrow - View tomorrow's bookings\n/bookings YYYY-MM-DD - View specific date\n/contacts - Search your contacts\n/help - Show this help message\n\nNeed more help? Contact support.",
+        "additionalFields": {}
+      },
+      "id": "telegram-help",
+      "name": "Send Help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        680,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.APP_URL }}/api/telegram/webhook",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "x-n8n-webhook-secret": "={{ $env.N8N_WEBHOOK_SECRET }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "command",
+              "value": "link_account"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ { \"username\": $json.message.from.username, \"connectionCode\": $json.message.text.split(' ')[1] || '' } }}"
+            }
+          ]
+        }
+      },
+      "id": "http-link",
+      "name": "Link Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ $json.success ? '✅ Account linked successfully! You will now receive booking notifications.' : '❌ Failed to link account. Please check your connection code.' }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-link-response",
+      "name": "Link Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        900,
+        100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ $json.success ? '📅 Your bookings:\n\n' + $json.bookings.map(b => `• ${b.client_name} - ${b.date} at ${b.start_time}`).join('\\n') : '❌ No bookings found or error occurred.' }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-bookings-response",
+      "name": "Bookings Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        900,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ $json.success ? '👥 Your contacts:\n\n' + $json.contacts.map(c => `• ${c.name} (${c.company || 'No company'}) - ${c.status}`).join('\\n') : '❌ No contacts found or error occurred.' }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-contacts-response",
+      "name": "Contacts Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "❓ Unknown command. Send /help to see available commands.",
+        "additionalFields": {}
+      },
+      "id": "telegram-unknown",
+      "name": "Unknown Command",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        680,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Command": {
+      "main": [
+        [
+          {
+            "node": "Link Account",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Bookings": {
+      "main": [
+        [
+          {
+            "node": "Bookings Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Contacts": {
+      "main": [
+        [
+          {
+            "node": "Contacts Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link Account": {
+      "main": [
+        [
+          {
+            "node": "Link Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}
+
+

@@ -1,0 +1,352 @@
+{
+  "name": "Booking Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "booking-notification",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "booking-notification-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "booking-data",
+              "name": "booking",
+              "value": "={{ $json.booking }}",
+              "type": "object"
+            },
+            {
+              "id": "host-data",
+              "name": "host",
+              "value": "={{ $json.host }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-booking-data",
+      "name": "Set Booking Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.APP_URL }}/api/users/{{ $json.host.id }}/telegram",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "id": "get-telegram-info",
+      "name": "Get Telegram Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "telegram-enabled",
+              "leftValue": "={{ $json.telegram_enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-telegram-enabled",
+      "name": "Check Telegram Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "meeting-link",
+              "name": "meetingLink",
+              "value": "={{ $json.host.meeting_link || $json.host.zoom_link || $json.host.gmeet_link || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "formatted-date",
+              "name": "formattedDate",
+              "value": "={{ new Date($json.booking.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }}",
+              "type": "string"
+            },
+            {
+              "id": "formatted-time",
+              "name": "formattedTime",
+              "value": "={{ (() => { const [hours, minutes] = $json.booking.start_time.split(':'); const hour = parseInt(hours); const ampm = hour >= 12 ? 'PM' : 'AM'; const hour12 = hour % 12 || 12; return `${hour12}:${minutes} ${ampm}`; })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-message-data",
+      "name": "Format Message Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "🗓️ <b>Booking Confirmed!</b>\n\n📅 Date: {{ $json.formattedDate }}\n⏰ Time: {{ $json.formattedTime }}\n👤 Client: {{ $json.booking.client_name }}\n{{ $json.booking.client_email ? `📧 Email: ${$json.booking.client_email}` : '' }}\n{{ $json.booking.client_phone ? `📱 Phone: ${$json.booking.client_phone}` : '' }}\n{{ $json.meetingLink ? `🔗 Meeting Link: ${$json.meetingLink}` : '' }}\n\n{{ $json.booking.notes ? `📝 Notes: ${$json.booking.notes}` : '' }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_markup": "={{ { \"inline_keyboard\": [[{ \"text\": \"✅ Confirm\", \"callback_data\": `confirm_${$json.booking.id}` }, { \"text\": \"✏️ Reschedule\", \"callback_data\": `reschedule_${$json.booking.id}` }, { \"text\": \"❌ Cancel\", \"callback_data\": `cancel_${$json.booking.id}` }]] } }}"
+        }
+      },
+      "id": "send-booking-notification",
+      "name": "Send Booking Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "schedule-reminder-1h",
+      "name": "Schedule 1h Reminder",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "value": 24
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "schedule-reminder-24h",
+      "name": "Schedule 24h Reminder",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "⏰ <b>Meeting Reminder</b>\n\nYour meeting with {{ $json.booking.client_name }} starts in 1 hour!\n\n📅 Date: {{ $json.formattedDate }}\n⏰ Time: {{ $json.formattedTime }}\n{{ $json.meetingLink ? `🔗 Join: ${$json.meetingLink}` : '' }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send-1h-reminder",
+      "name": "Send 1h Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "⏰ <b>Meeting Reminder</b>\n\nYour meeting with {{ $json.booking.client_name }} starts in 24 hours!\n\n📅 Date: {{ $json.formattedDate }}\n⏰ Time: {{ $json.formattedTime }}\n{{ $json.meetingLink ? `🔗 Join: ${$json.meetingLink}` : '' }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send-24h-reminder",
+      "name": "Send 24h Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Booking Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Booking Data": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram Info": {
+      "main": [
+        [
+          {
+            "node": "Check Telegram Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Telegram Enabled": {
+      "main": [
+        [
+          {
+            "node": "Format Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message Data": {
+      "main": [
+        [
+          {
+            "node": "Send Booking Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Booking Notification": {
+      "main": [
+        [
+          {
+            "node": "Schedule 1h Reminder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Schedule 24h Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule 1h Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send 1h Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule 24h Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send 24h Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}
+
+
