@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const telegramService = require('../services/telegram');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
@@ -412,6 +413,22 @@ router.post('/', requireLogin, async (req, res) => {
             success: true,
             contact: newContact
         });
+
+        // Send Telegram notification if enabled
+        if (req.session.userId) {
+            const user = await db.query(
+                'SELECT telegram_chat_id, telegram_notifications_enabled FROM users WHERE id = $1',
+                [req.session.userId]
+            );
+            if (user.rows[0]?.telegram_notifications_enabled && user.rows[0]?.telegram_chat_id) {
+                await telegramService.sendContactNotification(
+                    newContact, 
+                    user.rows[0], 
+                    user.rows[0].telegram_chat_id,
+                    'created'
+                );
+            }
+        }
     } catch (error) {
         console.error('Error creating contact:', error);
         res.status(500).json({
@@ -635,6 +652,132 @@ router.put('/:contactId/interactions/:interactionId/mark-done', requireLogin, as
         res.status(500).json({
             success: false,
             error: 'Failed to mark interaction as done'
+        });
+    }
+});
+
+// Edit an interaction
+router.put('/:contactId/interactions/:interactionId', requireLogin, async (req, res) => {
+    try {
+        const { contactId, interactionId } = req.params;
+        const {
+            type, subject, notes, outcome,
+            follow_up_date, follow_up_time
+        } = req.body;
+        
+        if (!type) {
+            return res.status(400).json({
+                success: false,
+                error: 'Interaction type is required'
+            });
+        }
+        
+        // Verify the contact belongs to the user
+        const contactResult = await db.query(
+            'SELECT id FROM contacts WHERE id = $1 AND user_id = $2',
+            [contactId, req.session.userId]
+        );
+        
+        if (contactResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Contact not found'
+            });
+        }
+        
+        // Update the interaction
+        const updateResult = await db.query(
+            `UPDATE interactions 
+             SET type = $1, subject = $2, notes = $3, outcome = $4, 
+                 follow_up_date = $5, follow_up_time = $6
+             WHERE id = $7 AND contact_id = $8 AND user_id = $9
+             RETURNING *`,
+            [type, subject, notes, outcome, 
+             follow_up_date || null, follow_up_time || null, 
+             interactionId, contactId, req.session.userId]
+        );
+        
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Interaction not found'
+            });
+        }
+        
+        // If this is a follow-up interaction with date/time, update the contact's next_follow_up
+        if (type === 'follow_up' && follow_up_date) {
+            let parsedFollowUpDate = follow_up_date;
+            if (typeof follow_up_date === 'string' && follow_up_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                parsedFollowUpDate = follow_up_date;
+            }
+            
+            await db.query(
+                'UPDATE contacts SET next_follow_up = $1 WHERE id = $2',
+                [parsedFollowUpDate, contactId]
+            );
+        } else if (type !== 'follow_up') {
+            // If changing from follow-up to another type, clear next_follow_up
+            await db.query(
+                'UPDATE contacts SET next_follow_up = NULL WHERE id = $1',
+                [contactId]
+            );
+        }
+        
+        res.json({
+            success: true,
+            interaction: updateResult.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Error editing interaction:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to edit interaction'
+        });
+    }
+});
+
+// Delete an interaction
+router.delete('/:contactId/interactions/:interactionId', requireLogin, async (req, res) => {
+    try {
+        const { contactId, interactionId } = req.params;
+        
+        // Verify the contact belongs to the user
+        const contactResult = await db.query(
+            'SELECT id FROM contacts WHERE id = $1 AND user_id = $2',
+            [contactId, req.session.userId]
+        );
+        
+        if (contactResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Contact not found'
+            });
+        }
+        
+        // Delete the interaction
+        const deleteResult = await db.query(
+            'DELETE FROM interactions WHERE id = $1 AND contact_id = $2 AND user_id = $3 RETURNING id',
+            [interactionId, contactId, req.session.userId]
+        );
+        
+        if (deleteResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Interaction not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Interaction deleted successfully'
+        });
+        
+    } catch (error) {
+        console.error('Error deleting interaction:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete interaction'
         });
     }
 });
