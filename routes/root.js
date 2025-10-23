@@ -52,10 +52,11 @@ router.get('/dashboard/data', requireLogin, async (req, res) => {
 
     // Get today's appointments using Manila timezone
     const todaysBookingsResult = await db.query(
-      `SELECT id, client_name, client_email, client_phone, start_time, end_time, notes, status 
-       FROM bookings 
-       WHERE user_id = $1 AND date::date = $2::date 
-       ORDER BY start_time`,
+      `SELECT b.id, b.client_name, b.client_email, b.client_phone, b.start_time, b.end_time, b.notes, b.status, u.meeting_link
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       WHERE b.user_id = $1 AND b.date::date = $2::date 
+       ORDER BY b.start_time`,
       [userId, today]
     );
 
