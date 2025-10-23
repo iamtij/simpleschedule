@@ -44,12 +44,13 @@ router.get('/dashboard', requireLogin, async (req, res) => {
 router.get('/dashboard/data', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Use Manila timezone for date calculation (UTC+8)
+    const now = new Date();
+    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const today = manilaTime.toISOString().split('T')[0]; // Get YYYY-MM-DD format
 
-    // Get today's appointments
+    // Get today's appointments using Manila timezone
     const todaysBookingsResult = await db.query(
       `SELECT id, client_name, client_email, client_phone, start_time, end_time, notes, status 
        FROM bookings 
@@ -58,15 +59,15 @@ router.get('/dashboard/data', requireLogin, async (req, res) => {
       [userId, today]
     );
 
-    // Get follow-ups due today and this week
+    // Get follow-ups due today and this week using Manila timezone
     const followUpsResult = await db.query(
       `SELECT id, name, email, phone, next_follow_up, status, bni_member, bni_chapter
        FROM contacts 
        WHERE user_id = $1 AND next_follow_up IS NOT NULL 
-       AND next_follow_up >= CURRENT_DATE 
-       AND next_follow_up <= CURRENT_DATE + INTERVAL '7 days'
+       AND next_follow_up >= $2::date 
+       AND next_follow_up <= $2::date + INTERVAL '7 days'
        ORDER BY next_follow_up ASC, name ASC`,
-      [userId]
+      [userId, today]
     );
 
     res.json({
@@ -106,10 +107,14 @@ router.get('/bookings', requireLogin, async (req, res) => {
     const offset = (page - 1) * limit;
     const searchTerm = req.query.search || '';
     
-    // Build search conditions - default to showing current and future dates only
-    let searchConditions = 'WHERE user_id = $1 AND date >= CURRENT_DATE';
-    let queryParams = [req.session.userId];
-    let paramIndex = 2;
+    // Build search conditions - default to showing current and future dates only using Manila timezone
+    const now = new Date();
+    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const today = manilaTime.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    
+    let searchConditions = 'WHERE user_id = $1 AND date >= $2::date';
+    let queryParams = [req.session.userId, today];
+    let paramIndex = 3;
     
     if (searchTerm.trim()) {
       searchConditions += ` AND (
@@ -272,12 +277,17 @@ router.get('/settings', requireLogin, async (req, res) => {
 router.get('/bookings/api', requireLogin, async (req, res) => {
   try {
     
+        // Use Manila timezone for date filtering
+        const now = new Date();
+        const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+        const today = manilaTime.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+        
         const bookingsResult = await db.query(
           `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, notes, status
            FROM bookings 
-           WHERE user_id = $1 AND date >= CURRENT_DATE
+           WHERE user_id = $1 AND date >= $2::date
            ORDER BY date ASC, start_time ASC`,
-          [req.session.userId]
+          [req.session.userId, today]
         );
     
     
