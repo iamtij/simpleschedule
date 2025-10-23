@@ -5,7 +5,7 @@
 # Add these to your .env file
 
 # Telegram Bot Token (get from @BotFather)
-TELEGRAM_BOT_TOKEN=8488798573:AAF60KG7CHs1WdOipzoHlBAqKK2TTg6K0sc
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 
 # n8n Webhook URL for Telegram bot communication
 N8N_TELEGRAM_WEBHOOK_URL=https://your-n8n-instance.com/webhook/telegram

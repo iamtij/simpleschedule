@@ -509,6 +509,37 @@
         </div>
     </div>
 
+    <!-- Edit Referral Modal -->
+    <div id="edit-referral-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Edit Referral</h3>
+                </div>
+                <form id="edit-referral-form" class="px-6 py-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referral Value</label>
+                        <input type="number" id="edit-referral-value" name="value" step="0.01" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Optional: Estimated value of the referral</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="edit-referral-notes" name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Optional: Additional notes about the referral</p>
+                    </div>
+                </form>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" id="cancel-edit-referral" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" form="edit-referral-form" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Update Referral
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Referral Modal -->
     <div id="add-referral-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -580,6 +611,39 @@
                     </button>
                     <button type="submit" form="add-referral-form" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
                         Add Referral
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Referral Confirmation Modal -->
+    <div id="delete-referral-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Delete Referral</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-gray-500">Are you sure you want to delete this referral? This action cannot be undone.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" id="cancel-delete-referral" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" id="confirm-delete-referral" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        Yes, Delete
                     </button>
                 </div>
             </div>
@@ -775,9 +839,25 @@
             if (referralsGiven.length > 0) {
                 html += '<div class="mb-4"><h4 class="text-sm font-medium text-gray-900 mb-2">Referrals Given</h4>';
                 html += referralsGiven.map(ref => `
-                    <div class="text-sm text-gray-600 mb-1">
-                        → ${ref.receiver_name} (${ref.receiver_company || 'No company'})
-                        <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                    <div class="flex items-center justify-between text-sm text-gray-600 mb-1 p-2 rounded hover:bg-gray-50">
+                        <div class="flex-1">
+                            → ${ref.receiver_name} (${ref.receiver_company || 'No company'})
+                            <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                            ${ref.value ? `<span class="text-xs text-green-600 ml-2">$${ref.value}</span>` : ''}
+                            ${ref.notes ? `<div class="text-xs text-gray-500 mt-1">${convertUrlsToLinks(ref.notes)}</div>` : ''}
+                        </div>
+                        <div class="flex items-center space-x-1 ml-2">
+                            <button onclick="editReferral(${ref.id})" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50" title="Edit Referral">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteReferral(${ref.id})" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Delete Referral">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 `).join('');
                 html += '</div>';
@@ -786,9 +866,25 @@
             if (referralsReceived.length > 0) {
                 html += '<div><h4 class="text-sm font-medium text-gray-900 mb-2">Referrals Received</h4>';
                 html += referralsReceived.map(ref => `
-                    <div class="text-sm text-gray-600 mb-1">
-                        ← ${ref.giver_name} (${ref.giver_company || 'No company'})
-                        <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                    <div class="flex items-center justify-between text-sm text-gray-600 mb-1 p-2 rounded hover:bg-gray-50">
+                        <div class="flex-1">
+                            ← ${ref.giver_name} (${ref.giver_company || 'No company'})
+                            <span class="text-xs text-gray-500">${new Date(ref.created_at).toLocaleDateString()}</span>
+                            ${ref.value ? `<span class="text-xs text-green-600 ml-2">$${ref.value}</span>` : ''}
+                            ${ref.notes ? `<div class="text-xs text-gray-500 mt-1">${convertUrlsToLinks(ref.notes)}</div>` : ''}
+                        </div>
+                        <div class="flex items-center space-x-1 ml-2">
+                            <button onclick="editReferral(${ref.id})" class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50" title="Edit Referral">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteReferral(${ref.id})" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50" title="Delete Referral">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 `).join('');
                 html += '</div>';
@@ -951,6 +1047,14 @@
             // Delete interaction modal event listeners
             document.getElementById('cancel-delete-interaction').addEventListener('click', cancelDeleteInteraction);
             document.getElementById('confirm-delete-interaction').addEventListener('click', confirmDeleteInteraction);
+            
+            // Edit referral modal event listeners
+            document.getElementById('cancel-edit-referral').addEventListener('click', hideEditReferralModal);
+            document.getElementById('edit-referral-form').addEventListener('submit', handleEditReferral);
+            
+            // Delete referral modal event listeners
+            document.getElementById('cancel-delete-referral').addEventListener('click', cancelDeleteReferral);
+            document.getElementById('confirm-delete-referral').addEventListener('click', confirmDeleteReferral);
             
             // Cancel add referral
             document.getElementById('cancel-add-referral').addEventListener('click', hideAddReferralModal);
@@ -1527,6 +1631,64 @@
             }
         }
 
+        // Edit referral
+        async function editReferral(referralId) {
+            try {
+                // Get current referrals to find the one to edit
+                const response = await fetch(`/crm/${contactId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to load referral data'
+                    });
+                    return;
+                }
+                
+                // Find the referral in both given and received arrays
+                const allReferrals = [...data.referralsGiven, ...data.referralsReceived];
+                const referral = allReferrals.find(ref => ref.id === referralId);
+                
+                if (!referral) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Referral not found'
+                    });
+                    return;
+                }
+                
+                // Populate the edit form
+                document.getElementById('edit-referral-value').value = referral.value || '';
+                document.getElementById('edit-referral-notes').value = referral.notes || '';
+                
+                // Store the referral ID for the form submission
+                document.getElementById('edit-referral-form').dataset.referralId = referralId;
+                
+                // Show the modal
+                document.getElementById('edit-referral-modal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading referral:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to load referral data'
+                });
+            }
+        }
+
+        // Delete referral
+        async function deleteReferral(referralId) {
+            // Store the referral ID for the confirmation
+            document.getElementById('confirm-delete-referral').dataset.referralId = referralId;
+            
+            // Show the modal
+            document.getElementById('delete-referral-modal').classList.remove('hidden');
+        }
+
         // Cancel delete interaction
         function cancelDeleteInteraction() {
             document.getElementById('delete-interaction-modal').classList.add('hidden');
@@ -1609,6 +1771,103 @@
             } else {
                 followUpFields.classList.add('hidden');
             }
+        }
+
+        // Hide edit referral modal
+        function hideEditReferralModal() {
+            document.getElementById('edit-referral-modal').classList.add('hidden');
+            document.getElementById('edit-referral-form').reset();
+        }
+
+        // Handle edit referral form submission
+        async function handleEditReferral(e) {
+            e.preventDefault();
+            
+            const referralId = e.target.dataset.referralId;
+            const formData = new FormData(e.target);
+            const referralData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch(`/crm/referrals/${referralId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(referralData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideEditReferralModal();
+                    loadContactDetails(); // Reload to show updated data
+                    toast.show({
+                        type: 'success',
+                        title: 'Referral updated!',
+                        message: 'The referral has been updated.'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to update referral'
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating referral:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to update referral'
+                });
+            }
+        }
+
+        // Confirm delete referral
+        async function confirmDeleteReferral() {
+            const referralId = document.getElementById('confirm-delete-referral').dataset.referralId;
+            
+            try {
+                const response = await fetch(`/crm/referrals/${referralId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Hide the modal
+                    document.getElementById('delete-referral-modal').classList.add('hidden');
+                    
+                    // Reload contact details to show updated referrals
+                    loadContactDetails();
+                    toast.show({
+                        type: 'success',
+                        title: 'Referral deleted!',
+                        message: 'The referral has been removed.'
+                    });
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Error',
+                        message: data.error || 'Failed to delete referral'
+                    });
+                }
+            } catch (error) {
+                console.error('Error deleting referral:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to delete referral'
+                });
+            }
+        }
+
+        // Cancel delete referral
+        function cancelDeleteReferral() {
+            document.getElementById('delete-referral-modal').classList.add('hidden');
         }
     </script>
 </body>

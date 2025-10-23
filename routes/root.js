@@ -106,8 +106,8 @@ router.get('/bookings', requireLogin, async (req, res) => {
     const offset = (page - 1) * limit;
     const searchTerm = req.query.search || '';
     
-    // Build search conditions
-    let searchConditions = 'WHERE user_id = $1';
+    // Build search conditions - default to showing current and future dates only
+    let searchConditions = 'WHERE user_id = $1 AND date >= CURRENT_DATE';
     let queryParams = [req.session.userId];
     let paramIndex = 2;
     
@@ -136,7 +136,7 @@ router.get('/bookings', requireLogin, async (req, res) => {
               notes, status, google_calendar_link, created_at
        FROM bookings 
        ${searchConditions}
-       ORDER BY date DESC, start_time DESC
+       ORDER BY date ASC, start_time ASC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     
     
@@ -275,7 +275,7 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
         const bookingsResult = await db.query(
           `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, notes, status
            FROM bookings 
-           WHERE user_id = $1 
+           WHERE user_id = $1 AND date >= CURRENT_DATE
            ORDER BY date ASC, start_time ASC`,
           [req.session.userId]
         );

@@ -179,6 +179,85 @@ router.post('/referrals', requireLogin, async (req, res) => {
     }
 });
 
+// Edit a referral
+router.put('/referrals/:referralId', requireLogin, async (req, res) => {
+    try {
+        const { referralId } = req.params;
+        const { value, notes } = req.body;
+        
+        // Verify the referral exists and belongs to the user
+        const referralResult = await db.query(
+            'SELECT id FROM referrals WHERE id = $1 AND user_id = $2',
+            [referralId, req.session.userId]
+        );
+        
+        if (referralResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Referral not found'
+            });
+        }
+        
+        // Update the referral
+        const updateResult = await db.query(
+            `UPDATE referrals 
+             SET value = $1, notes = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3 AND user_id = $4
+             RETURNING *`,
+            [value && value.trim() !== '' ? parseFloat(value) : null, notes, referralId, req.session.userId]
+        );
+        
+        res.json({
+            success: true,
+            referral: updateResult.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Error editing referral:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to edit referral'
+        });
+    }
+});
+
+// Delete a referral
+router.delete('/referrals/:referralId', requireLogin, async (req, res) => {
+    try {
+        const { referralId } = req.params;
+        
+        // Verify the referral exists and belongs to the user
+        const referralResult = await db.query(
+            'SELECT id FROM referrals WHERE id = $1 AND user_id = $2',
+            [referralId, req.session.userId]
+        );
+        
+        if (referralResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Referral not found'
+            });
+        }
+        
+        // Delete the referral
+        await db.query(
+            'DELETE FROM referrals WHERE id = $1 AND user_id = $2',
+            [referralId, req.session.userId]
+        );
+        
+        res.json({
+            success: true
+        });
+        
+    } catch (error) {
+        console.error('Error deleting referral:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete referral'
+        });
+    }
+});
+
 // Get CRM dashboard stats
 router.get('/stats/dashboard', requireLogin, async (req, res) => {
     try {

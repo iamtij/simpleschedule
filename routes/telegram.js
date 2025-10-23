@@ -103,12 +103,23 @@ async function handleGetBookings(req, res) {
     }
     
     const userId = user.rows[0].id;
+    
+    // Use proper date handling - if no specific date provided, use today
+    let filterDate;
+    if (date) {
+        filterDate = date;
+    } else {
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date();
+        filterDate = today.toISOString().split('T')[0];
+    }
+    
     const bookings = await db.query(
         `SELECT * FROM bookings 
          WHERE user_id = $1 AND date >= $2 
-         ORDER BY date, start_time 
+         ORDER BY date ASC, start_time ASC 
          LIMIT 10`,
-        [userId, date || new Date().toISOString().split('T')[0]]
+        [userId, filterDate]
     );
     
     res.json({ success: true, bookings: bookings.rows });

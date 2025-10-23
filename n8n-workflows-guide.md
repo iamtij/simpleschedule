@@ -132,7 +132,7 @@ This workflow handles linking Telegram accounts to SimpleSchedule users.
 ## Environment Variables Required:
 
 ```bash
-TELEGRAM_BOT_TOKEN=8488798573:AAF60KG7CHs1WdOipzoHlBAqKK2TTg6K0sc
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 N8N_WEBHOOK_SECRET=your_secure_secret
 APP_URL=https://your-simpleschedule-app.com
 ```

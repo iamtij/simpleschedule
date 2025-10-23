@@ -2,7 +2,7 @@
 
 ## Your Bot Details
 - **Bot Username**: @iskedbot
-- **Bot Token**: 8488798573:AAF60KG7CHs1WdOipzoHlBAqKK2TTg6K0sc
+- **Bot Token**: YOUR_BOT_TOKEN_HERE
 - **Bot URL**: https://t.me/iskedbot
 
 ## Quick Setup Steps
@@ -12,7 +12,7 @@ Add these to your `.env` file:
 
 ```bash
 # Telegram Integration
-TELEGRAM_BOT_TOKEN=8488798573:AAF60KG7CHs1WdOipzoHlBAqKK2TTg6K0sc
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 N8N_TELEGRAM_WEBHOOK_URL=https://your-n8n-instance.com/webhook/telegram
 N8N_WEBHOOK_SECRET=your_secure_secret_here
 APP_URL=https://your-app-url.com
