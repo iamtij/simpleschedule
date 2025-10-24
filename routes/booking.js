@@ -238,7 +238,7 @@ router.post('/:username', async (req, res) => {
     const bookingResult = await db.query(
         `INSERT INTO bookings (user_id, date, start_time, end_time, client_name, client_email, client_phone, notes)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING id, date::text, start_time::text, end_time::text, client_name, client_email, client_phone, notes`,
+         RETURNING id, confirmation_uuid, date::text, start_time::text, end_time::text, client_name, client_email, client_phone, notes`,
         [userId, date, start_time, end_time, client_name, client_email, client_phone, notes]
     );
 
@@ -597,9 +597,19 @@ router.get('/playground/:username', async (req, res) => {
 });
 
 // Get booking confirmation page
-router.get('/:username/confirmation/:bookingId', async (req, res) => {
+router.get('/:username/confirmation/:confirmationUuid', async (req, res) => {
   try {
-    const { username, bookingId } = req.params;
+    const { username, confirmationUuid } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(confirmationUuid)) {
+      return res.status(404).render('error', { 
+        message: 'Invalid confirmation link',
+        title: 'Link Not Found',
+        showHomeLink: true
+      });
+    }
     
     // Get user information
     const userResult = await db.query(
@@ -613,12 +623,12 @@ router.get('/:username/confirmation/:bookingId', async (req, res) => {
     
     const host = userResult.rows[0];
     
-    // Get booking information
+    // Get booking information using UUID
     const bookingResult = await db.query(
       `SELECT id, date, start_time, end_time, client_name, client_email, client_phone, notes, google_event_id, google_calendar_link
        FROM bookings 
-       WHERE id = $1 AND user_id = $2`,
-      [bookingId, host.id]
+       WHERE confirmation_uuid = $1 AND user_id = $2`,
+      [confirmationUuid, host.id]
     );
     
     if (!bookingResult.rows[0]) {
