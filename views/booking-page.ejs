@@ -7,6 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="max-w-3xl mx-auto px-4 py-8">
@@ -345,8 +348,14 @@
                 return response.json();
             })
             .then(data => {
+                // Debug logging
+                console.log('Booking response:', data);
+                console.log('Confirmation UUID:', data.confirmation_uuid);
+                
                 // Redirect to confirmation page using the UUID
-                window.location.href = `/booking/<%= user.username %>/confirmation/${data.confirmation_uuid}`;
+                const redirectUrl = `/booking/<%= user.username %>/confirmation/${data.confirmation_uuid}`;
+                console.log('Redirecting to:', redirectUrl);
+                window.location.href = redirectUrl;
             })
             .catch(error => {
                 console.error('Error creating booking:', error);
