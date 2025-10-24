@@ -28,21 +28,22 @@
             border-color: #E5E7EB !important;
         }
 
-        /* Event styling */
+        /* Event styling - clean style with dots */
         .fc-event {
-            border-radius: 6px !important;
+            border-radius: 4px !important;
             padding: 2px 6px !important;
             margin: 1px 2px !important;
             min-height: 24px !important;
             border: none !important;
-            background-color: #E0F2FE !important;
-            color: #0369A1 !important;
+            background-color: transparent !important;
+            color: #374151 !important;
             cursor: pointer !important;
             overflow: hidden !important;
+            box-shadow: none !important;
         }
 
         .fc-event:hover {
-            background-color: #BAE6FD !important;
+            background-color: #F9FAFB !important;
         }
 
         .fc-event-title {
@@ -61,19 +62,20 @@
 
         /* Add consistent styling for time grid events */
         .fc-timegrid-event {
-            background-color: #E0F2FE !important;
+            background-color: transparent !important;
             border: none !important;
             margin: 1px 0 !important;
             overflow: hidden !important;
+            box-shadow: none !important;
         }
 
         .fc-timegrid-event:hover {
-            background-color: #BAE6FD !important;
+            background-color: #F9FAFB !important;
         }
 
         .fc-timegrid-event .fc-event-main {
             padding: 2px 6px !important;
-            color: #0369A1 !important;
+            color: #374151 !important;
             overflow: hidden !important;
         }
 
@@ -112,15 +114,26 @@
             color: #10B981 !important;
         }
 
-        /* Today highlight */
+        /* Today highlight - clean circular indicator */
         .fc-day-today {
-            background-color: #ECFDF5 !important;
+            background-color: transparent !important;
+            position: relative;
         }
 
         .fc-day-today .fc-daygrid-day-frame,
         .fc-day-today .fc-timegrid-col-frame {
-            border: 1px solid #10B981 !important;
-            border-radius: 6px;
+            border: none !important;
+            background-color: transparent !important;
+        }
+
+        /* Standard today highlighting - subtle background */
+        .fc-day-today {
+            background-color: #F0F9FF !important;
+        }
+
+        /* For time grid view */
+        .fc-day-today .fc-col-header-cell-cushion {
+            position: relative;
         }
 
         /* Header styling */
@@ -568,6 +581,8 @@
         });
 
 
+        // Removed addTodayIndicator function - using standard FullCalendar highlighting
+
         function initializeCalendar() {
             const calendarEl = document.getElementById('calendar');
             calendarInstance = new FullCalendar.Calendar(calendarEl, {
@@ -627,12 +642,18 @@
                     // Use the original time strings from extendedProps (already in correct timezone)
                     const startTime = formatTimeShort(arg.event.extendedProps.start_time);
                     const endTime = formatTimeShort(arg.event.extendedProps.end_time);
+                    
+                    // Get status-based color
+                    const status = arg.event.extendedProps.status || 'pending';
+                    let dotColor = '#f59e0b'; // Default yellow for pending
+                    if (status === 'confirmed') dotColor = '#10b981'; // Green
+                    if (status === 'cancelled') dotColor = '#ef4444'; // Red
+                    
                     return {
                         html: `
-                            <div class="fc-content p-1">
-                                <div class="text-xs font-medium">
-                                    <div class="fc-event-time">${startTime} - ${endTime} - ${arg.event.extendedProps.client_name}</div>
-                                </div>
+                            <div class="flex items-center space-x-2 p-1">
+                                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${dotColor}"></div>
+                                <span class="text-xs font-medium text-gray-800">${startTime} - ${arg.event.extendedProps.client_name}</span>
                             </div>
                         `
                     };
@@ -791,6 +812,9 @@
                     if (calendarInstance) {
                         calendarInstance.refetchEvents();
                     }
+                    
+                    // Refresh Today's Appointments to show updated status
+                    loadDashboardData();
                     
                     // Show success toast
                     toast.show({
