@@ -62,12 +62,20 @@ router.get('/dashboard/data', requireLogin, async (req, res) => {
 
     // Get follow-ups due today and this week using Manila timezone
     const followUpsResult = await db.query(
-      `SELECT id, name, email, phone, next_follow_up, status, bni_member, bni_chapter
-       FROM contacts 
-       WHERE user_id = $1 AND next_follow_up IS NOT NULL 
-       AND next_follow_up >= $2::date 
-       AND next_follow_up <= $2::date + INTERVAL '7 days'
-       ORDER BY next_follow_up ASC, name ASC`,
+      `SELECT c.id, c.name, c.email, c.phone, c.next_follow_up, c.status, c.bni_member, c.bni_chapter,
+              i.notes as interaction_notes, i.type as interaction_type, i.date as interaction_date
+       FROM contacts c
+       LEFT JOIN LATERAL (
+           SELECT notes, type, date
+           FROM interactions 
+           WHERE contact_id = c.id 
+           ORDER BY date DESC 
+           LIMIT 1
+       ) i ON true
+       WHERE c.user_id = $1 AND c.next_follow_up IS NOT NULL 
+       AND c.next_follow_up >= $2::date 
+       AND c.next_follow_up <= $2::date + INTERVAL '7 days'
+       ORDER BY c.next_follow_up ASC, c.name ASC`,
       [userId, today]
     );
 
