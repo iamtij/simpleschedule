@@ -59,12 +59,25 @@ async function sendBookingConfirmationSMS(booking, host) {
     // Create short URL for appointment page
     const baseUrl = process.env.BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://isked.app');
     const appointmentUrl = `${baseUrl}/${host.username}/confirmation/${booking.id}`;
-    const shortUrl = await urlShortener.shortenUrl(appointmentUrl, null, host.id, 30);
+    console.log('Creating short URL for:', appointmentUrl);
+    
+    let shortUrl;
+    try {
+        shortUrl = await urlShortener.shortenUrl(appointmentUrl, null, host.id, 30);
+        console.log('Generated short URL:', shortUrl);
+    } catch (error) {
+        console.error('Error creating short URL:', error);
+        // Fallback to original appointment URL if short URL fails
+        shortUrl = appointmentUrl;
+        console.log('Using fallback URL:', shortUrl);
+    }
     
     const message = `Hi ${booking.client_name}, your meeting with ${host.full_name} is confirmed!\n` +
                    `Date: ${formatDate(booking.date)}\n` +
                    `Time: ${formatTime(booking.start_time)}\n` +
                    `Join: ${shortUrl}`;
+    
+    console.log('SMS message:', message);
 
     try {
         const response = await axios.post(SEMAPHORE_API_URL, {
