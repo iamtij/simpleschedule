@@ -31,9 +31,9 @@
         /* Event styling - clean style with dots */
         .fc-event {
             border-radius: 4px !important;
-            padding: 2px 6px !important;
-            margin: 1px 2px !important;
-            min-height: 24px !important;
+            padding: 1px 4px !important;
+            margin: 0.5px 2px !important;
+            min-height: 18px !important;
             border: none !important;
             background-color: transparent !important;
             color: #374151 !important;
@@ -50,21 +50,23 @@
             white-space: normal !important;
             word-wrap: break-word !important;
             overflow: hidden !important;
-            line-height: 1.2 !important;
+            line-height: 1.1 !important;
             display: block !important;
+            font-size: 11px !important;
         }
 
         .fc-event-time {
             white-space: nowrap !important;
             display: inline-block !important;
             margin-right: 4px !important;
+            font-size: 10px !important;
         }
 
         /* Add consistent styling for time grid events */
         .fc-timegrid-event {
             background-color: transparent !important;
             border: none !important;
-            margin: 1px 0 !important;
+            margin: 0.5px 0 !important;
             overflow: hidden !important;
             box-shadow: none !important;
         }
@@ -74,7 +76,7 @@
         }
 
         .fc-timegrid-event .fc-event-main {
-            padding: 2px 6px !important;
+            padding: 1px 4px !important;
             color: #374151 !important;
             overflow: hidden !important;
         }
@@ -83,14 +85,16 @@
             white-space: normal !important;
             word-wrap: break-word !important;
             overflow: hidden !important;
-            line-height: 1.2 !important;
+            line-height: 1.1 !important;
             display: block !important;
+            font-size: 11px !important;
         }
 
         .fc-timegrid-event .fc-event-time {
             white-space: nowrap !important;
             display: inline-block !important;
             margin-right: 4px !important;
+            font-size: 10px !important;
         }
 
         /* Style the time slots */
@@ -680,9 +684,9 @@
                     
                     return {
                         html: `
-                            <div class="flex items-center space-x-2 p-1">
-                                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${dotColor}"></div>
-                                <span class="text-xs font-medium text-gray-800">${startTime} - ${arg.event.extendedProps.client_name}</span>
+                            <div class="flex items-center space-x-1 py-0.5">
+                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color: ${dotColor}"></div>
+                                <span class="text-xs font-medium text-gray-800 leading-tight">${startTime} - ${arg.event.extendedProps.client_name}</span>
                             </div>
                         `
                     };
