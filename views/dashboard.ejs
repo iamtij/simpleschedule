@@ -142,25 +142,33 @@
             font-weight: 600 !important;
         }
 
+        /* Clean, modern minimalist styling */
         .fc-button-primary {
-            background-color: white !important;
-            border-color: #E5E7EB !important;
-            color: #374151 !important;
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
             font-weight: 500 !important;
-            padding: 0.5rem 1rem !important;
+            padding: 0.625rem 1rem !important;
             border-radius: 6px !important;
+            transition: all 0.15s ease !important;
+            font-size: 0.875rem !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
         }
 
         .fc-button-primary:hover {
-            background-color: #F3F4F6 !important;
-            border-color: #D1D5DB !important;
+            background-color: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+            transform: translateY(-0.5px) !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
         }
 
         .fc-button-primary:not(:disabled).fc-button-active,
         .fc-button-primary:not(:disabled):active {
-            background-color: #F3F4F6 !important;
-            border-color: #D1D5DB !important;
-            color: #111827 !important;
+            background-color: #e2e8f0 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #1e293b !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
         }
 
         /* Mobile optimizations */
@@ -216,6 +224,27 @@
                 display: block !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
+            }
+        }
+
+        /* Enhanced mobile navigation buttons */
+        @media (max-width: 640px) {
+            .fc-button-primary {
+                padding: 0.75rem 1rem !important;
+                font-size: 0.8rem !important;
+                min-height: 44px !important; /* Better touch targets */
+            }
+            
+            .fc-prev-button,
+            .fc-next-button,
+            .fc-today-button {
+                flex: 1 !important;
+                margin: 0 0.25rem !important;
+            }
+            
+            .fc-button-group .fc-button {
+                padding: 0.75rem 0.5rem !important;
+                font-size: 0.75rem !important;
             }
         }
 
