@@ -84,6 +84,7 @@ const adminRoutes = require('./routes/admin');
 const googleAuthRoutes = require('./routes/googleAuth');
 const crmRoutes = require('./routes/crm');
 const telegramRoutes = require('./routes/telegram');
+const shortUrlRoutes = require('./routes/shortUrl');
 
 // Mount routes
 app.use('/auth', authRoutes);
@@ -93,6 +94,7 @@ app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/', shortUrlRoutes); // Short URL routes (must be before root routes)
 app.use('/', googleAuthRoutes); // Google auth routes are mounted at root level
 
 // Import root-level routes for cleaner URLs

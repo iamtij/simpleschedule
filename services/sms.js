@@ -1,4 +1,5 @@
 const axios = require('axios');
+const urlShortener = require('./urlShortener');
 
 const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
 const SEMAPHORE_SENDER = 'isked';
@@ -55,11 +56,15 @@ async function sendBookingConfirmationSMS(booking, host) {
         return; // Skip if no phone number provided
     }
 
-    const meetingLink = host.meeting_link || host.zoom_link || host.gmeet_link;
+    // Create short URL for appointment page
+    const baseUrl = process.env.BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://isked.app');
+    const appointmentUrl = `${baseUrl}/${host.username}/confirmation/${booking.id}`;
+    const shortUrl = await urlShortener.shortenUrl(appointmentUrl, null, host.id, 30);
+    
     const message = `Hi ${booking.client_name}, your meeting with ${host.full_name} is confirmed!\n` +
                    `Date: ${formatDate(booking.date)}\n` +
                    `Time: ${formatTime(booking.start_time)}\n` +
-                   (meetingLink ? `Meeting Link: ${meetingLink}` : '');
+                   `Join: ${shortUrl}`;
 
     try {
         const response = await axios.post(SEMAPHORE_API_URL, {
