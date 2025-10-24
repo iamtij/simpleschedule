@@ -844,7 +844,7 @@
                         
                         // Redirect to confirmation page or show success message
                         setTimeout(() => {
-                            window.location.href = `/booking/<%= user.username %>/confirmation/${result.id}`;
+                            window.location.href = `/booking/<%= user.username %>/confirmation/${result.confirmation_uuid}`;
                         }, 2000);
                         
                     } else {
