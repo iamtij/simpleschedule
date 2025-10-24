@@ -334,6 +334,7 @@ router.post('/:username', async (req, res) => {
     res.json({
         success: true,
         id: booking.id,
+        confirmation_uuid: booking.confirmation_uuid,
         date: booking.date,
         start_time: booking.start_time,
         end_time: booking.end_time,

@@ -342,11 +342,11 @@
                 if (!response.ok) {
                     return response.json().then(err => Promise.reject(err));
                 }
-                return response.text();
+                return response.json();
             })
-            .then(html => {
-                // Replace the current page content with the confirmation page
-                document.documentElement.innerHTML = html;
+            .then(data => {
+                // Redirect to confirmation page using the UUID
+                window.location.href = `/booking/<%= user.username %>/confirmation/${data.confirmation_uuid}`;
             })
             .catch(error => {
                 console.error('Error creating booking:', error);
