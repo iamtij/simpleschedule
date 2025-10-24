@@ -58,7 +58,7 @@ async function sendBookingConfirmationSMS(booking, host) {
 
     // Create short URL for appointment page
     const baseUrl = process.env.BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://isked.app');
-    const appointmentUrl = `${baseUrl}/${host.username}/confirmation/${booking.id}`;
+    const appointmentUrl = `${baseUrl}/booking/${host.username}/confirmation/${booking.id}`;
     console.log('Creating short URL for:', appointmentUrl);
     
     let shortUrl;
