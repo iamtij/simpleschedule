@@ -373,14 +373,12 @@ router.get('/:username/slots', async (req, res) => {
         const [year, month, day] = date.split('-').map(Number);
         const requestedDate = new Date(Date.UTC(year, month - 1, day));
         
-        // Get current time in client's timezone - simplified for performance
-        const now = new Date();
+        // Get current time in client's timezone
+        const nowInClientTimezone = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone }));
         
         // Check if the requested date is in the past (in client's timezone)
-        const targetDate = new Date(Date.UTC(year, month - 1, day));
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        if (targetDate < today) {
+        const todayDate = nowInClientTimezone.toISOString().split('T')[0];
+        if (date < todayDate) {
             return res.json({ slots: [] });
         }
         
@@ -499,8 +497,10 @@ router.get('/:username/slots', async (req, res) => {
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
         // Current time in minutes since midnight in client's timezone
-        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-        const isToday = requestedDate.toDateString() === now.toDateString();
+        const currentTimeMinutes = nowInClientTimezone.getHours() * 60 + nowInClientTimezone.getMinutes();
+        
+        // Check if requested date is today in client's timezone
+        const isToday = date === todayDate;
 
         // Generate slots with proper intervals
         for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {

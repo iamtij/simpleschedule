@@ -96,6 +96,31 @@ async function runMigrations() {
 
         console.log('All migrations completed successfully');
         
+        // Attempt to fix collation version mismatch warning
+        try {
+            console.log('Checking for collation version issues...');
+            const dbNameResult = await pool.query('SELECT current_database() as db_name');
+            const dbName = dbNameResult.rows[0].db_name;
+            
+            // Try to refresh collation version
+            // Note: This may require superuser privileges, so we catch and ignore errors
+            try {
+                await pool.query(`ALTER DATABASE "${dbName}" REFRESH COLLATION VERSION`);
+                console.log(`Successfully refreshed collation version for database: ${dbName}`);
+            } catch (collationError) {
+                // If we don't have permissions or it fails, just log it
+                // This is a warning, not an error, so we continue
+                if (collationError.code === '42501' || collationError.message.includes('permission')) {
+                    console.log(`Note: Could not refresh collation version (insufficient permissions). This is safe to ignore.`);
+                } else {
+                    console.log(`Note: Could not refresh collation version: ${collationError.message}. This is safe to ignore.`);
+                }
+            }
+        } catch (error) {
+            // Ignore errors in collation fix attempt
+            console.log('Note: Could not check/fix collation version. This is safe to ignore.');
+        }
+        
     } catch (error) {
         console.error('Migration error:', error);
         if (error.code) {
