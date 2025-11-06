@@ -52,6 +52,31 @@ router.get('/contacts', requireLogin, async (req, res) => {
   }
 });
 
+// Get onboarding checklist status
+router.get('/checklist-status', requireLogin, async (req, res) => {
+  try {
+    const userResult = await db.query(
+      'SELECT has_set_availability, has_set_display_name, has_shared_link, has_dismissed_checklist FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    res.json({
+      has_set_availability: user.has_set_availability || false,
+      has_set_display_name: user.has_set_display_name || false,
+      has_shared_link: user.has_shared_link || false,
+      has_dismissed_checklist: user.has_dismissed_checklist || false
+    });
+  } catch (error) {
+    console.error('Error fetching checklist status:', error);
+    res.status(500).json({ error: 'Failed to fetch checklist status' });
+  }
+});
+
 // Dashboard home
 router.get('/', requireLogin, async (req, res) => {
   try {
@@ -441,18 +466,28 @@ router.post('/account', requireLogin, async (req, res) => {
         const sanitizedDisplayName = display_name ? display_name.trim() : null;
         const sanitizedMeetingLink = meeting_link ? meeting_link.trim() : null;
 
-        await db.query(
-            `UPDATE users 
-             SET full_name = COALESCE($1::text, full_name), 
-                 display_name = COALESCE($2::text, display_name),
-                 meeting_link = COALESCE($3::text, meeting_link),
-                 has_set_display_name = CASE 
-                     WHEN $2::text IS NOT NULL AND LENGTH(TRIM($2::text)) > 0 THEN TRUE 
-                     ELSE has_set_display_name 
-                 END
-             WHERE id = $4`,
-            [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
-        );
+        // Update display_name and set has_set_display_name flag
+        // Set flag to TRUE if display_name is provided and not empty
+        if (sanitizedDisplayName && sanitizedDisplayName.length > 0) {
+            await db.query(
+                `UPDATE users 
+                 SET full_name = COALESCE($1::text, full_name), 
+                     display_name = $2,
+                     meeting_link = COALESCE($3::text, meeting_link),
+                     has_set_display_name = TRUE
+                 WHERE id = $4`,
+                [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
+            );
+        } else {
+            // If display_name is not being updated, only update other fields
+            await db.query(
+                `UPDATE users 
+                 SET full_name = COALESCE($1::text, full_name), 
+                     meeting_link = COALESCE($3::text, meeting_link)
+                 WHERE id = $4`,
+                [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
+            );
+        }
 
         res.json({ success: true });
     } catch (error) {
@@ -651,17 +686,19 @@ router.post('/availability', requireLogin, async (req, res) => {
         );
       }
 
-      // Update buffer minutes in users table
+      // Update buffer minutes and has_set_availability in users table
+      // Only set has_set_availability to TRUE if at least one working day was added
+      const hasWorkingDays = Array.isArray(working_days) && working_days.length > 0;
       await db.query(
-        'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
-        [buffer_minutes, userId]
+        'UPDATE users SET buffer_minutes = $1, has_set_availability = $3 WHERE id = $2',
+        [buffer_minutes, userId, hasWorkingDays]
       );
 
       // Commit transaction
       await db.query('COMMIT');
 
-      // Redirect back to settings page with success message
-      res.redirect('/dashboard/settings?success=availability_saved');
+      // Redirect back to dashboard to show updated checklist
+      res.redirect('/dashboard?checklist_updated=true');
     } catch (error) {
       // Rollback transaction on error
       await db.query('ROLLBACK');

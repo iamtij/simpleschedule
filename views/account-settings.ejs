@@ -576,7 +576,7 @@
                         toast.show({
                             type: 'success',
                             title: 'Success',
-                            message: 'Display name updated successfully'
+                            message: 'Display name updated successfully. Check your dashboard to see the updated onboarding checklist.'
                         });
                     } else {
                         throw new Error(data.error || 'Failed to update display name');
@@ -1178,14 +1178,11 @@
             if (success === 'availability_saved') {
                 toast.show({
                     type: 'success',
-                    title: 'Success',
-                    message: 'Availability settings saved successfully!'
+                    title: 'Availability Saved!',
+                    message: 'Your availability has been updated. Check your dashboard to see the updated onboarding checklist.'
                 });
-                
-                // Clean up URL
-                const url = new URL(window.location);
-                url.searchParams.delete('success');
-                window.history.replaceState({}, '', url);
+                // Clear the URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 

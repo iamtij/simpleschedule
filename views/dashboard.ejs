@@ -611,6 +611,16 @@
             
             // Load dashboard data
             loadDashboardData();
+            
+            // Refresh checklist status immediately and on page visibility change
+            refreshChecklistStatus();
+            
+            // Also refresh when page becomes visible (user switches back to tab)
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    refreshChecklistStatus();
+                }
+            });
         });
 
 
@@ -1072,30 +1082,40 @@
         // Update checklist item status
         function updateChecklistItem(itemType, completed) {
             const item = document.querySelector(`[data-checklist-item="${itemType}"]`);
-            if (item) {
-                const icon = item.querySelector('.flex-shrink-0');
-                const text = item.querySelector('p');
+            if (!item) {
+                console.warn(`Checklist item not found: ${itemType}`);
+                return;
+            }
+            
+            const icon = item.querySelector('.flex-shrink-0');
+            const text = item.querySelector('p');
+            
+            if (!icon || !text) {
+                console.warn(`Icon or text not found for item: ${itemType}`, { icon: !!icon, text: !!text });
+                return;
+            }
+            
+            if (completed) {
+                // Update icon to show checkmark
+                icon.innerHTML = `
+                    <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                `;
                 
-                if (completed) {
-                    icon.innerHTML = `
-                        <div class="flex-shrink-0 h-5 w-5 relative text-green-500">
-                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    `;
-                    
-                    switch(itemType) {
-                        case 'availability':
-                            text.innerHTML = 'Availability configured';
-                            break;
-                        case 'display-name':
-                            text.innerHTML = 'Display name updated';
-                            break;
-                        case 'share-link':
-                            text.innerHTML = 'Booking link shared';
-                            break;
-                    }
+                // Update text content (remove links/buttons)
+                switch(itemType) {
+                    case 'availability':
+                        text.innerHTML = 'Availability configured';
+                        break;
+                    case 'display-name':
+                        text.innerHTML = 'Display name updated';
+                        break;
+                    case 'share-link':
+                        text.innerHTML = 'Booking link shared';
+                        break;
                 }
             }
 
@@ -1115,6 +1135,65 @@
                 setTimeout(() => {
                     checklist.remove();
                 }, 500);
+            }
+        }
+
+        // Refresh checklist status from server
+        async function refreshChecklistStatus() {
+            const checklist = document.getElementById('onboarding-checklist');
+            if (!checklist) {
+                console.log('Checklist not found on page - it may have been dismissed or all tasks are complete');
+                return;
+            }
+
+            try {
+                console.log('Fetching checklist status...');
+                const response = await fetch('/dashboard/checklist-status', {
+                    credentials: 'include' // Include cookies for authentication
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to fetch checklist status:', response.status, response.statusText);
+                    // If unauthorized, might need to reload page
+                    if (response.status === 401 || response.status === 403) {
+                        console.log('Authentication issue - page may need reload');
+                    }
+                    return;
+                }
+                
+                const status = await response.json();
+                console.log('Checklist status received:', status);
+                
+                if (status.error) {
+                    console.error('Error fetching checklist status:', status.error);
+                    return;
+                }
+
+                // Update each checklist item based on server status
+                let updated = false;
+                if (status.has_set_availability) {
+                    console.log('Updating availability item');
+                    updateChecklistItem('availability', true);
+                    updated = true;
+                }
+                if (status.has_set_display_name) {
+                    console.log('Updating display-name item');
+                    updateChecklistItem('display-name', true);
+                    updated = true;
+                }
+                if (status.has_shared_link) {
+                    console.log('Updating share-link item');
+                    updateChecklistItem('share-link', true);
+                    updated = true;
+                }
+                
+                if (updated) {
+                    console.log('Checklist updated successfully');
+                } else {
+                    console.log('No checklist items needed updating');
+                }
+            } catch (error) {
+                console.error('Error refreshing checklist status:', error);
             }
         }
 

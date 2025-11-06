@@ -445,14 +445,17 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
         );
       }
 
-      // Update buffer minutes in users table
+      // Update buffer minutes and has_set_availability in users table
+      // Only set has_set_availability to TRUE if at least one working day was added
+      const hasWorkingDays = workingDaysArray.length > 0;
       await db.query(
-        'UPDATE users SET buffer_minutes = $1 WHERE id = $2',
-        [parseInt(buffer_minutes) || 0, userId]
+        'UPDATE users SET buffer_minutes = $1, has_set_availability = $3 WHERE id = $2',
+        [parseInt(buffer_minutes) || 0, userId, hasWorkingDays]
       );
 
       await db.query('COMMIT');
       
+      // Redirect back to settings page with success message
       res.redirect('/settings?success=availability_saved');
       
     } catch (error) {
