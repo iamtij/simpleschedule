@@ -365,7 +365,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing functions...');
             initUsernameEditing();
             initDisplayNameEditing();
             initMeetingLinkEditing();
@@ -421,12 +420,10 @@
 
         // Copy link functionality
         function initCopyLink() {
-            console.log('Initializing copy link...');
             const copyBtn = document.getElementById('copy-link-btn');
             const bookingLink = document.getElementById('booking-link');
 
             copyBtn.addEventListener('click', function() {
-                console.log('Copy button clicked');
                 const linkValue = bookingLink.value;
                 const fullUrl = `https://${linkValue}`;
                 
@@ -488,7 +485,6 @@
 
         // Display Name inline editing
         function initDisplayNameEditing() {
-            console.log('Initializing display name editing...');
             const editBtn = document.getElementById('edit-display-name-btn');
             const display = document.getElementById('display-name-display');
             const edit = document.getElementById('display-name-edit');
@@ -499,19 +495,7 @@
             const errorDisplay = document.getElementById('display-name-error');
             let currentDisplayName = input.value;
 
-            console.log('Display name elements found:', {
-                editBtn: !!editBtn,
-                display: !!display,
-                edit: !!edit,
-                form: !!form,
-                input: !!input,
-                cancelBtn: !!cancelBtn,
-                saveBtn: !!saveBtn,
-                errorDisplay: !!errorDisplay
-            });
-
             function showEdit() {
-                console.log('Showing display name edit form');
                 display.classList.add('hidden');
                 edit.classList.remove('hidden');
                 input.focus();
@@ -520,7 +504,6 @@
             }
 
             function hideEdit() {
-                console.log('Hiding display name edit form');
                 edit.classList.add('hidden');
                 display.classList.remove('hidden');
                 input.value = currentDisplayName;
@@ -532,7 +515,6 @@
             function validateDisplayName() {
                 const displayName = input.value.trim();
                 const hasChanged = displayName !== currentDisplayName && displayName.length > 0;
-                console.log('Validating display name:', { displayName, currentDisplayName, hasChanged });
                 saveBtn.disabled = !hasChanged;
             }
 
@@ -542,17 +524,14 @@
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                console.log('Display name form submitted');
                 const newDisplayName = input.value.trim();
                 
                 if (!newDisplayName) {
-                    console.log('Display name is empty');
                     errorDisplay.textContent = 'Display name cannot be empty';
                     errorDisplay.classList.remove('hidden');
                     return;
                 }
 
-                console.log('Saving display name:', newDisplayName);
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
 
@@ -564,11 +543,9 @@
                     body: JSON.stringify({ display_name: newDisplayName })
                 })
                 .then(response => {
-                    console.log('Display name response status:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Display name response data:', data);
                     if (data.success) {
                         currentDisplayName = newDisplayName;
                         document.querySelector('#display-name-display input').value = newDisplayName;
@@ -576,7 +553,7 @@
                         toast.show({
                             type: 'success',
                             title: 'Success',
-                            message: 'Display name updated successfully. Check your dashboard to see the updated onboarding checklist.'
+                            message: 'Display name updated successfully.'
                         });
                     } else {
                         throw new Error(data.error || 'Failed to update display name');
@@ -596,7 +573,6 @@
 
         // Username inline editing
         function initUsernameEditing() {
-            console.log('Initializing username editing...');
             const editBtn = document.getElementById('edit-username-btn');
             const display = document.getElementById('username-display');
             const edit = document.getElementById('username-edit');
@@ -608,19 +584,7 @@
             let currentUsername = '<%= user.username %>';
             let typingTimer;
 
-            console.log('Username elements found:', {
-                editBtn: !!editBtn,
-                display: !!display,
-                edit: !!edit,
-                form: !!form,
-                input: !!input,
-                cancelBtn: !!cancelBtn,
-                saveBtn: !!saveBtn,
-                errorDisplay: !!errorDisplay
-            });
-
             function showEdit() {
-                console.log('Showing username edit form');
                 display.classList.add('hidden');
                 edit.classList.remove('hidden');
                 input.focus();
@@ -629,7 +593,6 @@
             }
 
             function hideEdit() {
-                console.log('Hiding username edit form');
                 edit.classList.add('hidden');
                 display.classList.remove('hidden');
                 input.value = currentUsername;
@@ -643,8 +606,6 @@
                 const isValid = /^[a-z0-9_-]+$/.test(username);
                 const hasChanged = username !== currentUsername;
                 
-                console.log('Validating username:', { username, currentUsername, isValid, hasChanged });
-
                 if (!username) {
                     errorDisplay.textContent = 'Username cannot be empty';
                     errorDisplay.classList.remove('hidden');
@@ -668,7 +629,6 @@
                 // Check if username is available
                 clearTimeout(typingTimer);
                 typingTimer = setTimeout(() => {
-                    console.log('Checking username availability...');
                     fetch('/dashboard/username', {
                         method: 'POST',
                         headers: {
@@ -677,11 +637,9 @@
                         body: JSON.stringify({ username, checkOnly: true })
                     })
                     .then(response => {
-                        console.log('Username check response status:', response.status);
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Username check response data:', data);
                         if (data.available) {
                             errorDisplay.classList.add('hidden');
                             saveBtn.disabled = false;
@@ -706,9 +664,7 @@
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                console.log('Username form submitted');
                 const newUsername = input.value.toLowerCase().trim();
-                console.log('Saving username:', newUsername);
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
 
@@ -720,11 +676,9 @@
                     body: JSON.stringify({ username: newUsername })
                 })
                 .then(response => {
-                    console.log('Username save response status:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Username save response data:', data);
                     if (data.success) {
                         currentUsername = newUsername;
                         document.querySelector('#username-display input').value = newUsername;
@@ -831,7 +785,6 @@
 
         // Google Calendar Integration
         function initGoogleCalendarIntegration() {
-            console.log('Initializing Google Calendar integration...');
             
             const connectBtn = document.getElementById('connect-google-calendar-btn');
             const disconnectBtn = document.getElementById('disconnect-google-calendar-btn');
@@ -847,7 +800,6 @@
             
             // Connect button click handler
             connectBtn.addEventListener('click', function() {
-                console.log('Connect Google Calendar clicked');
                 connectBtn.disabled = true;
                 connectBtn.textContent = 'Connecting...';
                 
@@ -881,7 +833,6 @@
             // Disconnect button click handler
             disconnectBtn.addEventListener('click', function() {
                 if (confirm('Are you sure you want to disconnect your Google Calendar? This will disable automatic blocking of conflicting times.')) {
-                    console.log('Disconnect Google Calendar clicked');
                     disconnectBtn.disabled = true;
                     disconnectBtn.textContent = 'Disconnecting...';
                     
@@ -921,7 +872,6 @@
             
             // Test sync button click handler
             testSyncBtn.addEventListener('click', function() {
-                console.log('Test calendar sync clicked');
                 testSyncBtn.disabled = true;
                 testSyncBtn.textContent = 'Testing...';
                 
@@ -959,12 +909,9 @@
         }
         
         function checkGoogleCalendarStatus() {
-            console.log('Checking Google Calendar status...');
-            
             fetch('/dashboard/google-calendar/status')
             .then(response => response.json())
             .then(data => {
-                console.log('Google Calendar status:', data);
                 updateConnectionStatus(data.connected);
             })
             .catch(error => {
@@ -1006,13 +953,11 @@
     }
 
     function loadCalendarList() {
-        console.log('Loading calendar list...');
         
         fetch('/dashboard/google-calendar/list')
         .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('Calendars loaded:', data.calendars);
                     populateCalendarDropdown(data.calendars);
                 } else {
                 console.error('Failed to load calendars:', data.error);
@@ -1049,7 +994,6 @@
             // Add change handler
             select.addEventListener('change', function() {
                 const selectedCalendarId = this.value;
-                console.log('Calendar selection changed to:', selectedCalendarId);
                 
                 if (selectedCalendarId) {
                     updateSelectedCalendar(selectedCalendarId);
@@ -1058,13 +1002,11 @@
         }
 
     function loadSelectedCalendar() {
-        console.log('Loading selected calendar...');
         
         fetch('/dashboard/google-calendar/selected')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('Selected calendar:', data.calendarId);
                 const select = document.getElementById('calendar-select');
                 select.value = data.calendarId;
             } else {
@@ -1077,7 +1019,6 @@
     }
 
     function updateSelectedCalendar(calendarId) {
-        console.log('Updating selected calendar to:', calendarId);
         
         fetch('/dashboard/google-calendar/select', {
             method: 'POST',
@@ -1109,13 +1050,11 @@
     }
 
     function loadBlockingSetting() {
-        console.log('Loading Google Calendar blocking setting...');
         
         fetch('/dashboard/google-calendar/blocking-setting')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('Blocking setting loaded:', data.blockingEnabled);
                 const checkbox = document.getElementById('google-calendar-blocking-enabled');
                 checkbox.checked = data.blockingEnabled;
                 
@@ -1133,7 +1072,6 @@
     }
 
     function updateBlockingSetting(blockingEnabled) {
-        console.log('Updating blocking setting to:', blockingEnabled);
         
         fetch('/dashboard/google-calendar/update-blocking', {
             method: 'POST',
@@ -1179,7 +1117,7 @@
                 toast.show({
                     type: 'success',
                     title: 'Availability Saved!',
-                    message: 'Your availability has been updated. Check your dashboard to see the updated onboarding checklist.'
+                    message: 'Your availability has been updated successfully.'
                 });
                 // Clear the URL parameters
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -1227,7 +1165,6 @@
             // Handle form submission - use traditional form POST
             const availabilityForm = document.getElementById('availability-form');
             availabilityForm.addEventListener('submit', function(e) {
-                console.log('Availability form submitted');
                 
                 const submitBtn = this.querySelector('button[type="submit"]');
                 submitBtn.disabled = true;
@@ -1297,35 +1234,24 @@
 
         // Load existing availability settings from embedded data
         function loadAvailabilitySettingsFromData() {
-            console.log('🔄 Loading availability settings from embedded data...');
             
             // Get the embedded availability settings
             const data = <%- JSON.stringify(availabilitySettings || {}) %>;
-            console.log('📊 Embedded availability data:', data);
-            console.log('📊 Working days array:', data.working_days);
-            console.log('📊 Working days type:', typeof data.working_days);
-            console.log('📊 Working days length:', data.working_days ? data.working_days.length : 'undefined');
             
             if (data && Object.keys(data).length > 0) {
-                console.log('✅ Loading availability settings:', data);
                 
                 // Set working days
                 if (data.working_days && data.working_days.length > 0) {
-                    console.log('📅 Setting working days:', data.working_days);
                     data.working_days.forEach(dayIndex => {
                         const checkbox = document.getElementById(`day-${dayIndex}`);
-                        console.log(`🔍 Looking for day-${dayIndex}, found:`, checkbox);
                         if (checkbox) {
                             checkbox.checked = true;
                             checkbox.dispatchEvent(new Event('change'));
                             
                             // Set working hours - find the parent row and then the time inputs
                             const dayRow = checkbox.closest('.flex.flex-col');
-                            console.log(`🔍 Day row for day-${dayIndex}:`, dayRow);
                             const startTime = dayRow ? dayRow.querySelector('.work-start') : null;
                             const endTime = dayRow ? dayRow.querySelector('.work-end') : null;
-                            console.log(`🔍 Start time for day-${dayIndex}:`, startTime);
-                            console.log(`🔍 End time for day-${dayIndex}:`, endTime);
                             
                             if (data[`day_${dayIndex}_start`] && startTime) {
                                 startTime.value = data[`day_${dayIndex}_start`];
@@ -1339,9 +1265,7 @@
                 
                 // Set break settings
                 if (data.break_enabled) {
-                    console.log('☕ Setting break settings, enabled:', data.break_enabled);
                     const breakCheckbox = document.getElementById('break-enabled');
-                    console.log('🔍 Found break checkbox:', breakCheckbox);
                     if (breakCheckbox) {
                         breakCheckbox.checked = true;
                         breakCheckbox.dispatchEvent(new Event('change'));
@@ -1357,21 +1281,16 @@
                 
                 // Set buffer minutes
                 if (data.buffer_minutes !== undefined) {
-                    console.log('⏱️ Setting buffer minutes:', data.buffer_minutes);
                     const bufferSelect = document.getElementById('buffer-minutes');
-                    console.log('🔍 Found buffer select:', bufferSelect);
                     if (bufferSelect) {
                         bufferSelect.value = data.buffer_minutes;
                     }
                 }
-            } else {
-                console.log('ℹ️ No availability settings found in embedded data');
             }
         }
 
         // Load existing availability settings
         function loadAvailabilitySettings() {
-            console.log('🔄 Loading availability settings...');
             fetch('/settings/availability', {
                 method: 'GET',
                 credentials: 'include',
@@ -1380,24 +1299,18 @@
                 }
             })
                 .then(response => {
-                    console.log('📡 Response status:', response.status);
-                    console.log('📡 Response headers:', response.headers);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('📊 Received data:', data);
                     if (data.success) {
-                        console.log('✅ Loading availability settings:', data);
                         
                         // Set working days
                         if (data.working_days) {
-                            console.log('📅 Setting working days:', data.working_days);
                             data.working_days.forEach(dayIndex => {
                                 const checkbox = document.getElementById(`day-${dayIndex}`);
-                                console.log(`🔍 Looking for day-${dayIndex}, found:`, checkbox);
                                 if (checkbox) {
                                     checkbox.checked = true;
                                     checkbox.dispatchEvent(new Event('change'));
@@ -1419,9 +1332,7 @@
                         
                         // Set break settings
                         if (data.break_enabled) {
-                            console.log('☕ Setting break settings, enabled:', data.break_enabled);
                             const breakCheckbox = document.getElementById('break-enabled');
-                            console.log('🔍 Found break checkbox:', breakCheckbox);
                             if (breakCheckbox) {
                                 breakCheckbox.checked = true;
                                 breakCheckbox.dispatchEvent(new Event('change'));
@@ -1437,9 +1348,7 @@
                         
                         // Set buffer minutes
                         if (data.buffer_minutes !== undefined) {
-                            console.log('⏱️ Setting buffer minutes:', data.buffer_minutes);
                             const bufferSelect = document.getElementById('buffer-minutes');
-                            console.log('🔍 Found buffer select:', bufferSelect);
                             if (bufferSelect) {
                                 bufferSelect.value = data.buffer_minutes;
                             }

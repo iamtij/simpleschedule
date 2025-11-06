@@ -761,23 +761,19 @@
         function showBookingDetails(event) {
             currentBookingId = event.id;
             const details = event.extendedProps;
-            console.log('Event extended props:', details);
             
             // Format date
             const date = new Date(event.start);
-            console.log('Event start date:', date);
             const formattedDate = date.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
-            console.log('Formatted date:', formattedDate);
 
             // Use the original time strings from extendedProps (already in correct timezone)
             const startTime = formatTimeShort(event.extendedProps.start_time);
             const endTime = formatTimeShort(event.extendedProps.end_time);
-            console.log('Formatted times:', { startTime, endTime });
             
             try {
                 // Update modal content with new structure
@@ -1142,12 +1138,10 @@
         async function refreshChecklistStatus() {
             const checklist = document.getElementById('onboarding-checklist');
             if (!checklist) {
-                console.log('Checklist not found on page - it may have been dismissed or all tasks are complete');
                 return;
             }
 
             try {
-                console.log('Fetching checklist status...');
                 const response = await fetch('/dashboard/checklist-status', {
                     credentials: 'include' // Include cookies for authentication
                 });
@@ -1156,13 +1150,12 @@
                     console.error('Failed to fetch checklist status:', response.status, response.statusText);
                     // If unauthorized, might need to reload page
                     if (response.status === 401 || response.status === 403) {
-                        console.log('Authentication issue - page may need reload');
+                        // Authentication issue - page may need reload
                     }
                     return;
                 }
                 
                 const status = await response.json();
-                console.log('Checklist status received:', status);
                 
                 if (status.error) {
                     console.error('Error fetching checklist status:', status.error);
@@ -1172,25 +1165,22 @@
                 // Update each checklist item based on server status
                 let updated = false;
                 if (status.has_set_availability) {
-                    console.log('Updating availability item');
                     updateChecklistItem('availability', true);
                     updated = true;
                 }
                 if (status.has_set_display_name) {
-                    console.log('Updating display-name item');
                     updateChecklistItem('display-name', true);
                     updated = true;
                 }
                 if (status.has_shared_link) {
-                    console.log('Updating share-link item');
                     updateChecklistItem('share-link', true);
                     updated = true;
                 }
                 
                 if (updated) {
-                    console.log('Checklist updated successfully');
+                    // Checklist updated successfully
                 } else {
-                    console.log('No checklist items needed updating');
+                    // No checklist items needed updating
                 }
             } catch (error) {
                 console.error('Error refreshing checklist status:', error);
@@ -1297,7 +1287,8 @@
             const container = document.getElementById('follow-ups');
             const countElement = document.getElementById('followups-count');
             
-            console.log('Follow-ups data:', followUps);
+            if (!container || !countElement) return;
+            
             countElement.textContent = followUps.length;
             
             if (followUps.length === 0) {
@@ -1313,7 +1304,6 @@
             }
 
             const followUpsHTML = followUps.map(contact => {
-                console.log('Processing contact:', contact.name, 'Interaction Notes:', contact.interaction_notes);
                 const followUpDate = new Date(contact.next_follow_up);
                 const today = new Date();
                 const diffTime = followUpDate.getTime() - today.getTime();
