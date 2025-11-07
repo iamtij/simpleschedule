@@ -460,34 +460,56 @@ router.get('/account', requireLogin, async (req, res) => {
 router.post('/account', requireLogin, async (req, res) => {
     try {
         const { full_name, display_name, meeting_link } = req.body;
-        
-        // Validate and sanitize input
-        const sanitizedFullName = full_name ? full_name.trim() : null;
-        const sanitizedDisplayName = display_name ? display_name.trim() : null;
-        const sanitizedMeetingLink = meeting_link ? meeting_link.trim() : null;
 
-        // Update display_name and set has_set_display_name flag
-        // Set flag to TRUE if display_name is provided and not empty
-        if (sanitizedDisplayName && sanitizedDisplayName.length > 0) {
-            await db.query(
-                `UPDATE users 
-                 SET full_name = COALESCE($1::text, full_name), 
-                     display_name = $2,
-                     meeting_link = COALESCE($3::text, meeting_link),
-                     has_set_display_name = TRUE
-                 WHERE id = $4`,
-                [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
-            );
-        } else {
-            // If display_name is not being updated, only update other fields
-            await db.query(
-                `UPDATE users 
-                 SET full_name = COALESCE($1::text, full_name), 
-                     meeting_link = COALESCE($3::text, meeting_link)
-                 WHERE id = $4`,
-                [sanitizedFullName, sanitizedDisplayName, sanitizedMeetingLink, req.session.userId]
-            );
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+
+        const hasFullName = Object.prototype.hasOwnProperty.call(req.body, 'full_name');
+        const hasDisplayName = Object.prototype.hasOwnProperty.call(req.body, 'display_name');
+        const hasMeetingLink = Object.prototype.hasOwnProperty.call(req.body, 'meeting_link');
+
+        if (hasFullName) {
+            const sanitizedFullName = typeof full_name === 'string' ? full_name.trim() : null;
+            updates.push(`full_name = $${paramIndex}`);
+            values.push(sanitizedFullName && sanitizedFullName.length > 0 ? sanitizedFullName : null);
+            paramIndex++;
         }
+
+        if (hasDisplayName) {
+            const sanitizedDisplayName = typeof display_name === 'string' ? display_name.trim() : null;
+            const normalizedDisplayName = sanitizedDisplayName && sanitizedDisplayName.length > 0 ? sanitizedDisplayName : null;
+            updates.push(`display_name = $${paramIndex}`);
+            values.push(normalizedDisplayName);
+            paramIndex++;
+
+            updates.push(`has_set_display_name = $${paramIndex}`);
+            values.push(Boolean(normalizedDisplayName));
+            paramIndex++;
+        }
+
+        if (hasMeetingLink) {
+            const sanitizedMeetingLink = typeof meeting_link === 'string' ? meeting_link.trim() : null;
+            const normalizedMeetingLink = sanitizedMeetingLink && sanitizedMeetingLink.length > 0 ? sanitizedMeetingLink : null;
+            updates.push(`meeting_link = $${paramIndex}`);
+            values.push(normalizedMeetingLink);
+            paramIndex++;
+
+            updates.push(`has_shared_link = $${paramIndex}`);
+            values.push(Boolean(normalizedMeetingLink));
+            paramIndex++;
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' });
+        }
+
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(req.session.userId);
+
+        const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+
+        await db.query(query, values);
 
         res.json({ success: true });
     } catch (error) {
@@ -642,6 +664,9 @@ router.post('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
     
+    // Log the entire request body for debugging
+    console.log('Full request body:', JSON.stringify(req.body, null, 2));
+    
     const {
       working_days = [],
       break_enabled = false,
@@ -657,14 +682,29 @@ router.post('/availability', requireLogin, async (req, res) => {
       // Clear existing availability settings
       await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
 
-      // Insert new working days
-      for (const dayIndex of working_days) {
+      // Insert new working days - normalize to array (single checkbox sends string)
+      // Handle: array, string (single value), undefined/null, empty string
+      let workingDaysArray = [];
+      if (Array.isArray(working_days)) {
+        workingDaysArray = working_days.filter(d => d !== null && d !== undefined && d !== '');
+      } else if (working_days !== null && working_days !== undefined && working_days !== '') {
+        workingDaysArray = [working_days];
+      }
+      
+      console.log('Received working_days:', working_days, 'Type:', typeof working_days);
+      console.log('Normalized workingDaysArray:', workingDaysArray);
+      
+      for (const dayIndex of workingDaysArray) {
+        // Convert to number to ensure proper type
+        const dayNum = parseInt(dayIndex, 10);
         const startTime = req.body[`day_${dayIndex}_start`] || '09:00';
         const endTime = req.body[`day_${dayIndex}_end`] || '17:00';
         
+        console.log(`Inserting day ${dayNum}: ${startTime} - ${endTime}`);
+        
         await db.query(
           'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-          [userId, dayIndex, startTime, endTime]
+          [userId, dayNum, startTime, endTime]
         );
       }
 
@@ -688,7 +728,7 @@ router.post('/availability', requireLogin, async (req, res) => {
 
       // Update buffer minutes and has_set_availability in users table
       // Only set has_set_availability to TRUE if at least one working day was added
-      const hasWorkingDays = Array.isArray(working_days) && working_days.length > 0;
+      const hasWorkingDays = workingDaysArray.length > 0;
       await db.query(
         'UPDATE users SET buffer_minutes = $1, has_set_availability = $3 WHERE id = $2',
         [buffer_minutes, userId, hasWorkingDays]
