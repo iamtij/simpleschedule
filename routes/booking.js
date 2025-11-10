@@ -273,8 +273,10 @@ router.post('/:username', async (req, res) => {
                 description += `\n\nMeeting Link: ${host.meeting_link}`;
             }
             
+            const hostNameForTitle = host.name || host.display_name || host.full_name || host.username || 'Host';
+            const clientNameForTitle = booking.client_name || 'Client';
             const eventDetails = {
-                title: `${booking.client_name}`,
+                title: `${clientNameForTitle} with ${hostNameForTitle}`,
                 description: description,
                 startTime: `${booking.date}T${booking.start_time}:00${timezone.getDefaultUtcOffset()}`,
                 endTime: `${booking.date}T${booking.end_time}:00${timezone.getDefaultUtcOffset()}`,
