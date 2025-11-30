@@ -299,17 +299,23 @@
                     <form id="availability-form" method="POST" action="/settings/availability">
                         <div class="mb-6">
                             <h3 class="text-lg font-medium mb-4">Working Days</h3>
+                            <p class="text-sm text-gray-500 mb-4">You can add multiple time blocks per day</p>
                             <div class="space-y-4">
                                 <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
-                                    <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3 border-b last:border-0">
-                                        <div class="flex items-center w-full sm:w-1/3">
-                                            <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="w-4 h-4 mr-3">
-                                            <label for="day-<%= index %>" class="text-gray-700"><%= day %></label>
+                                    <div class="day-container border-b last:border-0 pb-4" data-day="<%= index %>">
+                                        <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-2">
+                                            <div class="flex items-center w-full sm:w-1/3">
+                                                <input type="checkbox" id="day-<%= index %>" name="working_days" value="<%= index %>" class="day-checkbox w-4 h-4 mr-3">
+                                                <label for="day-<%= index %>" class="text-gray-700 font-medium"><%= day %></label>
+                                            </div>
+                                            <div class="w-full sm:w-2/3">
+                                                <button type="button" class="add-block-btn text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed" data-day="<%= index %>" disabled>
+                                                    + Add Time Block
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
-                                            <input type="time" class="work-start border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="09:00" disabled>
-                                            <span class="text-gray-500 px-2">to</span>
-                                            <input type="time" class="work-end border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="17:00" disabled>
+                                        <div class="time-blocks-container ml-0 sm:ml-[33.333%] space-y-2" data-day="<%= index %>">
+                                            <!-- Time blocks will be dynamically added here -->
                                         </div>
                                     </div>
                                 <% }); %>
@@ -1108,10 +1114,11 @@
         });
         }
 
-        // Handle availability success message
+        // Handle availability success and error messages
         function handleAvailabilitySuccess() {
             const urlParams = new URLSearchParams(window.location.search);
             const success = urlParams.get('success');
+            const error = urlParams.get('error');
             
             if (success === 'availability_saved') {
                 toast.show({
@@ -1122,28 +1129,48 @@
                 // Clear the URL parameters
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
+            
+            if (error) {
+                const errorMessage = decodeURIComponent(error);
+                toast.show({
+                    type: 'error',
+                    title: 'Time Block Conflicts',
+                    message: errorMessage.replace(/\n/g, '<br>')
+                });
+                // Clear the URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         }
 
         // Initialize availability settings functionality
         function initAvailabilitySettings() {
             // Handle working days checkboxes
-            const dayCheckboxes = document.querySelectorAll('input[name="working_days"]');
+            const dayCheckboxes = document.querySelectorAll('.day-checkbox');
             dayCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    // Find the parent container that holds both checkbox and time inputs
-                    const dayContainer = this.closest('.flex.flex-col');
-                    const startTime = dayContainer ? dayContainer.querySelector('.work-start') : null;
-                    const endTime = dayContainer ? dayContainer.querySelector('.work-end') : null;
+                    const dayIndex = this.value;
+                    const dayContainer = document.querySelector(`.day-container[data-day="${dayIndex}"]`);
+                    const addBlockBtn = dayContainer?.querySelector('.add-block-btn');
+                    const timeBlocksContainer = dayContainer?.querySelector('.time-blocks-container');
                     
-                    if (startTime && endTime) {
-                        if (this.checked) {
-                            startTime.disabled = false;
-                            endTime.disabled = false;
-                        } else {
-                            startTime.disabled = true;
-                            endTime.disabled = true;
-                        }
+                    if (this.checked) {
+                        // Enable add block button
+                        if (addBlockBtn) addBlockBtn.disabled = false;
+                        // Don't automatically add a block - user must click "Add Time Block"
+                    } else {
+                        // Disable add block button
+                        if (addBlockBtn) addBlockBtn.disabled = true;
+                        // Clear all time blocks
+                        if (timeBlocksContainer) timeBlocksContainer.innerHTML = '';
                     }
+                });
+            });
+
+            // Handle add block buttons
+            document.querySelectorAll('.add-block-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const dayIndex = this.getAttribute('data-day');
+                    addTimeBlock(dayIndex);
                 });
             });
 
@@ -1165,6 +1192,25 @@
             // Handle form submission - use traditional form POST
             const availabilityForm = document.getElementById('availability-form');
             availabilityForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // Prevent default to validate first
+                
+                // Clear any previous conflict highlights
+                clearConflictHighlights();
+                
+                // Validate for conflicts before submitting
+                const conflicts = validateTimeBlocks();
+                
+                if (conflicts.length > 0) {
+                    // Show conflicts and highlight them
+                    showConflicts(conflicts);
+                    
+                    // Re-enable submit button
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Save Settings';
+                    
+                    return; // Don't submit
+                }
                 
                 const submitBtn = this.querySelector('button[type="submit"]');
                 submitBtn.disabled = true;
@@ -1174,26 +1220,43 @@
                 const hiddenInputs = document.getElementById('hidden-inputs');
                 hiddenInputs.innerHTML = '';
                 
-                // Add hidden inputs for working hours
-                const workingDays = Array.from(document.querySelectorAll('input[name="working_days"]:checked'));
+                // Add hidden inputs for all time blocks
+                const workingDays = Array.from(document.querySelectorAll('.day-checkbox:checked'));
                 workingDays.forEach(checkbox => {
                     const dayIndex = checkbox.value;
-                    const dayRow = checkbox.closest('.flex.flex-col');
-                    const startTime = dayRow ? dayRow.querySelector('.work-start') : null;
-                    const endTime = dayRow ? dayRow.querySelector('.work-end') : null;
+                    const timeBlocksContainer = document.querySelector(`.time-blocks-container[data-day="${dayIndex}"]`);
+                    const timeBlocks = timeBlocksContainer?.querySelectorAll('.time-block') || [];
                     
-                    if (startTime && endTime) {
-                        const startInput = document.createElement('input');
-                        startInput.type = 'hidden';
-                        startInput.name = `day_${dayIndex}_start`;
-                        startInput.value = startTime.value;
-                        hiddenInputs.appendChild(startInput);
+                    // Only save blocks that have valid times filled in
+                    let validBlockIndex = 0;
+                    timeBlocks.forEach((block) => {
+                        const startTime = block.querySelector('.block-start');
+                        const endTime = block.querySelector('.block-end');
                         
-                        const endInput = document.createElement('input');
-                        endInput.type = 'hidden';
-                        endInput.name = `day_${dayIndex}_end`;
-                        endInput.value = endTime.value;
-                        hiddenInputs.appendChild(endInput);
+                        // Only save if both times are filled and valid
+                        if (startTime && endTime && startTime.value && endTime.value) {
+                            // Validate that start time is before end time
+                            if (startTime.value < endTime.value) {
+                                const startInput = document.createElement('input');
+                                startInput.type = 'hidden';
+                                startInput.name = `day_${dayIndex}_blocks[${validBlockIndex}][start]`;
+                                startInput.value = startTime.value;
+                                hiddenInputs.appendChild(startInput);
+                                
+                                const endInput = document.createElement('input');
+                                endInput.type = 'hidden';
+                                endInput.name = `day_${dayIndex}_blocks[${validBlockIndex}][end]`;
+                                endInput.value = endTime.value;
+                                hiddenInputs.appendChild(endInput);
+                                
+                                validBlockIndex++;
+                            }
+                        }
+                    });
+                    
+                    // If day is checked but no valid blocks, uncheck it
+                    if (validBlockIndex === 0 && checkbox.checked) {
+                        checkbox.checked = false;
                     }
                 });
                 
@@ -1224,12 +1287,216 @@
                 breakEndInput.value = document.getElementById('break-end').value;
                 hiddenInputs.appendChild(breakEndInput);
                 
-                // Let the form submit naturally - no preventDefault
-                // The server will handle the POST request and redirect back
+                // Submit the form now that validation passed
+                this.submit();
             });
             
             // Load existing availability settings from embedded data
             loadAvailabilitySettingsFromData();
+            
+            // Add real-time validation
+            addRealTimeValidation();
+        }
+
+        // Convert time string (HH:MM) to minutes since midnight
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        // Convert minutes to time string (HH:MM)
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+
+        // Check if two time blocks overlap
+        function blocksOverlap(block1, block2) {
+            const start1 = timeToMinutes(block1.start);
+            const end1 = timeToMinutes(block1.end);
+            const start2 = timeToMinutes(block2.start);
+            const end2 = timeToMinutes(block2.end);
+            
+            // Blocks overlap if one starts before the other ends
+            return (start1 < end2 && start2 < end1);
+        }
+
+        // Validate all time blocks for conflicts
+        function validateTimeBlocks() {
+            const conflicts = [];
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            // Check each day
+            for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                const timeBlocksContainer = document.querySelector(`.time-blocks-container[data-day="${dayIndex}"]`);
+                if (!timeBlocksContainer) continue;
+                
+                const timeBlocks = timeBlocksContainer.querySelectorAll('.time-block');
+                const validBlocks = [];
+                
+                // Collect all valid blocks for this day
+                timeBlocks.forEach((blockElement, index) => {
+                    const startInput = blockElement.querySelector('.block-start');
+                    const endInput = blockElement.querySelector('.block-end');
+                    
+                    if (startInput && endInput && startInput.value && endInput.value) {
+                        // Validate start < end
+                        if (startInput.value < endInput.value) {
+                            validBlocks.push({
+                                index: index,
+                                element: blockElement,
+                                start: startInput.value,
+                                end: endInput.value,
+                                startInput: startInput,
+                                endInput: endInput
+                            });
+                        }
+                    }
+                });
+                
+                // Check for overlaps within this day
+                if (validBlocks.length > 1) {
+                    for (let i = 0; i < validBlocks.length; i++) {
+                        for (let j = i + 1; j < validBlocks.length; j++) {
+                            const block1 = validBlocks[i];
+                            const block2 = validBlocks[j];
+                            
+                            if (blocksOverlap(block1, block2)) {
+                                conflicts.push({
+                                    day: dayIndex,
+                                    dayName: dayNames[dayIndex],
+                                    block1: block1,
+                                    block2: block2
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return conflicts;
+        }
+
+        // Show conflict errors and highlight conflicting blocks
+        function showConflicts(conflicts) {
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            // Group conflicts by day
+            const conflictsByDay = {};
+            conflicts.forEach(conflict => {
+                if (!conflictsByDay[conflict.day]) {
+                    conflictsByDay[conflict.day] = [];
+                }
+                conflictsByDay[conflict.day].push(conflict);
+            });
+            
+            // Build error message
+            let errorMessage = 'Time block conflicts detected:\n\n';
+            
+            Object.keys(conflictsByDay).forEach(dayIndex => {
+                const dayConflicts = conflictsByDay[dayIndex];
+                const dayName = dayNames[parseInt(dayIndex)];
+                
+                errorMessage += `${dayName}:\n`;
+                
+                dayConflicts.forEach(conflict => {
+                    const block1Time = `${conflict.block1.start} - ${conflict.block1.end}`;
+                    const block2Time = `${conflict.block2.start} - ${conflict.block2.end}`;
+                    errorMessage += `  • Blocks "${block1Time}" and "${block2Time}" overlap\n`;
+                    
+                    // Highlight conflicting blocks
+                    conflict.block1.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                    conflict.block2.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                });
+                
+                errorMessage += '\n';
+            });
+            
+            errorMessage += 'Please adjust the overlapping time blocks and try again.';
+            
+            // Show toast notification
+            if (typeof toast !== 'undefined' && toast.show) {
+                toast.show({
+                    type: 'error',
+                    title: 'Time Block Conflicts',
+                    message: errorMessage.replace(/\n/g, '<br>')
+                });
+            } else {
+                // Fallback alert if toast is not available
+                alert(errorMessage);
+            }
+            
+            // Scroll to first conflict
+            if (conflicts.length > 0) {
+                const firstConflict = conflicts[0];
+                const dayContainer = document.querySelector(`.day-container[data-day="${firstConflict.day}"]`);
+                if (dayContainer) {
+                    dayContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        // Clear conflict highlights
+        function clearConflictHighlights() {
+            document.querySelectorAll('.time-block').forEach(block => {
+                block.classList.remove('border-red-500', 'border-2', 'bg-red-50');
+            });
+        }
+
+        // Add real-time validation on time input changes
+        function addRealTimeValidation() {
+            // Use event delegation for dynamically added elements
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('block-start') || e.target.classList.contains('block-end')) {
+                    // Clear highlights when user changes time
+                    clearConflictHighlights();
+                }
+            });
+        }
+
+        // Add a new time block for a day
+        function addTimeBlock(dayIndex) {
+            const timeBlocksContainer = document.querySelector(`.time-blocks-container[data-day="${dayIndex}"]`);
+            if (!timeBlocksContainer) return;
+            
+            const blockIndex = timeBlocksContainer.children.length;
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'time-block flex flex-wrap items-center gap-3';
+            blockDiv.innerHTML = `
+                <input type="time" class="block-start border rounded px-3 py-2 text-sm w-36" value="09:00">
+                <span class="text-gray-500 px-2">to</span>
+                <input type="time" class="block-end border rounded px-3 py-2 text-sm w-36" value="17:00">
+                <button type="button" class="remove-block-btn text-sm text-red-600 hover:text-red-800" data-day="${dayIndex}">
+                    Remove
+                </button>
+            `;
+            
+            // Add remove button handler
+            const removeBtn = blockDiv.querySelector('.remove-block-btn');
+            removeBtn.addEventListener('click', function() {
+                blockDiv.remove();
+                // If no blocks left and day is checked, uncheck it
+                const dayCheckbox = document.querySelector(`.day-checkbox[value="${dayIndex}"]`);
+                if (dayCheckbox && timeBlocksContainer.children.length === 0) {
+                    dayCheckbox.checked = false;
+                    dayCheckbox.dispatchEvent(new Event('change'));
+                }
+            });
+            
+            timeBlocksContainer.appendChild(blockDiv);
+            
+            // Add real-time validation to new inputs
+            const startInput = blockDiv.querySelector('.block-start');
+            const endInput = blockDiv.querySelector('.block-end');
+            if (startInput && endInput) {
+                startInput.addEventListener('change', function() {
+                    clearConflictHighlights();
+                });
+                endInput.addEventListener('change', function() {
+                    clearConflictHighlights();
+                });
+            }
         }
 
         // Load existing availability settings from embedded data
@@ -1240,24 +1507,64 @@
             
             if (data && Object.keys(data).length > 0) {
                 
-                // Set working days
-                if (data.working_days && data.working_days.length > 0) {
+                // Group availability blocks by day
+                const blocksByDay = {};
+                if (data.availability_blocks) {
+                    data.availability_blocks.forEach(block => {
+                        if (!blocksByDay[block.day_of_week]) {
+                            blocksByDay[block.day_of_week] = [];
+                        }
+                        blocksByDay[block.day_of_week].push({
+                            start: block.start_time,
+                            end: block.end_time
+                        });
+                    });
+                }
+                
+                // Set working days and time blocks
+                Object.keys(blocksByDay).forEach(dayIndex => {
+                    const checkbox = document.getElementById(`day-${dayIndex}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event('change'));
+                        
+                        // Add time blocks for this day
+                        const blocks = blocksByDay[dayIndex];
+                        blocks.forEach(block => {
+                            addTimeBlock(dayIndex);
+                            const timeBlocksContainer = document.querySelector(`.time-blocks-container[data-day="${dayIndex}"]`);
+                            const lastBlock = timeBlocksContainer?.lastElementChild;
+                            if (lastBlock) {
+                                const startInput = lastBlock.querySelector('.block-start');
+                                const endInput = lastBlock.querySelector('.block-end');
+                                if (startInput) startInput.value = block.start;
+                                if (endInput) endInput.value = block.end;
+                            }
+                        });
+                    }
+                });
+                
+                // Fallback: handle old format (single block per day)
+                if (data.working_days && data.working_days.length > 0 && !data.availability_blocks) {
                     data.working_days.forEach(dayIndex => {
                         const checkbox = document.getElementById(`day-${dayIndex}`);
                         if (checkbox) {
                             checkbox.checked = true;
                             checkbox.dispatchEvent(new Event('change'));
                             
-                            // Set working hours - find the parent row and then the time inputs
-                            const dayRow = checkbox.closest('.flex.flex-col');
-                            const startTime = dayRow ? dayRow.querySelector('.work-start') : null;
-                            const endTime = dayRow ? dayRow.querySelector('.work-end') : null;
-                            
-                            if (data[`day_${dayIndex}_start`] && startTime) {
-                                startTime.value = data[`day_${dayIndex}_start`];
-                            }
-                            if (data[`day_${dayIndex}_end`] && endTime) {
-                                endTime.value = data[`day_${dayIndex}_end`];
+                            // Add single time block with old format data
+                            addTimeBlock(dayIndex);
+                            const timeBlocksContainer = document.querySelector(`.time-blocks-container[data-day="${dayIndex}"]`);
+                            const lastBlock = timeBlocksContainer?.lastElementChild;
+                            if (lastBlock) {
+                                const startInput = lastBlock.querySelector('.block-start');
+                                const endInput = lastBlock.querySelector('.block-end');
+                                if (data[`day_${dayIndex}_start`] && startInput) {
+                                    startInput.value = data[`day_${dayIndex}_start`];
+                                }
+                                if (data[`day_${dayIndex}_end`] && endInput) {
+                                    endInput.value = data[`day_${dayIndex}_end`];
+                                }
                             }
                         }
                     });

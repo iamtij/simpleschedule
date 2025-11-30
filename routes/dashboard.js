@@ -614,9 +614,9 @@ router.get('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
 
-    // Get working days from availability table
+    // Get working days from availability table (all blocks)
     const availabilityResult = await db.query(
-      'SELECT day_of_week, start_time, end_time FROM availability WHERE user_id = $1 ORDER BY day_of_week',
+      'SELECT day_of_week, start_time, end_time FROM availability WHERE user_id = $1 ORDER BY day_of_week, start_time',
       [userId]
     );
 
@@ -632,19 +632,27 @@ router.get('/availability', requireLogin, async (req, res) => {
       [userId]
     );
 
-    // Format the response
-    const workingDays = availabilityResult.rows.map(row => row.day_of_week);
+    // Format the response - group by day
+    const workingDays = [...new Set(availabilityResult.rows.map(row => row.day_of_week))];
     const availability = {};
+    const availabilityBlocks = availabilityResult.rows.map(row => ({
+      day_of_week: row.day_of_week,
+      start_time: row.start_time,
+      end_time: row.end_time
+    }));
     
-    // Add working hours for each day
+    // Keep backward compatibility with old format (for first block of each day)
     availabilityResult.rows.forEach(row => {
-      availability[`day_${row.day_of_week}_start`] = row.start_time;
-      availability[`day_${row.day_of_week}_end`] = row.end_time;
+      if (!availability[`day_${row.day_of_week}_start`]) {
+        availability[`day_${row.day_of_week}_start`] = row.start_time;
+        availability[`day_${row.day_of_week}_end`] = row.end_time;
+      }
     });
 
     const response = {
       success: true,
       working_days: workingDays,
+      availability_blocks: availabilityBlocks,
       buffer_minutes: userResult.rows[0]?.buffer_minutes || 0,
       break_enabled: breaksResult.rows[0]?.enabled || false,
       break_start: breaksResult.rows[0]?.start_time || '12:00',
@@ -682,31 +690,189 @@ router.post('/availability', requireLogin, async (req, res) => {
       // Clear existing availability settings
       await db.query('DELETE FROM availability WHERE user_id = $1', [userId]);
 
-      // Insert new working days - normalize to array (single checkbox sends string)
-      // Handle: array, string (single value), undefined/null, empty string
-      let workingDaysArray = [];
-      if (Array.isArray(working_days)) {
-        workingDaysArray = working_days.filter(d => d !== null && d !== undefined && d !== '');
-      } else if (working_days !== null && working_days !== undefined && working_days !== '') {
-        workingDaysArray = [working_days];
+      // Parse multiple time blocks per day (same logic as root.js)
+      const blocksToInsert = [];
+      
+      // Try new format first (multiple blocks per day)
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const dayBlocks = req.body[`day_${dayIndex}_blocks`];
+        
+        if (dayBlocks) {
+          if (Array.isArray(dayBlocks)) {
+            dayBlocks.forEach(block => {
+              if (block && block.start && block.end) {
+                blocksToInsert.push({
+                  day: parseInt(dayIndex, 10),
+                  start: block.start,
+                  end: block.end
+                });
+              }
+            });
+          } else if (typeof dayBlocks === 'object') {
+            Object.keys(dayBlocks).forEach(blockIndex => {
+              const block = dayBlocks[blockIndex];
+              if (block && block.start && block.end) {
+                blocksToInsert.push({
+                  day: parseInt(dayIndex, 10),
+                  start: block.start,
+                  end: block.end
+                });
+              }
+            });
+          }
+        }
+        
+        // Check for flat format
+        let blockIndex = 0;
+        while (true) {
+          const flatStartKey = `day_${dayIndex}_blocks[${blockIndex}][start]`;
+          const flatEndKey = `day_${dayIndex}_blocks[${blockIndex}][end]`;
+          
+          if (req.body[flatStartKey] && req.body[flatEndKey]) {
+            blocksToInsert.push({
+              day: parseInt(dayIndex, 10),
+              start: req.body[flatStartKey],
+              end: req.body[flatEndKey]
+            });
+            blockIndex++;
+          } else {
+            break;
+          }
+        }
+        
+        // Fallback to old format - only if explicitly provided
+        if (blocksToInsert.filter(b => b.day === parseInt(dayIndex, 10)).length === 0) {
+          const startTime = req.body[`day_${dayIndex}_start`];
+          const endTime = req.body[`day_${dayIndex}_end`];
+          
+          // Only add if both times are provided and not empty
+          if (startTime && endTime && startTime.trim() !== '' && endTime.trim() !== '') {
+            blocksToInsert.push({
+              day: parseInt(dayIndex, 10),
+              start: startTime,
+              end: endTime
+            });
+          }
+        }
       }
       
-      console.log('Received working_days:', working_days, 'Type:', typeof working_days);
-      console.log('Normalized workingDaysArray:', workingDaysArray);
+      // Also check working_days array for backward compatibility
+      if (blocksToInsert.length === 0) {
+        let workingDaysArray = [];
+        if (Array.isArray(working_days)) {
+          workingDaysArray = working_days.filter(d => d !== null && d !== undefined && d !== '');
+        } else if (working_days !== null && working_days !== undefined && working_days !== '') {
+          workingDaysArray = [working_days];
+        }
+        
+        for (const dayIndex of workingDaysArray) {
+          const dayNum = parseInt(dayIndex, 10);
+          const startTime = req.body[`day_${dayIndex}_start`];
+          const endTime = req.body[`day_${dayIndex}_end`];
+          
+          // Only add if both times are explicitly provided
+          if (startTime && endTime && startTime.trim() !== '' && endTime.trim() !== '') {
+            blocksToInsert.push({
+              day: dayNum,
+              start: startTime,
+              end: endTime
+            });
+          }
+        }
+      }
       
-      for (const dayIndex of workingDaysArray) {
-        // Convert to number to ensure proper type
-        const dayNum = parseInt(dayIndex, 10);
-        const startTime = req.body[`day_${dayIndex}_start`] || '09:00';
-        const endTime = req.body[`day_${dayIndex}_end`] || '17:00';
+      // Validate for overlapping blocks per day
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const conflicts = [];
+      
+      // Helper function to convert time to minutes
+      function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      }
+      
+      // Helper function to check if two blocks overlap
+      function blocksOverlap(block1, block2) {
+        const start1 = timeToMinutes(block1.start);
+        const end1 = timeToMinutes(block1.end);
+        const start2 = timeToMinutes(block2.start);
+        const end2 = timeToMinutes(block2.end);
         
-        console.log(`Inserting day ${dayNum}: ${startTime} - ${endTime}`);
+        // Blocks overlap if one starts before the other ends
+        return (start1 < end2 && start2 < end1);
+      }
+      
+      // Group blocks by day
+      const blocksByDay = {};
+      blocksToInsert.forEach(block => {
+        if (!blocksByDay[block.day]) {
+          blocksByDay[block.day] = [];
+        }
+        blocksByDay[block.day].push(block);
+      });
+      
+      // Check for overlaps within each day
+      Object.keys(blocksByDay).forEach(dayIndex => {
+        const dayBlocks = blocksByDay[dayIndex];
+        if (dayBlocks.length > 1) {
+          for (let i = 0; i < dayBlocks.length; i++) {
+            for (let j = i + 1; j < dayBlocks.length; j++) {
+              const block1 = dayBlocks[i];
+              const block2 = dayBlocks[j];
+              
+              if (blocksOverlap(block1, block2)) {
+                conflicts.push({
+                  day: parseInt(dayIndex),
+                  dayName: dayNames[parseInt(dayIndex)],
+                  block1: block1,
+                  block2: block2
+                });
+              }
+            }
+          }
+        }
+      });
+      
+      // If conflicts found, return error
+      if (conflicts.length > 0) {
+        await db.query('ROLLBACK');
         
+        let errorMessage = 'Time block conflicts detected:\n\n';
+        const conflictsByDay = {};
+        conflicts.forEach(conflict => {
+          if (!conflictsByDay[conflict.day]) {
+            conflictsByDay[conflict.day] = [];
+          }
+          conflictsByDay[conflict.day].push(conflict);
+        });
+        
+        Object.keys(conflictsByDay).forEach(dayIndex => {
+          const dayConflicts = conflictsByDay[dayIndex];
+          const dayName = dayNames[parseInt(dayIndex)];
+          errorMessage += `${dayName}:\n`;
+          dayConflicts.forEach(conflict => {
+            errorMessage += `  • Blocks "${conflict.block1.start} - ${conflict.block1.end}" and "${conflict.block2.start} - ${conflict.block2.end}" overlap\n`;
+          });
+          errorMessage += '\n';
+        });
+        errorMessage += 'Please adjust the overlapping time blocks and try again.';
+        
+        return res.status(400).json({
+          success: false,
+          error: errorMessage,
+          conflicts: conflicts
+        });
+      }
+      
+      // Insert all blocks
+      for (const block of blocksToInsert) {
         await db.query(
           'INSERT INTO availability (user_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-          [userId, dayNum, startTime, endTime]
+          [userId, block.day, block.start, block.end]
         );
       }
+      
+      const hasWorkingDays = blocksToInsert.length > 0;
 
       // Update or insert universal breaks
       const existingBreak = await db.query(
@@ -728,10 +894,9 @@ router.post('/availability', requireLogin, async (req, res) => {
 
       // Update buffer minutes and has_set_availability in users table
       // Only set has_set_availability to TRUE if at least one working day was added
-      const hasWorkingDays = workingDaysArray.length > 0;
       await db.query(
         'UPDATE users SET buffer_minutes = $1, has_set_availability = $3 WHERE id = $2',
-        [buffer_minutes, userId, hasWorkingDays]
+        [parseInt(buffer_minutes) || 0, userId, hasWorkingDays]
       );
 
       // Commit transaction

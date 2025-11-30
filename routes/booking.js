@@ -167,14 +167,34 @@ router.post('/:username', async (req, res) => {
     const dayOfWeek = bookingDate.getUTCDay();
 
 
-    // Verify this time slot is actually available
+    // Verify this time slot is actually available (check all blocks for the day)
     const availabilityResult = await db.query(
-        'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
+        'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
         [userId, dayOfWeek]
     );
 
     if (availabilityResult.rows.length === 0) {
         return res.status(400).json({ error: 'This time slot is not available' });
+    }
+
+    // Check if the requested time falls within any of the availability blocks
+    const bookingStartMinutes = timeToMinutes(start_time);
+    const bookingEndMinutes = timeToMinutes(end_time);
+    
+    let isValidSlot = false;
+    for (const block of availabilityResult.rows) {
+        const blockStartMinutes = timeToMinutes(block.start_time);
+        const blockEndMinutes = timeToMinutes(block.end_time);
+        
+        // Check if booking is completely within this block
+        if (bookingStartMinutes >= blockStartMinutes && bookingEndMinutes <= blockEndMinutes) {
+            isValidSlot = true;
+            break;
+        }
+    }
+    
+    if (!isValidSlot) {
+        return res.status(400).json({ error: 'This time slot is not within your available hours' });
     }
 
     // Check if the slot is still available
@@ -375,11 +395,28 @@ router.get('/:username/slots', async (req, res) => {
         const [year, month, day] = date.split('-').map(Number);
         const requestedDate = new Date(Date.UTC(year, month - 1, day));
         
-        // Get current time in client's timezone
-        const nowInClientTimezone = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone }));
+        // Get current time in client's timezone properly
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: clientTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(now);
+        const nowInClientTimezone = {
+            year: parseInt(parts.find(p => p.type === 'year').value),
+            month: parseInt(parts.find(p => p.type === 'month').value),
+            day: parseInt(parts.find(p => p.type === 'day').value),
+            hour: parseInt(parts.find(p => p.type === 'hour').value),
+            minute: parseInt(parts.find(p => p.type === 'minute').value)
+        };
         
         // Check if the requested date is in the past (in client's timezone)
-        const todayDate = nowInClientTimezone.toISOString().split('T')[0];
+        const todayDate = `${nowInClientTimezone.year}-${String(nowInClientTimezone.month).padStart(2, '0')}-${String(nowInClientTimezone.day).padStart(2, '0')}`;
         if (date < todayDate) {
             return res.json({ slots: [] });
         }
@@ -483,14 +520,10 @@ router.get('/:username/slots', async (req, res) => {
             googleCalendarConflicts = [];
         }
 
-        // Generate available time slots
-        const availability = availabilityResult.rows[0];
+        // Generate available time slots from all availability blocks
+        const availabilityBlocks = availabilityResult.rows;
         const breaks = breaksResult.rows;
         const bookings = bookingsResult.rows;
-
-        // Convert times to minutes since midnight for easier calculation
-        const workStart = timeToMinutes(availability.start_time);
-        const workEnd = timeToMinutes(availability.end_time);
         
         // Create array of slots with meeting length (60 min) + buffer time
         const slots = [];
@@ -499,41 +532,73 @@ router.get('/:username/slots', async (req, res) => {
         const totalInterval = meetingLength + bufferTime; // 75 minutes total (60 + 15)
 
         // Current time in minutes since midnight in client's timezone
-        const currentTimeMinutes = nowInClientTimezone.getHours() * 60 + nowInClientTimezone.getMinutes();
+        const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
         
-        // Check if requested date is today in client's timezone
-        const isToday = date === todayDate;
-
-        // Generate slots with proper intervals
-        for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
-            const slotStart = time;
-            const slotEnd = time + meetingLength;
-            
-            // Skip slots in the past for today (using client's timezone)
-            if (isToday && slotStart <= currentTimeMinutes + bufferTime) {
-                continue;
+        // Check if requested date is today in client's timezone (normalize both dates for comparison)
+        const normalizedRequestedDate = date.trim();
+        const normalizedTodayDate = todayDate.trim();
+        const isToday = normalizedRequestedDate === normalizedTodayDate;
+        
+        // Also check if dates are the same by parsing them (handles edge cases)
+        let isTodayByParsing = false;
+        try {
+            const reqDateParts = normalizedRequestedDate.split('-');
+            const todayDateParts = normalizedTodayDate.split('-');
+            if (reqDateParts.length === 3 && todayDateParts.length === 3) {
+                isTodayByParsing = (
+                    parseInt(reqDateParts[0]) === parseInt(todayDateParts[0]) &&
+                    parseInt(reqDateParts[1]) === parseInt(todayDateParts[1]) &&
+                    parseInt(reqDateParts[2]) === parseInt(todayDateParts[2])
+                );
             }
-            
-            // Check if slot overlaps with any breaks (no buffer time applied to breaks)
-            const overlapsBreak = breaks.some(b => {
-                const breakStart = timeToMinutes(b.start_time);
-                const breakEnd = timeToMinutes(b.end_time);
+        } catch (e) {
+            // Ignore parsing errors
+        }
+        
+        const isTodayFinal = isToday || isTodayByParsing;
+
+        // Generate slots for each availability block
+        availabilityBlocks.forEach(availability => {
+            // Convert times to minutes since midnight for easier calculation
+            const workStart = timeToMinutes(availability.start_time);
+            const workEnd = timeToMinutes(availability.end_time);
+
+            // Generate slots with proper intervals for this block
+            for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
+                const slotStart = time;
+                const slotEnd = time + meetingLength;
                 
-                // Check if slot overlaps with the break zone (no buffer applied to breaks)
-                return (slotStart < breakEnd && slotEnd > breakStart);
-            });
-            
-            // Check if slot overlaps with any bookings
-            const overlapsBooking = bookings.some(b => {
-                const bookingStart = timeToMinutes(b.start_time);
-                const bookingEnd = timeToMinutes(b.end_time);
-                return (slotStart < bookingEnd && slotEnd > bookingStart);
-            });
-            
-            // Check if slot overlaps with any Google Calendar events (including buffer time)
-            const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
-                // Apply buffer time to the conflict boundaries
-                const conflictStartWithBuffer = conflict.start - bufferTime;
+                // Skip slots that have already started or don't have enough buffer time
+                // For today, ensure the slot starts at least bufferTime minutes from now
+                if (isTodayFinal) {
+                    // Slot must start AFTER current time + buffer time (strict greater than)
+                    // This ensures users can't book slots that have already passed or don't have enough prep time
+                    const minAllowedStartTime = currentTimeMinutes + bufferTime;
+                    if (slotStart < minAllowedStartTime) {
+                        continue;
+                    }
+                }
+                
+                // Check if slot overlaps with any breaks (no buffer time applied to breaks)
+                const overlapsBreak = breaks.some(b => {
+                    const breakStart = timeToMinutes(b.start_time);
+                    const breakEnd = timeToMinutes(b.end_time);
+                    
+                    // Check if slot overlaps with the break zone (no buffer applied to breaks)
+                    return (slotStart < breakEnd && slotEnd > breakStart);
+                });
+                
+                // Check if slot overlaps with any bookings
+                const overlapsBooking = bookings.some(b => {
+                    const bookingStart = timeToMinutes(b.start_time);
+                    const bookingEnd = timeToMinutes(b.end_time);
+                    return (slotStart < bookingEnd && slotEnd > bookingStart);
+                });
+                
+                // Check if slot overlaps with any Google Calendar events (including buffer time)
+                const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
+                    // Apply buffer time to the conflict boundaries
+                    const conflictStartWithBuffer = conflict.start - bufferTime;
                 const conflictEndWithBuffer = conflict.end + bufferTime;
                 
                 // Debug logging for buffer time logic
@@ -563,16 +628,9 @@ router.get('/:username/slots', async (req, res) => {
                     start_time: slotStartTime,
                     end_time: slotEndTime
                 });
-            } else {
-                const reasons = [];
-                if (overlapsBreak) reasons.push('overlaps break');
-                if (overlapsBooking) reasons.push('overlaps booking');
-                if (overlapsGoogleCalendar) reasons.push('overlaps Google Calendar');
-                if (!fitsInWorkingHours) reasons.push('doesn\'t fit in working hours');
-                
             }
-        }
-
+            }
+        });
 
         res.json({ slots });
     } catch (error) {
