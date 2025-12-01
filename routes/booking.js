@@ -669,20 +669,21 @@ router.get('/:username', async (req, res) => {
     
     const userId = result.rows[0].id;
     
-    // Default to 60 minutes (1 hour) when no duration is specified
-    // Check if user has a 60-minute duration configured, otherwise use default meeting link
+    // Find first active duration for the user, or default to 60 minutes
     const durationResult = await db.query(
-      'SELECT duration_minutes, meeting_link FROM meeting_durations WHERE user_id = $1 AND duration_minutes = 60 AND is_active = true LIMIT 1',
+      'SELECT duration_minutes, meeting_link FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, duration_minutes ASC LIMIT 1',
       [userId]
     );
     
-    let duration = 60; // Always default to 60 minutes (1 hour)
+    let duration = null; // null means use default route without duration (defaults to 60 minutes)
     let meetingLink = result.rows[0].meeting_link;
     
-    // If user has a 60-minute duration configured, use its meeting link
+    // If user has an active duration configured, use it
     if (durationResult.rows.length > 0) {
+      duration = durationResult.rows[0].duration_minutes;
       meetingLink = durationResult.rows[0].meeting_link || meetingLink;
     }
+    // If no active durations, duration stays null - frontend will use /booking/:username/slots which defaults to 60 minutes
     
     const user = {
       ...result.rows[0],
@@ -1009,14 +1010,14 @@ router.get('/:username/slots', async (req, res) => {
         
         const userId = userResult.rows[0].id;
         
-        // Default to 60 minutes (1 hour) when no duration is specified
-        // Check if user has a 60-minute duration configured, otherwise default to 60
+        // Find first active duration for the user, or default to 60 minutes
         const durationResult = await db.query(
-            'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND duration_minutes = 60 AND is_active = true LIMIT 1',
+            'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, duration_minutes ASC LIMIT 1',
             [userId]
         );
-        // Always default to 60 minutes (1 hour) for /:username/slots route
-        const meetingLength = 60;
+        
+        // Use first active duration if available, otherwise default to 60 minutes
+        const meetingLength = durationResult.rows.length > 0 ? durationResult.rows[0].duration_minutes : 60;
         
         const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
         const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
