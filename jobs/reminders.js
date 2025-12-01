@@ -8,6 +8,7 @@ const WINDOW_MINUTES = 2;
 
 let intervalRef = null;
 let isRunning = false;
+let reminderColumnsCache = null;
 
 function normalizeTime(timeStr) {
     if (!timeStr || typeof timeStr !== 'string') {
@@ -84,7 +85,54 @@ function computeBookingStartUtc(row) {
     return new Date(utcTimestamp);
 }
 
+async function checkReminderColumnsExist() {
+    // Cache the result since columns don't change during runtime
+    if (reminderColumnsCache !== null) {
+        return reminderColumnsCache;
+    }
+    
+    try {
+        const result = await db.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'bookings' 
+            AND column_name IN ('client_reminder_30_sent', 'host_reminder_30_sent')
+        `);
+        const existingColumns = new Set(result.rows.map(r => r.column_name));
+        reminderColumnsCache = {
+            client_reminder_30_sent: existingColumns.has('client_reminder_30_sent'),
+            host_reminder_30_sent: existingColumns.has('host_reminder_30_sent')
+        };
+        return reminderColumnsCache;
+    } catch (error) {
+        console.error('[Booking Reminders] Failed to check reminder columns:', error);
+        reminderColumnsCache = { client_reminder_30_sent: false, host_reminder_30_sent: false };
+        return reminderColumnsCache;
+    }
+}
+
 async function fetchCandidateBookings() {
+    const columnsExist = await checkReminderColumnsExist();
+    
+    let reminderColumns = '';
+    let reminderWhereClause = '';
+    
+    if (columnsExist.client_reminder_30_sent && columnsExist.host_reminder_30_sent) {
+        reminderColumns = `
+            COALESCE(b.client_reminder_30_sent, FALSE) AS client_reminder_30_sent,
+            COALESCE(b.host_reminder_30_sent, FALSE) AS host_reminder_30_sent,
+        `;
+        reminderWhereClause = `
+          AND (COALESCE(b.client_reminder_30_sent, FALSE) = FALSE OR COALESCE(b.host_reminder_30_sent, FALSE) = FALSE)
+        `;
+    } else {
+        reminderColumns = `
+            FALSE AS client_reminder_30_sent,
+            FALSE AS host_reminder_30_sent,
+        `;
+        // If columns don't exist, we'll process all bookings (they haven't been sent reminders yet)
+    }
+    
     const query = `
         SELECT
             b.id,
@@ -99,8 +147,7 @@ async function fetchCandidateBookings() {
             b.notes,
             b.status,
             b.confirmation_uuid,
-            COALESCE(b.client_reminder_30_sent, FALSE) AS client_reminder_30_sent,
-            COALESCE(b.host_reminder_30_sent, FALSE) AS host_reminder_30_sent,
+            ${reminderColumns}
             u.email AS host_email,
             u.username,
             u.meeting_link,
@@ -111,7 +158,7 @@ async function fetchCandidateBookings() {
         FROM bookings b
         JOIN users u ON u.id = b.user_id
         WHERE b.status != 'cancelled'
-          AND (COALESCE(b.client_reminder_30_sent, FALSE) = FALSE OR COALESCE(b.host_reminder_30_sent, FALSE) = FALSE)
+          ${reminderWhereClause}
           AND b.date >= (CURRENT_DATE - INTERVAL '1 day')
           AND b.date <= (CURRENT_DATE + INTERVAL '30 day')
     `;
@@ -172,20 +219,35 @@ async function processBooking(row) {
         }
 
         if (clientReminderSent || hostReminderSent) {
-            await db.query(
-                `
-                    UPDATE bookings
-                    SET client_reminder_30_sent = $1,
-                        host_reminder_30_sent = $2,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $3
-                `,
-                [
-                    row.client_reminder_30_sent || clientReminderSent,
-                    row.host_reminder_30_sent || hostReminderSent,
-                    row.id
-                ]
-            );
+            // Check if reminder columns exist before trying to update them
+            const columnsExist = await checkReminderColumnsExist();
+            
+            if (columnsExist.client_reminder_30_sent && columnsExist.host_reminder_30_sent) {
+                await db.query(
+                    `
+                        UPDATE bookings
+                        SET client_reminder_30_sent = $1,
+                            host_reminder_30_sent = $2,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = $3
+                    `,
+                    [
+                        row.client_reminder_30_sent || clientReminderSent,
+                        row.host_reminder_30_sent || hostReminderSent,
+                        row.id
+                    ]
+                );
+            } else {
+                // If columns don't exist, just update updated_at
+                await db.query(
+                    `
+                        UPDATE bookings
+                        SET updated_at = CURRENT_TIMESTAMP
+                        WHERE id = $1
+                    `,
+                    [row.id]
+                );
+            }
         }
     } catch (error) {
         console.error('[Booking Reminders] Failed to send reminder for booking', row.id, error);
