@@ -85,6 +85,7 @@ const googleAuthRoutes = require('./routes/googleAuth');
 const crmRoutes = require('./routes/crm');
 const telegramRoutes = require('./routes/telegram');
 const shortUrlRoutes = require('./routes/shortUrl');
+const reminderJob = require('./jobs/reminders');
 
 // Mount routes
 app.use('/auth', authRoutes);
@@ -126,6 +127,9 @@ app.use((err, req, res, next) => {
             : err.message 
     });
 });
+
+// Start background jobs
+reminderJob.start();
 
 // Export for Railway
 module.exports = app;

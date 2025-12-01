@@ -26,22 +26,29 @@
                         <span class="text-gray-600">Date:</span>
                         <span class="font-medium text-gray-800">
                             <% 
-                            // Handle both string and Date object formats
-                            let bookingDate;
+                            // Format date directly from string to avoid timezone issues
+                            let formattedDate;
                             if (typeof booking.date === 'string') {
+                                // Parse date string (YYYY-MM-DD) and format it
                                 const [year, month, day] = booking.date.split('-').map(Number);
-                                bookingDate = new Date(Date.UTC(year, month - 1, day));
+                                const dateObj = new Date(year, month - 1, day);
+                                formattedDate = dateObj.toLocaleDateString('en-US', { 
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                });
                             } else {
-                                bookingDate = new Date(booking.date);
+                                // Handle Date object
+                                formattedDate = new Date(booking.date).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                });
                             }
                             %>
-                            <%= bookingDate.toLocaleDateString('en-US', { 
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                timeZone: 'UTC'
-                            }) %>
+                            <%= formattedDate %>
                         </span>
                     </div>
                     <div class="flex justify-between">

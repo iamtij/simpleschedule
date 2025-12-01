@@ -1,0 +1,236 @@
+const db = require('../db');
+const mailService = require('../services/mail');
+const timezone = require('../utils/timezone');
+
+const REMINDER_MINUTES_BEFORE = 30;
+const CHECK_INTERVAL_MS = 60 * 1000;
+const WINDOW_MINUTES = 2;
+
+let intervalRef = null;
+let isRunning = false;
+
+function normalizeTime(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') {
+        return '';
+    }
+
+    const [hours = '00', minutes = '00'] = timeStr.split(':');
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+}
+
+function formatTime12Hour(timeStr) {
+    if (!timeStr) {
+        return '';
+    }
+
+    const [hoursStr, minutesStr = '00'] = timeStr.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return timeStr;
+    }
+
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = ((hours + 11) % 12) + 1;
+
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${suffix}`;
+}
+
+function getHostDisplayName(row) {
+    return row.host_display_name || row.host_full_name || row.host_name || row.username;
+}
+
+function getTimezoneOffsetMinutes(timezoneId, referenceDate) {
+    try {
+        return timezone.getTimezoneOffset(timezoneId, referenceDate);
+    } catch (error) {
+        console.error('[Booking Reminders] Failed to determine timezone offset:', error);
+        return timezone.getTimezoneOffset(undefined, referenceDate); // fallback to default
+    }
+}
+
+function computeBookingStartUtc(row) {
+    const rawDateStr = typeof row.date_str === 'string' && row.date_str.length === 10
+        ? row.date_str
+        : (typeof row.date === 'string'
+            ? row.date
+            : row.date?.toISOString?.().split('T')[0]);
+
+    const dateStr = rawDateStr && /^\d{4}-\d{2}-\d{2}$/.test(rawDateStr) ? rawDateStr : null;
+
+    if (!dateStr) {
+        return null;
+    }
+
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const [startHour = '00', startMinute = '00'] = normalizeTime(row.start_time).split(':');
+
+    if ([year, month, day].some((value) => Number.isNaN(value))) {
+        return null;
+    }
+
+    const referenceDate = new Date(Date.UTC(
+        year,
+        (month || 1) - 1,
+        day || 1,
+        parseInt(startHour, 10),
+        parseInt(startMinute, 10)
+    ));
+
+    const offsetMinutes = getTimezoneOffsetMinutes(row.timezone, referenceDate);
+    const utcTimestamp = referenceDate.getTime() - (offsetMinutes * 60 * 1000);
+
+    return new Date(utcTimestamp);
+}
+
+async function fetchCandidateBookings() {
+    const query = `
+        SELECT
+            b.id,
+            b.user_id,
+            b.client_name,
+            b.client_email,
+            b.client_phone,
+            b.date,
+            TO_CHAR(b.date, 'YYYY-MM-DD') AS date_str,
+            b.start_time,
+            b.end_time,
+            b.notes,
+            b.status,
+            b.confirmation_uuid,
+            COALESCE(b.client_reminder_30_sent, FALSE) AS client_reminder_30_sent,
+            COALESCE(b.host_reminder_30_sent, FALSE) AS host_reminder_30_sent,
+            u.email AS host_email,
+            u.username,
+            u.meeting_link,
+            u.timezone,
+            u.display_name AS host_display_name,
+            u.full_name AS host_full_name,
+            u.name AS host_name
+        FROM bookings b
+        JOIN users u ON u.id = b.user_id
+        WHERE b.status != 'cancelled'
+          AND (COALESCE(b.client_reminder_30_sent, FALSE) = FALSE OR COALESCE(b.host_reminder_30_sent, FALSE) = FALSE)
+          AND b.date >= (CURRENT_DATE - INTERVAL '1 day')
+          AND b.date <= (CURRENT_DATE + INTERVAL '30 day')
+    `;
+
+    const result = await db.query(query);
+    return result.rows || [];
+}
+
+async function processBooking(row) {
+    const bookingStartUtc = computeBookingStartUtc(row);
+    if (!bookingStartUtc) {
+        return;
+    }
+
+    const now = new Date();
+    const windowStart = new Date(now.getTime() + (REMINDER_MINUTES_BEFORE - WINDOW_MINUTES) * 60 * 1000);
+    const windowEnd = new Date(now.getTime() + (REMINDER_MINUTES_BEFORE + WINDOW_MINUTES) * 60 * 1000);
+
+    if (bookingStartUtc < windowStart || bookingStartUtc > windowEnd) {
+        return;
+    }
+
+    const normalizedStartTime = normalizeTime(row.start_time);
+    const normalizedEndTime = normalizeTime(row.end_time);
+    const booking = {
+        id: row.id,
+        client_name: row.client_name,
+        client_email: row.client_email,
+        client_phone: row.client_phone,
+        date: row.date,
+        start_time: normalizedStartTime,
+        end_time: normalizedEndTime,
+        formatted_start_time: formatTime12Hour(normalizedStartTime),
+        formatted_end_time: formatTime12Hour(normalizedEndTime),
+        notes: row.notes,
+        confirmation_uuid: row.confirmation_uuid
+    };
+
+    const host = {
+        name: getHostDisplayName(row),
+        username: row.username,
+        email: row.host_email,
+        meeting_link: row.meeting_link
+    };
+
+    let clientReminderSent = false;
+    let hostReminderSent = false;
+
+    try {
+        if (!row.client_reminder_30_sent && booking.client_email) {
+            await mailService.sendClientReminder(booking, host);
+            clientReminderSent = true;
+        }
+
+        if (!row.host_reminder_30_sent && host.email) {
+            await mailService.sendHostReminder(booking, host);
+            hostReminderSent = true;
+        }
+
+        if (clientReminderSent || hostReminderSent) {
+            await db.query(
+                `
+                    UPDATE bookings
+                    SET client_reminder_30_sent = $1,
+                        host_reminder_30_sent = $2,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $3
+                `,
+                [
+                    row.client_reminder_30_sent || clientReminderSent,
+                    row.host_reminder_30_sent || hostReminderSent,
+                    row.id
+                ]
+            );
+        }
+    } catch (error) {
+        console.error('[Booking Reminders] Failed to send reminder for booking', row.id, error);
+    }
+}
+
+async function runReminderSweep() {
+    if (isRunning) {
+        return;
+    }
+
+    isRunning = true;
+
+    try {
+        const candidates = await fetchCandidateBookings();
+        await Promise.all(candidates.map((booking) => processBooking(booking)));
+    } catch (error) {
+        console.error('[Booking Reminders] Reminder sweep failed:', error);
+    } finally {
+        isRunning = false;
+    }
+}
+
+function start() {
+    if (process.env.DISABLE_REMINDER_JOBS === 'true') {
+        console.log('[Booking Reminders] Reminder job disabled via environment variable.');
+        return;
+    }
+
+    if (intervalRef) {
+        return;
+    }
+
+    runReminderSweep().catch((error) => {
+        console.error('[Booking Reminders] Initial sweep failed:', error);
+    });
+
+    intervalRef = setInterval(() => {
+        runReminderSweep().catch((error) => {
+            console.error('[Booking Reminders] Scheduled sweep failed:', error);
+        });
+    }, CHECK_INTERVAL_MS);
+}
+
+module.exports = {
+    start
+};
+

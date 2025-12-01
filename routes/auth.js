@@ -194,6 +194,13 @@ router.get('/forgot-password', (req, res) => {
 router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
 
+    if (!email) {
+        return res.render('forgot-password', { 
+            error: 'Email address is required', 
+            success: null 
+        });
+    }
+
     try {
         // Check if user exists
         const result = await db.query('SELECT id, email FROM users WHERE email = $1', [email]);
@@ -214,14 +221,20 @@ router.post('/forgot-password', async (req, res) => {
             [resetToken, resetTokenExpiry, email]
         );
 
-        // Send reset email
-        await mailService.sendPasswordResetEmail(email, resetToken);
+        // Send reset email (don't fail if email fails, token is already saved)
+        try {
+            await mailService.sendPasswordResetEmail(email, resetToken);
+        } catch (emailError) {
+            console.error('Failed to send password reset email:', emailError);
+            // Continue anyway - token is saved, user can still reset if they have the link
+        }
 
         res.render('forgot-password', {
             error: null,
             success: 'Password reset instructions have been sent to your email'
         });
     } catch (error) {
+        console.error('Forgot password error:', error);
         res.render('forgot-password', { 
             error: 'An error occurred. Please try again.', 
             success: null 

@@ -577,6 +577,12 @@ router.get('/settings', requireLogin, async (req, res) => {
             [req.session.userId]
         );
 
+        // Get meeting durations
+        const durationsResult = await db.query(
+            'SELECT id, duration_minutes, meeting_link, is_active, display_order FROM meeting_durations WHERE user_id = $1 ORDER BY display_order, duration_minutes',
+            [req.session.userId]
+        );
+
         // Format the availability data
         const workingDays = availabilityResult.rows.map(row => row.day_of_week);
         const availabilityData = {};
@@ -592,6 +598,7 @@ router.get('/settings', requireLogin, async (req, res) => {
             break_enabled: breaksResult.rows[0]?.enabled || false,
             break_start: breaksResult.rows[0]?.start_time || '12:00',
             break_end: breaksResult.rows[0]?.end_time || '13:00',
+            meeting_durations: durationsResult.rows,
             ...availabilityData
         };
 
@@ -898,6 +905,46 @@ router.post('/availability', requireLogin, async (req, res) => {
         'UPDATE users SET buffer_minutes = $1, has_set_availability = $3 WHERE id = $2',
         [parseInt(buffer_minutes) || 0, userId, hasWorkingDays]
       );
+
+      // Handle meeting durations (up to 3)
+      const meetingDurations = req.body.meeting_durations || [];
+      
+      // Validate: max 3 durations
+      if (meetingDurations.length > 3) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Maximum of 3 meeting durations allowed' 
+        });
+      }
+      
+      // Validate: unique duration values
+      const durationValues = meetingDurations.map(d => parseInt(d.duration_minutes)).filter(d => !isNaN(d) && d > 0);
+      const uniqueDurations = [...new Set(durationValues)];
+      if (durationValues.length !== uniqueDurations.length) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Meeting durations must be unique' 
+        });
+      }
+      
+      // Delete existing meeting durations
+      await db.query('DELETE FROM meeting_durations WHERE user_id = $1', [userId]);
+      
+      // Insert new meeting durations
+      for (let i = 0; i < meetingDurations.length; i++) {
+        const duration = meetingDurations[i];
+        const durationMinutes = parseInt(duration.duration_minutes);
+        const meetingLink = duration.meeting_link || null;
+        
+        if (!isNaN(durationMinutes) && durationMinutes > 0) {
+          await db.query(
+            'INSERT INTO meeting_durations (user_id, duration_minutes, meeting_link, is_active, display_order) VALUES ($1, $2, $3, true, $4)',
+            [userId, durationMinutes, meetingLink, i]
+          );
+        }
+      }
 
       // Commit transaction
       await db.query('COMMIT');

@@ -45,13 +45,9 @@ class MailService {
             return null;
         }
 
-        const date = new Date(booking.date);
-        const formattedDate = date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
 
         try {
             const result = await mg.messages.create(this.domain, {
@@ -64,7 +60,7 @@ Your appointment has been confirmed!
 
 Details:
 - Date: ${formattedDate}
-- Time: ${booking.formatted_start_time} - ${booking.formatted_end_time}
+- Time: ${formattedStartTime} - ${formattedEndTime}
 - With: ${host.name || host.username}
 ${host.meeting_link ? `\nMeeting Link: ${host.meeting_link}` : ''}
 
@@ -89,13 +85,9 @@ ${this._generateGoogleCalendarLink(booking, host)}`,
             return null;
         }
 
-        const date = new Date(booking.date);
-        const formattedDate = date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
 
         try {
             const result = await mg.messages.create(this.domain, {
@@ -113,7 +105,7 @@ ${booking.client_phone ? `- Phone: ${booking.client_phone}` : ''}
 
 Appointment Details:
 - Date: ${formattedDate}
-- Time: ${booking.formatted_start_time} - ${booking.formatted_end_time}
+- Time: ${formattedStartTime} - ${formattedEndTime}
 ${booking.notes ? `- Notes: ${booking.notes}` : ''}
 ${host.meeting_link ? `- Meeting Link: ${host.meeting_link}` : ''}
 
@@ -127,6 +119,79 @@ ${this._generateGoogleCalendarLink(booking, host)}`,
             return result;
         } catch (error) {
             console.error('Failed to send host notification:', error);
+            throw error;
+        }
+    }
+
+    async sendClientReminder(booking, host) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [booking.client_email],
+                subject: `Reminder: Your appointment starts in 30 minutes`,
+                text: `Hi ${booking.client_name},
+
+Just a quick reminder that your appointment with ${host.name || host.username} begins in 30 minutes.
+
+Details:
+- Date: ${formattedDate}
+- Time: ${formattedStartTime} - ${formattedEndTime}
+${host.meeting_link ? `- Join link: ${host.meeting_link}
+` : ''}${booking.notes ? `- Notes: ${booking.notes}
+` : ''}
+See you soon!
+`
+            });
+            return result;
+        } catch (error) {
+            console.error('Failed to send client reminder:', error);
+            throw error;
+        }
+    }
+
+    async sendHostReminder(booking, host) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [host.email],
+                subject: `Reminder: ${booking.client_name} meets you in 30 minutes`,
+                text: `Hi ${host.name || host.username},
+
+Heads up—your meeting with ${booking.client_name} starts in 30 minutes.
+
+Client details:
+- Name: ${booking.client_name}
+- Email: ${booking.client_email}
+${booking.client_phone ? `- Phone: ${booking.client_phone}
+` : ''}
+Appointment details:
+- Date: ${formattedDate}
+- Time: ${formattedStartTime} - ${formattedEndTime}
+${host.meeting_link ? `- Meeting link: ${host.meeting_link}
+` : ''}${booking.notes ? `- Notes: ${booking.notes}
+` : ''}
+Manage the booking at ${process.env.APP_URL || 'https://isked.app'}/dashboard.
+`
+            });
+            return result;
+        } catch (error) {
+            console.error('Failed to send host reminder:', error);
             throw error;
         }
     }
@@ -268,6 +333,43 @@ The isked Team`,
             `&dates=${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.start_time)}00` +
             `/${formatDateForGCal(booking.date)}T${formatTimeForGCal(booking.end_time)}00` +
             `&details=${encodeURIComponent(details)}`;
+    }
+
+    _formatBookingDate(date) {
+        if (!date) {
+            return '';
+        }
+
+        const parsedDate = typeof date === 'string' ? new Date(date) : new Date(date);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+            return '';
+        }
+
+        return parsedDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
+    _formatTime(time) {
+        if (!time || typeof time !== 'string') {
+            return '';
+        }
+
+        const [hoursStr, minutes = '00'] = time.split(':');
+        const hours = parseInt(hoursStr, 10);
+
+        if (Number.isNaN(hours)) {
+            return time;
+        }
+
+        const suffix = hours >= 12 ? 'PM' : 'AM';
+        const hour12 = ((hours + 11) % 12) + 1;
+
+        return `${hour12}:${minutes.padStart(2, '0')} ${suffix}`;
     }
 }
 

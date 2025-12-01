@@ -3,371 +3,1305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book an Appointment with <%= user.display_name || user.full_name || user.username %></title>
+    <title>Book an Appointment with <%= user.display_name || user.full_name || user.username %><% if (user.duration_minutes) { %> (<%= user.duration_minutes %> min)<% } %></title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="max-w-3xl mx-auto px-4 py-8">
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <div class="mb-8">
-                <h1 class="text-xl font-semibold text-gray-900 text-left">
-                    Book an appointment with <%= user.display_name || user.full_name || user.username %>
-                </h1>
-                <p class="text-gray-600 text-sm mt-1">Select your preferred date and time below</p>
-            </div>
+    <script src="/js/toast.js"></script>
+    <style>
+        /* Clean, Minimal Design */
+        .booking-container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        /* Calendar Section */
+        .calendar-section {
+            padding: 24px;
+            background: #fafafa;
+        }
+        
+        .calendar-widget {
+            background: white;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        /* Hide month/year dropdowns - navigation only */
+        .calendar-widget .flatpickr-current-month .numInputWrapper {
+            display: none !important;
+        }
+        
+        .calendar-widget .flatpickr-current-month .cur-month {
+            display: none !important;
+        }
+        
+        .calendar-widget .flatpickr-current-month .cur-year {
+            display: none !important;
+        }
+        
+        /* Create combined month/year display */
+        .calendar-widget .flatpickr-current-month::before {
+            content: attr(data-month-year);
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            color: #374151 !important;
+            display: block !important;
+            padding-bottom: 6px !important;
+        }
+        
+        /* Hide the original text content to prevent duplication */
+        .calendar-widget .flatpickr-current-month {
+            font-size: 0 !important; /* Hide original text */
+            padding-bottom: 0 !important; /* Remove padding from main element */
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 767px) {
+            .calendar-widget {
+                padding: 8px;
+                border-radius: 6px;
+            }
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Date and Time Selection -->
-                <div>
-                    <h2 class="text-lg font-semibold mb-4">Select Date & Time</h2>
-                    
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="date">
-                            Date
-                        </label>
-                        <input type="text" id="date-picker" class="w-full border rounded px-3 py-2" placeholder="Select date">
-                    </div>
+            /* Keep header size consistent on mobile */
+            .calendar-widget .flatpickr-current-month {
+                font-size: 0 !important; /* Hide original text */
+                padding-bottom: 0 !important;
+            }
+            
+            .calendar-widget .flatpickr-current-month::before {
+                padding-bottom: 6px !important;
+            }
+            
+            .booking-container {
+                margin: 16px;
+                border-radius: 8px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                display: block;
+                width: calc(100% - 32px);
+            }
+            
+            body {
+                padding: 0;
+            }
+            
+            .calendar-section,
+            .time-slots-section {
+                width: 100%;
+                margin-bottom: 16px;
+            }
+            
+            .time-slots-grid {
+                gap: 6px;
+            }
+            
+            .time-slot-btn {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+        }
+        
+        /* Small mobile optimizations */
+        @media (max-width: 480px) {
+            /* Keep header size consistent on small mobile */
+            .calendar-widget .flatpickr-current-month {
+                font-size: 0 !important; /* Hide original text */
+                padding-bottom: 0 !important;
+            }
+            
+            .calendar-widget .flatpickr-current-month::before {
+                padding-bottom: 6px !important;
+            }
+            
+            .booking-container {
+                margin: 8px;
+            }
+            
+            .calendar-section,
+            .time-slots-section {
+                padding: 16px;
+            }
+            
+            .time-slot-btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+            
+            /* Extra small mobile booking form optimizations */
+            .client-form-section .w-full {
+                padding: 12px !important;
+            }
+            
+            .client-form-section .rounded-2xl {
+                padding: 12px !important;
+            }
+            
+            .client-form-section .mb-6 {
+                margin-bottom: 12px !important;
+            }
+            
+            .client-form-section .space-y-6 > * + * {
+                margin-top: 12px !important;
+            }
+            
+            .client-form-section .mb-3 {
+                margin-bottom: 6px !important;
+            }
+            
+            .client-form-section .mt-6 {
+                margin-top: 12px !important;
+            }
+            
+            .client-form-section .space-y-4 > * + * {
+                margin-top: 10px !important;
+            }
+            
+            .client-form-section .mb-2 {
+                margin-bottom: 4px !important;
+            }
+            
+            .client-form-section input,
+            .client-form-section textarea {
+                padding: 10px !important;
+                font-size: 13px !important;
+            }
+            
+            .client-form-section button {
+                padding: 10px 14px !important;
+                font-size: 13px !important;
+            }
+            
+            .client-form-section .text-lg {
+                font-size: 16px !important;
+            }
+            
+            .client-form-section .text-xl {
+                font-size: 18px !important;
+            }
+        }
+        
+        .calendar-widget .flatpickr-calendar {
+            position: static !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 auto !important;
+            width: 320px !important;
+            padding: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-days {
+            padding: 8px 0;
+        }
+        
+        /* Remove any internal padding/margin from Flatpickr elements */
+        .calendar-widget .flatpickr-calendar .flatpickr-innerContainer {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-rContainer {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-weekdays {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-weekday {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Remove any internal padding/margin from Flatpickr calendar container */
+        .calendar-widget .flatpickr-calendar .flatpickr-calendar {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-months {
+            padding: 4px 0 8px 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-days {
+            padding: 8px 0 !important;
+            margin: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-calendar .flatpickr-day {
+            margin: 2px !important;
+            padding: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-day {
+            border-radius: 6px;
+            margin: 2px;
+            color: #374151 !important;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        
+        .calendar-widget .flatpickr-day.selected {
+            background: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+        }
+        
+        .calendar-widget .flatpickr-day.selected:hover {
+            background: #2563eb !important;
+            color: white !important;
+        }
+        
+        .calendar-widget .flatpickr-day:hover:not(.disabled):not(.selected) {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        
+        .calendar-widget .flatpickr-day.today {
+            background: white !important;
+            color: #374151 !important;
+            font-weight: 700;
+            border: 2px solid #3b82f6 !important;
+        }
+        
+        .calendar-widget .flatpickr-day.today:hover {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        
+        .calendar-widget .flatpickr-day.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #f3f4f6 !important;
+            color: #d1d5db !important;
+        }
+        
+        /* Past days styling */
+        .calendar-widget .flatpickr-day.flatpickr-disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #f3f4f6 !important;
+            color: #d1d5db !important;
+        }
+        
+        /* Navigation arrows positioned on the sides of month/year */
+        .calendar-widget .flatpickr-prev-month,
+        .calendar-widget .flatpickr-next-month {
+            display: block !important;
+            background: transparent !important;
+            color: #6b7280 !important;
+            border: none !important;
+            border-radius: 4px !important;
+            padding: 6px 8px !important;
+            cursor: pointer !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            position: absolute !important;
+            top: 4px !important;
+            z-index: 10 !important;
+            line-height: 1 !important;
+            height: auto !important;
+        }
+        
+        .calendar-widget .flatpickr-prev-month {
+            left: 12px !important;
+        }
+        
+        .calendar-widget .flatpickr-next-month {
+            right: 12px !important;
+        }
+        
+        .calendar-widget .flatpickr-prev-month:hover,
+        .calendar-widget .flatpickr-next-month:hover {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        
+        /* Show the months navigation section with relative positioning */
+        .calendar-widget .flatpickr-months {
+            padding: 4px 0 8px 0 !important;
+            position: relative !important;
+            height: 32px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+        }
+        
+        /* Month/year display styling - removed conflicting font-size */
+        .calendar-widget .flatpickr-current-month {
+            margin: 0 !important; /* Remove margin to allow proper centering */
+            line-height: 1 !important;
+            height: auto !important;
+            padding-top: 2px !important;
+            padding-bottom: 0 !important; /* Padding now handled by ::before element */
+        }
 
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">
-                            Available Time Slots
-                        </label>
-                        <div id="time-slots" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                            <!-- Time slots will be populated dynamically -->
-                        </div>
-                        <p id="no-slots" class="text-gray-500 text-center py-4 hidden">No available time slots for this date.</p>
-                    </div>
+        /* Direct Flatpickr styling override */
+        .calendar-widget .flatpickr-current-month .numInputWrapper input,
+        .calendar-widget .flatpickr-current-month .cur-month {
+            appearance: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            color: #374151 !important;
+            line-height: 1 !important;
+            height: auto !important;
+            vertical-align: top !important;
+        }
+        
+        .calendar-widget .flatpickr-current-month .numInputWrapper {
+            display: inline-block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .calendar-widget .flatpickr-current-month {
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            gap: 4px !important;
+        }
+        
+        /* Ensure navigation stays within calendar */
+        .calendar-widget .flatpickr-months .flatpickr-month {
+            position: relative !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+        }
+        
+        
+        /* Time Slots Section */
+        .time-slots-section {
+            padding: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .time-slots-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .time-slot-btn {
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+            color: #374151;
+            width: 100%;
+        }
+        
+        .time-slot-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
+        
+        .time-slot-btn.selected {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            transform: translateY(-1px);
+        }
+        
+        
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Calendar Loading Overlay */
+        .calendar-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .calendar-loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .calendar-loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .calendar-loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e5e7eb;
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* Mobile Optimizations */
+        @media (max-width: 767px) {
+            .time-slots-grid {
+                gap: 6px;
+            }
+            
+            .time-slot-btn {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            
+            /* Mobile booking form optimizations */
+            .client-form-section {
+                padding: 0 !important;
+            }
+            
+            .client-form-section .w-full {
+                padding: 16px !important;
+            }
+            
+            .client-form-section .max-w-7xl {
+                max-width: 100% !important;
+            }
+            
+            .client-form-section .mb-6 {
+                margin-bottom: 16px !important;
+            }
+            
+            .client-form-section .grid {
+                gap: 16px !important;
+            }
+            
+            .client-form-section .rounded-2xl {
+                border-radius: 12px !important;
+                padding: 16px !important;
+            }
+            
+            .client-form-section .mb-6 {
+                margin-bottom: 16px !important;
+            }
+            
+            .client-form-section .space-y-6 > * + * {
+                margin-top: 16px !important;
+            }
+            
+            .client-form-section .mb-3 {
+                margin-bottom: 8px !important;
+            }
+            
+            .client-form-section .mt-6 {
+                margin-top: 16px !important;
+            }
+            
+            .client-form-section .space-y-4 > * + * {
+                margin-top: 12px !important;
+            }
+            
+            .client-form-section .mb-2 {
+                margin-bottom: 6px !important;
+            }
+            
+            .client-form-section input,
+            .client-form-section textarea {
+                padding: 12px !important;
+                font-size: 14px !important;
+            }
+            
+            .client-form-section button {
+                padding: 12px 16px !important;
+                font-size: 14px !important;
+            }
+            
+        }
+
+        /* Desktop Design */
+        @media (min-width: 768px) {
+            .booking-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 0;
+            }
+            
+            .calendar-section {
+                grid-column: 1;
+                grid-row: 1;
+                border-right: 1px solid #e5e7eb;
+            }
+            
+            .time-slots-section {
+                grid-column: 2;
+                grid-row: 1;
+                border-top: none;
+            }
+            
+        }
+        
+        
+        /* Debug Info - Hidden by default */
+        .debug-info {
+            display: none;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+    <body class="bg-gray-50 min-h-screen py-8">
+        <div class="w-full px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">
+                Book an Appointment with <%= user.display_name || user.full_name || user.username %>
+            </h1>
+            <p class="text-gray-600"><% if (user.duration_minutes) { %>This is a <%= user.duration_minutes %>-minute meeting.<% } else { %>Choose a date and time that works for you<% } %></p>
+        </div>
+
+        <!-- Main Booking Container -->
+        <div class="booking-container">
+            <!-- Calendar Section -->
+            <div class="calendar-section">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Select Date</h2>
+                    <div class="loading-spinner" id="calendar-loading" style="display: none;"></div>
                 </div>
-
-                <!-- Booking Form -->
-                <div>
-                    <h2 class="text-lg font-semibold mb-4">Your Information</h2>
-                    
-                    <form id="booking-form" class="space-y-4">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">
-                                Full Name *
-                            </label>
-                            <input type="text" id="name" name="name" required
-                                class="w-full border rounded px-3 py-2">
+                
+                <div id="calendar-container" class="calendar-widget">
+                    <div class="calendar-loading-overlay" id="calendar-loading-overlay">
+                        <div class="calendar-loading-content">
+                            <div class="calendar-loading-spinner"></div>
+                            <span>Loading availability...</span>
                         </div>
-
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
-                                Email *
-                            </label>
-                            <input type="email" id="email" name="email" required
-                                class="w-full border rounded px-3 py-2">
-                        </div>
-
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="phone">
-                                Phone Number
-                            </label>
-                            <input type="tel" id="phone" name="phone"
-                                class="w-full border rounded px-3 py-2">
-                        </div>
-
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">
-                                Notes
-                            </label>
-                            <textarea id="notes" name="notes" rows="3"
-                                class="w-full border rounded px-3 py-2"></textarea>
-                        </div>
-
-                        <button type="submit" 
-                            class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            Book Appointment
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
-            <!-- Footer inside the white box -->
-            <footer class="text-left py-6 text-gray-600">
-                Made by <a href="https://isked.app/" class="text-blue-600 hover:text-blue-800 font-medium">isked</a>
-            </footer>
+
+            <!-- Time Slots Section -->
+            <div class="time-slots-section">
+                <h3 class="text-lg font-semibold text-gray-900">Available Times</h3>
+                <div id="time-slots" class="time-slots-grid">
+                    <div class="text-center text-gray-500 py-8 col-span-full">
+                        <p>Select a date to view available times</p>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
+        
+        <!-- Client Information Form - Outside constrained container -->
+        <div class="client-form-section" style="display: none;">
+            <div class="w-full px-6 py-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900">Complete Your Booking</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        <!-- Left Panel: Meeting Details -->
+                        <div class="rounded-2xl border p-6 bg-white">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-6">Meeting Details</h3>
+                            
+                            <div class="space-y-6">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-700 mb-3">Date</div>
+                                    <div id="selected-date-display" class="text-lg text-gray-900 font-medium">
+                                        Select a date
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-700 mb-3">Time</div>
+                                    <div id="selected-time-display" class="text-lg text-gray-900 font-medium">
+                                        Select a time
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Back to Calendar Button -->
+                            <div class="mt-6 text-center">
+                                <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800 underline text-sm font-medium">
+                                    ← Back to Calendar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Personal Information Form -->
+                        <div class="rounded-2xl border p-6 bg-white">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-6">Your Information</h3>
+                            
+                            <form id="client-info-form" class="space-y-4">
+                                <div>
+                                    <label for="client-name" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Full Name <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="client-name" name="client_name" required
+                                           class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm">
+                                </div>
+                                
+                                <div>
+                                    <label for="client-email" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Email Address <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="email" id="client-email" name="client_email" required
+                                           class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm">
+                                </div>
+                                
+                                <div>
+                                    <label for="client-phone" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Phone Number (Optional)
+                                    </label>
+                                    <input type="tel" id="client-phone" name="client_phone"
+                                           class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm">
+                                </div>
+
+                                <div>
+                                    <label for="client-notes" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Additional Notes (Optional)
+                                    </label>
+                                    <textarea id="client-notes" name="notes" rows="3"
+                                              class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                              placeholder="Any additional information you'd like to share..."></textarea>
+                                </div>
+                                
+                                <!-- Hidden fields for booking data -->
+                                <input type="hidden" id="booking-date" name="date" value="">
+                                <input type="hidden" id="booking-start-time" name="start_time" value="">
+                                <input type="hidden" id="booking-end-time" name="end_time" value="">
+
+                                <button type="submit" id="submit-booking-btn" 
+                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm">
+                                    Confirm Booking
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Debug Information (Hidden) -->
+        <div class="debug-info">
+            <h4 class="font-medium text-gray-900 mb-2">Debug Information</h4>
+            <div id="debug-info">
+                <p><strong>Selected Date:</strong> <span id="debug-date">None</span></p>
+                <p><strong>Selected Time:</strong> <span id="debug-time">None</span></p>
+                <p><strong>Availability Cache:</strong> <span id="debug-cache">Loading...</span></p>
+            </div>
+        </div>
+
+
     </div>
 
     <script>
+        let calendarInstance = null;
         let selectedDate = null;
         let selectedTime = null;
+        let availabilityCache = new Map();
+        const duration = <%= user.duration_minutes || 'null' %>;
+        const username = '<%= user.username %>';
+        const bookingUrl = duration ? `/booking/${username}/${duration}` : `/booking/${username}`;
+        const slotsUrl = duration ? `/booking/${username}/${duration}/slots` : `/booking/${username}/slots`;
+        
+        // Initialize calendar when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCalendarFallback();
+            // Load current month availability
+            const today = new Date();
+            loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
+                // Initialize calendar with availability data after loading
+                setTimeout(() => {
+                    initializeCalendar();
+                }, 100);
+            }).catch(error => {
+                console.error('❌ Error loading initial month availability:', error);
+            });
+            
 
-        // Initialize date picker
-        flatpickr("#date-picker", {
-            minDate: "today",
-            dateFormat: "Y-m-d",
-            enableTime: false,
-            locale: {
-                firstDayOfWeek: 0
-            },
-            // Add custom styling for days with available slots
-            onDayCreate: function(dObj, dStr, fp, dayElem) {
-                // Get the date in YYYY-MM-DD format
-                const date = dayElem.dateObj.toLocaleDateString('en-CA');
+            // Handle Back to Calendar button
+            document.getElementById('back-to-calendar-btn').addEventListener('click', function() {
+                // Show calendar and time slots, hide client form
+                document.querySelector('.calendar-section').style.display = 'block';
+                document.querySelector('.time-slots-section').style.display = 'block';
+                document.querySelector('.client-form-section').style.display = 'none';
                 
-                // Fetch available slots for this date
-                fetch(`/booking/<%= user.username %>/slots?date=${date}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.slots && data.slots.length > 0) {
-                            // Create and append the blue dot
-                            const dot = document.createElement('span');
-                            dot.className = 'absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full';
-                            dayElem.appendChild(dot);
-                        }
-                    })
-                    .catch(error => console.error('Error checking slots:', error));
-            },
-            // Add custom CSS to position the dots correctly
-            onReady: function() {
-                const style = document.createElement('style');
-                style.textContent = `
-                    .flatpickr-day { position: relative; }
-                `;
-                document.head.appendChild(style);
-            },
-            onChange: function(selectedDates) {
-                if (selectedDates.length > 0) {
-                    const date = selectedDates[0];
-                    // Keep the date as is without timezone conversion
-                    selectedDate = date.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
-                    loadTimeSlots();
-                }
-            }
-        });
-
-        // Generate time slots in 1-hour intervals
-        function generateTimeSlots(startTime, endTime, breaks, bookings) {
-            const slots = [];
-            const baseDate = new Date(selectedDate);
-            const start = new Date(Date.UTC(
-                baseDate.getUTCFullYear(),
-                baseDate.getUTCMonth(),
-                baseDate.getUTCDate(),
-                parseInt(startTime.split(':')[0]),
-                parseInt(startTime.split(':')[1])
-            ));
-            
-            const end = new Date(Date.UTC(
-                baseDate.getUTCFullYear(),
-                baseDate.getUTCMonth(),
-                baseDate.getUTCDate(),
-                parseInt(endTime.split(':')[0]),
-                parseInt(endTime.split(':')[1])
-            ));
-            
-            // Function to convert time to AM/PM format
-            function convertTo12Hour(time) {
-                const [hours, minutes] = time.split(':');
-                const hour = parseInt(hours);
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                const hour12 = hour % 12 || 12;
-                return `${hour12}:${minutes} ${ampm}`;
-            }
-            
-            // Function to check if a time is within break time
-            function isBreakTime(time) {
-                if (!breaks || breaks.length === 0) return false;
-                const timeStr = time.toTimeString().slice(0, 5);
-                return breaks.some(b => {
-                    const breakStart = convertTo24Hour(b.start_time);
-                    const breakEnd = convertTo24Hour(b.end_time);
-                    return timeStr >= breakStart && timeStr < breakEnd;
+                // Reset selected time
+                selectedTime = null;
+                
+                // Clear time slot selections
+                document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                    btn.classList.remove('selected');
                 });
-            }
-
-            // Function to check if a time slot is booked
-            function isBooked(time) {
-                if (!bookings || bookings.length === 0) return false;
-                const timeStr = time.toTimeString().slice(0, 5);
-                return bookings.some(b => {
-                    const bookingStart = convertTo24Hour(b.start_time);
-                    const bookingEnd = convertTo24Hour(b.end_time);
-                    return timeStr >= bookingStart && timeStr < bookingEnd;
-                });
-            }
-
-            // Function to check if a time slot is at least 15 minutes ahead of current time
-            function isTimeSlotValid(slotTime) {
-                const now = new Date();
-                const slotDate = new Date(slotTime);
                 
-                // If the slot is for a future date, it's always valid
-                if (slotDate.toDateString() !== now.toDateString()) {
-                    return true;
+                // Clear form fields
+                document.getElementById('client-info-form').reset();
+            });
+
+            // Handle form submission with AJAX and conflict checking
+            document.getElementById('client-info-form').addEventListener('submit', async function(e) {
+                e.preventDefault(); // Prevent default form submission
+                
+                const submitButton = document.getElementById('submit-booking-btn');
+                
+                // Check if button is already disabled (prevents double submission)
+                if (submitButton.disabled) {
+                    return false;
                 }
                 
-                // Calculate the difference in minutes
-                const diffInMinutes = (slotDate - now) / (1000 * 60);
-                return diffInMinutes >= 15;
-            }
-
-            // Function to convert AM/PM time to 24-hour format
-            function convertTo24Hour(time) {
-                const [timeStr, period] = time.split(' ');
-                let [hours, minutes] = timeStr.split(':');
-                hours = parseInt(hours);
-                
-                if (period === 'PM' && hours !== 12) {
-                    hours += 12;
-                } else if (period === 'AM' && hours === 12) {
-                    hours = 0;
-                }
-                
-                return `${hours.toString().padStart(2, '0')}:${minutes}`;
-            }
-
-            // Generate slots
-            while (start < end) {
-                const timeStr = start.toTimeString().slice(0, 5);
-                const slotEnd = new Date(start);
-                slotEnd.setHours(slotEnd.getHours() + 1);
-                const slotEndStr = slotEnd.toTimeString().slice(0, 5);
-
-                if (!isBreakTime(start) && !isBooked(start) && isTimeSlotValid(start)) {
-                    slots.push({
-                        start: timeStr,
-                        end: slotEndStr,
-                        display: convertTo12Hour(timeStr)
+                // Validate required fields
+                if (!selectedDate || !selectedTime) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Missing Information',
+                        message: 'Please select a date and time before confirming your booking.'
                     });
+                    return false;
                 }
-
-                start.setHours(start.getHours() + 1);
+                
+                // Disable button immediately to prevent double-clicking
+                submitButton.disabled = true;
+                submitButton.textContent = 'Creating Booking...';
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                // Parse the time slot to get start and end times
+                const timeParts = selectedTime.split('-');
+                const startTime = timeParts[0].trim();
+                const endTime = timeParts[1].trim();
+                
+                // Prepare form data
+                const formData = {
+                    date: selectedDate,
+                    start_time: startTime,
+                    end_time: endTime,
+                    client_name: document.getElementById('client-name').value,
+                    client_email: document.getElementById('client-email').value,
+                    client_phone: document.getElementById('client-phone').value,
+                    notes: document.getElementById('client-notes').value
+                };
+                
+                
+                try {
+                    const response = await fetch(bookingUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        // Booking successful
+                        toast.show({
+                            type: 'success',
+                            title: 'Booking Confirmed!',
+                            message: `Your appointment on ${result.formatted_date} at ${result.formatted_start_time} has been confirmed.`
+                        });
+                        
+                        // Redirect to confirmation page or show success message
+                        setTimeout(() => {
+                            window.location.href = `/booking/${username}/confirmation/${result.confirmation_uuid}`;
+                        }, 2000);
+                        
+                    } else {
+                        // Handle different types of errors
+                        if (response.status === 409) {
+                            // Conflict error
+                            if (result.conflictType === 'google_calendar') {
+                                toast.show({
+                                    type: 'error',
+                                    title: 'Time Slot No Longer Available',
+                                    message: 'This time slot conflicts with existing Google Calendar events. Please select a different time.'
+                                });
+                            } else {
+                                toast.show({
+                                    type: 'error',
+                                    title: 'Time Slot No Longer Available',
+                                    message: 'This time slot has been booked by someone else. Please select a different time.'
+                                });
+                            }
+                            
+                            // Go back to calendar to select a new time
+                            setTimeout(() => {
+                                document.querySelector('.calendar-section').style.display = 'block';
+                                document.querySelector('.time-slots-section').style.display = 'block';
+                                document.querySelector('.client-form-section').style.display = 'none';
+                                
+                                // Reset selected time
+                                selectedTime = null;
+                                document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                                    btn.classList.remove('selected');
+                                });
+                            }, 3000);
+                            
+                        } else if (response.status === 400) {
+                            // Validation error
+                            toast.show({
+                                type: 'error',
+                                title: 'Invalid Request',
+                                message: result.error || 'Please check your information and try again.'
+                            });
+                        } else {
+                            // Other errors
+                            toast.show({
+                                type: 'error',
+                                title: 'Booking Failed',
+                                message: result.error || 'An error occurred while creating your booking. Please try again.'
+                            });
+                        }
+                        
+                        // Re-enable the button
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Confirm Booking';
+                        submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                    
+                } catch (error) {
+                    console.error('Booking submission error:', error);
+                    toast.show({
+                        type: 'error',
+                        title: 'Network Error',
+                        message: 'Unable to connect to the server. Please check your internet connection and try again.'
+                    });
+                    
+                    // Re-enable the button
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Confirm Booking';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+        });
+        
+        function initializeCalendarFallback() {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.style.display = 'none';
+            document.body.appendChild(hiddenInput);
+            
+            try {
+                calendarInstance = flatpickr(hiddenInput, {
+                    minDate: "today",
+                    maxDate: new Date(new Date().getFullYear() + 1, 11, 31), // End of next year
+                    dateFormat: "Y-m-d",
+                    enableTime: false,
+                    inline: true,
+                    showMonths: 1,
+                    defaultDate: "today",
+                    static: true,
+                    // Disable month/year dropdowns - navigation only
+                    disableMobile: false,
+                    clickOpens: false,
+                    allowInput: false,
+                    locale: {
+                        firstDayOfWeek: 0
+                    },
+                    onChange: function(selectedDates) {
+                        if (selectedDates.length > 0) {
+                            const date = selectedDates[0];
+                            selectedDate = date.toLocaleDateString('en-CA');
+                            selectedTime = null; // Reset selected time when date changes
+                            updateDebugInfo();
+                            
+                            loadTimeSlots();
+                            // Don't update appointment summary until time is selected
+                        }
+                    },
+                    onMonthChange: function(selectedDates, dateStr, instance) {
+                        // Update combined month/year display
+                        updateMonthYearDisplay();
+                        // Load availability for the new month when user navigates
+                        const currentMonth = instance.currentMonth;
+                        const currentYear = instance.currentYear;
+                        loadMonthAvailability(currentYear, currentMonth).then(() => {
+                            // Re-initialize calendar with updated availability after loading
+                            setTimeout(() => {
+                                initializeCalendar();
+                            }, 100);
+                        }).catch(error => {
+                            console.error('❌ Error loading month availability:', error);
+                        });
+                    },
+                    onYearChange: function(selectedDates, dateStr, instance) {
+                        // Update combined month/year display
+                        updateMonthYearDisplay();
+                        // Load availability for the new year when user navigates
+                        const currentMonth = instance.currentMonth;
+                        const currentYear = instance.currentYear;
+                        loadMonthAvailability(currentYear, currentMonth).then(() => {
+                            // Re-initialize calendar with updated availability after loading
+                            setTimeout(() => {
+                                initializeCalendar();
+                            }, 100);
+                        }).catch(error => {
+                            console.error('❌ Error loading year availability:', error);
+                        });
+                    }
+                });
+                
+                // Append calendar to container
+                const calendarElement = calendarInstance.calendarContainer;
+                document.getElementById('calendar-container').appendChild(calendarElement);
+                
+                // Update combined month/year display
+                updateMonthYearDisplay();
+                
+                // Set initial date
+                const today = new Date();
+                selectedDate = today.toLocaleDateString('en-CA');
+                selectedTime = null;
+                updateDebugInfo();
+                loadTimeSlots();
+                
+                
+            } catch (error) {
+                console.error('Error initializing calendar:', error);
+                document.getElementById('calendar-container').innerHTML = 
+                    '<div class="text-center py-8 text-gray-500">Error loading calendar</div>';
             }
-
-            return slots;
         }
-
-        // Format time to 12-hour format
-        function formatTime(time) {
-            const [hours, minutes] = time.split(':');
+        
+        function updateMonthYearDisplay() {
+            if (!calendarInstance) return;
+            
+            const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            
+            const currentMonth = calendarInstance.currentMonth;
+            const currentYear = calendarInstance.currentYear;
+            const monthYearText = `${monthNames[currentMonth]} ${currentYear}`;
+            
+            // Find the month/year display element and update it
+            const monthDisplay = document.querySelector('.calendar-widget .flatpickr-current-month');
+            if (monthDisplay) {
+                monthDisplay.setAttribute('data-month-year', monthYearText);
+                monthDisplay.textContent = monthYearText;
+            }
+        }
+        
+        async function loadMonthAvailability(year, month) {
+            const loadingOverlay = document.getElementById('calendar-loading-overlay');
+            
+            // Show loading overlay for seamless experience
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('active');
+            }
+            
+            try {
+                // Get the first and last day of the month
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const promises = [];
+                const datesToLoad = [];
+                
+                // Create cache key that includes duration to avoid conflicts
+                const cacheKeyPrefix = duration ? `d${duration}_` : 'd60_';
+                
+                // Collect all dates that need to be loaded
+                for (let day = firstDay.getDate(); day <= lastDay.getDate(); day++) {
+                    const date = new Date(year, month, day);
+                    const dateStr = date.toLocaleDateString('en-CA');
+                    const cacheKey = `${cacheKeyPrefix}${dateStr}`;
+                    
+                    // Skip if we already have this date cached for this duration
+                    if (availabilityCache.has(cacheKey)) {
+                        continue;
+                    }
+                    
+                    datesToLoad.push(dateStr);
+                    
+                    const promise = fetch(`${slotsUrl}?date=${dateStr}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const hasSlots = data.slots && data.slots.length > 0;
+                            availabilityCache.set(cacheKey, hasSlots);
+                        })
+                        .catch(error => {
+                            console.error(`Error fetching availability for ${dateStr}:`, error);
+                            availabilityCache.set(cacheKey, false);
+                        });
+                    
+                    promises.push(promise);
+                }
+                
+                // Process all dates for the month in parallel
+                if (promises.length > 0) {
+                    await Promise.all(promises);
+                }
+                
+                updateDebugInfo();
+                
+            } catch (error) {
+                console.error('Error loading month availability:', error);
+            } finally {
+                // Hide loading indicators
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('active');
+                }
+            }
+        }
+        
+        function initializeCalendar() {
+            if (!calendarInstance) return;
+            
+            try {
+                // Create array of dates to disable based on availability cache
+                const datesToDisable = [];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                // Get current calendar view range
+                const currentMonth = calendarInstance.currentMonth;
+                const currentYear = calendarInstance.currentYear;
+                const firstDay = new Date(currentYear, currentMonth, 1);
+                const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                
+                // Create cache key prefix that includes duration
+                const cacheKeyPrefix = duration ? `d${duration}_` : 'd60_';
+                
+                // Check dates in the current calendar view
+                for (let day = firstDay.getDate(); day <= lastDay.getDate(); day++) {
+                    const date = new Date(currentYear, currentMonth, day);
+                    const dateStr = date.toLocaleDateString('en-CA');
+                    const cacheKey = `${cacheKeyPrefix}${dateStr}`;
+                    const hasAvailability = availabilityCache.get(cacheKey);
+                    
+                    // Disable if no availability or if it's a past date
+                    const isPastDate = date.getTime() < today.getTime();
+                    const shouldDisable = !hasAvailability || isPastDate;
+                    
+                    
+                    if (shouldDisable) {
+                        datesToDisable.push(new Date(date));
+                    }
+                }
+                
+                
+                // Use a more robust approach to disable dates
+                // First, clear any existing disable configuration
+                calendarInstance.set('disable', []);
+                
+                // Then set the new disable array
+                if (datesToDisable.length > 0) {
+                    calendarInstance.set('disable', datesToDisable);
+                }
+                
+                // Force a complete redraw
+                calendarInstance.redraw();
+                
+                // Additional DOM-level enforcement as fallback
+                setTimeout(() => {
+                    // Find all day elements in the current month
+                    const dayElements = calendarInstance.calendarContainer.querySelectorAll('.flatpickr-day:not(.flatpickr-disabled)');
+                    
+                    dayElements.forEach(dayElement => {
+                        const dayNumber = parseInt(dayElement.textContent.trim());
+                        if (!isNaN(dayNumber)) {
+                            const date = new Date(currentYear, currentMonth, dayNumber);
+                            const dateStr = date.toLocaleDateString('en-CA');
+                            const cacheKey = `${cacheKeyPrefix}${dateStr}`;
+                            const hasAvailability = availabilityCache.get(cacheKey);
+                            const isPastDate = date.getTime() < today.getTime();
+                            
+                            if (!hasAvailability || isPastDate) {
+                                dayElement.classList.add('flatpickr-disabled');
+                                dayElement.style.opacity = '0.3';
+                                dayElement.style.cursor = 'not-allowed';
+                                dayElement.style.pointerEvents = 'none';
+                            }
+                        }
+                    });
+                }, 100);
+                
+                
+            } catch (error) {
+                console.error('❌ Error initializing calendar with availability:', error);
+            }
+        }
+        
+        async function loadTimeSlots() {
+            if (!selectedDate) return;
+            
+            const timeSlotsContainer = document.getElementById('time-slots');
+            timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-4">Loading available times...</div>';
+            
+            try {
+                const response = await fetch(`${slotsUrl}?date=${selectedDate}`);
+                const data = await response.json();
+                
+                if (data.slots && data.slots.length > 0) {
+                    timeSlotsContainer.innerHTML = '';
+                    
+                    data.slots.forEach(slot => {
+                        const timeStr = typeof slot === 'string' ? slot : `${slot.start_time}-${slot.end_time}`;
+                        const button = document.createElement('button');
+                        button.className = 'time-slot-btn';
+                        button.textContent = formatTime(timeStr);
+                        button.onclick = () => selectTimeSlot(timeStr);
+                        timeSlotsContainer.appendChild(button);
+                    });
+                } else {
+                    timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error loading time slots:', error);
+                timeSlotsContainer.innerHTML = '<div class="text-center text-red-500 py-8">Error loading time slots</div>';
+            }
+        }
+        
+        function selectTimeSlot(time) {
+            // Remove previous selection
+            document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Add selection to clicked button
+            event.target.classList.add('selected');
+            
+            selectedTime = time;
+            
+            // Go directly to booking confirmation form
+            setTimeout(() => {
+                // Hide calendar and time slots, show client form
+                document.querySelector('.calendar-section').style.display = 'none';
+                document.querySelector('.time-slots-section').style.display = 'none';
+                document.querySelector('.client-form-section').style.display = 'block';
+                
+                // Pre-fill the form with selected appointment details
+                updateFormWithSelectedAppointment();
+            }, 300); // Small delay for visual feedback
+        }
+        
+        
+        function formatTime(timeStr) {
+            if (typeof timeStr === 'string') {
+                const times = timeStr.split('-');
+                if (times.length === 2) {
+                    const startTime = convertTo12Hour(times[0].trim());
+                    const endTime = convertTo12Hour(times[1].trim());
+                    return `${startTime} - ${endTime}`;
+                }
+                return timeStr.replace('-', ' - ');
+            }
+            return timeStr;
+        }
+        
+        function convertTo12Hour(time24) {
+            const [hours, minutes] = time24.split(':');
             const hour = parseInt(hours);
             const ampm = hour >= 12 ? 'PM' : 'AM';
-            const hour12 = hour % 12 || 12;
+            const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
             return `${hour12}:${minutes} ${ampm}`;
         }
-
-        // Load available time slots
-        function loadTimeSlots() {
-            const timeSlotsDiv = document.getElementById('time-slots');
-            const noSlotsMsg = document.getElementById('no-slots');
-            timeSlotsDiv.innerHTML = '';
-            
-            // Get client's timezone
-            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            
-            fetch(`/booking/<%= user.username %>/slots?date=${selectedDate}&timezone=${encodeURIComponent(timezone)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.slots || data.slots.length === 0) {
-                        noSlotsMsg.textContent = 'No appointments available on this day.';
-                        noSlotsMsg.classList.remove('hidden');
-                        return;
-                    }
-
-                    noSlotsMsg.classList.add('hidden');
-                    data.slots.forEach(slot => {
-                        const button = document.createElement('button');
-                        button.type = 'button';
-                        button.className = 'p-3 text-sm border rounded-lg hover:bg-blue-50 transition-colors';
-                        button.textContent = formatTime(slot.start_time);
-                        button.onclick = () => selectTimeSlot(slot.start_time, slot.end_time);
-                        timeSlotsDiv.appendChild(button);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading time slots:', error);
-                    noSlotsMsg.textContent = 'Unable to load available time slots. Please try again later.';
-                    noSlotsMsg.classList.remove('hidden');
-                });
-        }
-
-        // Handle time slot selection
-        function selectTimeSlot(start, end) {
-            selectedTime = { start, end };
-            
-            // Update button styles
-            document.querySelectorAll('#time-slots button').forEach(btn => {
-                if (btn.textContent === formatTime(start)) {
-                    btn.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                    btn.classList.remove('hover:bg-blue-50');
-                } else {
-                    btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                    btn.classList.add('hover:bg-blue-50');
+        
+        function formatTimeRange(timeStr) {
+            if (typeof timeStr === 'string') {
+                const times = timeStr.split('-');
+                if (times.length === 2) {
+                    const startTime = convertTo12Hour(times[0].trim());
+                    const endTime = convertTo12Hour(times[1].trim());
+                    return `${startTime} - ${endTime}`;
                 }
-            });
-        }
-
-        // Handle form submission
-        document.getElementById('booking-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            if (!selectedDate || !selectedTime) {
-                alert('Please select a date and time');
-                return;
+                return timeStr;
             }
-
-            // Get the submit button and disable it immediately
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.textContent;
-            
-            // Disable button and show loading state
-            submitButton.disabled = true;
-            submitButton.textContent = 'Booking...';
-            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const formData = {
-                date: selectedDate,
-                start_time: selectedTime.start,
-                end_time: selectedTime.end,
-                client_name: document.getElementById('name').value,
-                client_email: document.getElementById('email').value,
-                client_phone: document.getElementById('phone').value,
-                notes: document.getElementById('notes').value
-            };
-
-            // Submit the form
-            fetch(`/booking/<%= user.username %>`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => Promise.reject(err));
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Debug logging
-                console.log('Booking response:', data);
-                console.log('Confirmation UUID:', data.confirmation_uuid);
+            return timeStr;
+        }
+        
+        
+        function updateDebugInfo() {
+            document.getElementById('debug-date').textContent = selectedDate || 'None';
+            document.getElementById('debug-time').textContent = selectedTime || 'None';
+            document.getElementById('debug-cache').textContent = `${availabilityCache.size} dates cached`;
+        }
+        
+        function updateFormWithSelectedAppointment() {
+            if (selectedDate && selectedTime) {
+                const dateObj = new Date(selectedDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
                 
-                // Redirect to confirmation page using the UUID
-                const redirectUrl = `/booking/<%= user.username %>/confirmation/${data.confirmation_uuid}`;
-                console.log('Redirecting to:', redirectUrl);
-                window.location.href = redirectUrl;
-            })
-            .catch(error => {
-                console.error('Error creating booking:', error);
+                // Convert 24-hour time to 12-hour AM/PM format
+                const timeParts = selectedTime.split('-');
+                const startTime = timeParts[0].trim();
+                const endTime = timeParts[1].trim();
                 
-                // Re-enable button on error
-                submitButton.disabled = false;
-                submitButton.textContent = originalText;
-                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                const formatTime = (time24) => {
+                    const [hours, minutes] = time24.split(':');
+                    const hour = parseInt(hours);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                };
                 
-                alert(error.error || 'Failed to create booking. Please try again.');
-            });
-        });
+                const formattedStartTime = formatTime(startTime);
+                const formattedEndTime = formatTime(endTime);
+                const formattedTimeSlot = `${formattedStartTime} - ${formattedEndTime}`;
+                
+                // Update the new display elements
+                document.getElementById('selected-date-display').textContent = formattedDate;
+                document.getElementById('selected-time-display').textContent = formattedTimeSlot;
+                
+                // Update hidden form fields
+                document.getElementById('booking-date').value = selectedDate;
+                document.getElementById('booking-start-time').value = startTime;
+                document.getElementById('booking-end-time').value = endTime;
+            }
+        }
+        
+        
     </script>
 </body>
-</html> 
+</html>

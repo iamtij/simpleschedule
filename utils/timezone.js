@@ -242,14 +242,30 @@ function minutesToTime(minutes) {
  * @param {string} timezone - Timezone identifier
  * @returns {number} Offset in minutes
  */
-function getTimezoneOffset(timezone = DEFAULT_TIMEZONE) {
+function getTimezoneOffset(timezone = DEFAULT_TIMEZONE, referenceDate = new Date()) {
+    const resolvedTimezone = timezone || DEFAULT_TIMEZONE;
+
     try {
-        const now = new Date();
-        const utc = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-        const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-        return (local.getTime() - utc.getTime()) / (1000 * 60);
+        const dateInstance = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+
+        if (Number.isNaN(dateInstance.getTime())) {
+            throw new Error('Invalid reference date provided for timezone offset calculation');
+        }
+
+        const utcString = dateInstance.toLocaleString('en-US', { timeZone: 'UTC' });
+        const tzString = dateInstance.toLocaleString('en-US', { timeZone: resolvedTimezone });
+
+        const utcDate = new Date(utcString);
+        const tzDate = new Date(tzString);
+
+        return (tzDate.getTime() - utcDate.getTime()) / (1000 * 60);
     } catch (error) {
         console.error('Error getting timezone offset:', error);
+
+        if (resolvedTimezone !== DEFAULT_TIMEZONE) {
+            return getTimezoneOffset(DEFAULT_TIMEZONE, referenceDate);
+        }
+
         return 480; // Default to +8 hours (480 minutes) for Asia/Manila
     }
 }
