@@ -434,7 +434,7 @@
             </div>
 
             <!-- Availability Section -->
-            <div class="bg-white shadow rounded-lg">
+            <div class="bg-white shadow rounded-lg" id="availability-section">
                 <button class="accordion-header w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50" onclick="toggleAccordion('availability')">
                     <h2 class="text-lg font-medium text-gray-900">Availability</h2>
                     <svg id="availability-icon" class="w-5 h-5 text-gray-500 transform transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -620,6 +620,17 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Auto-open availability section if coming from onboarding
+            if (window.location.hash === '#availability') {
+                setTimeout(() => {
+                    toggleAccordion('availability');
+                    // Scroll to the availability section
+                    const availabilitySection = document.getElementById('availability-section');
+                    if (availabilitySection) {
+                        availabilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
             initUsernameEditing();
             initDisplayNameEditing();
             initMeetingLinkEditing();

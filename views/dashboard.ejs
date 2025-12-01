@@ -481,14 +481,21 @@
                     </div>
                     <div class="mt-4 space-y-3">
                         <% if (!user.has_set_availability) { %>
-                        <div class="flex items-center" data-checklist-item="availability">
-                            <div class="flex-shrink-0 h-5 w-5 relative">
-                                <div class="absolute inset-0 rounded-full border-2 border-gray-300"></div>
+                        <div class="flex items-start" data-checklist-item="availability">
+                            <div class="flex-shrink-0 h-5 w-5 relative mt-0.5">
+                                <div class="absolute inset-0 rounded-full border-2 border-blue-500"></div>
                             </div>
-                            <p class="ml-3 text-sm text-gray-700">
-                                Set your availability
-                                <a href="/settings" class="text-blue-600 hover:text-blue-800 font-medium">Configure now →</a>
-                            </p>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">
+                                    Set your availability slots
+                                </p>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Configure when you're available for bookings. Set your working hours for each day of the week.
+                                </p>
+                                <a href="/settings#availability" class="mt-2 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                                    Set up availability →
+                                </a>
+                            </div>
                         </div>
                         <% } else { %>
                         <div class="flex items-center" data-checklist-item="availability">
