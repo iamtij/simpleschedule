@@ -60,7 +60,7 @@ class GoogleSheetsService {
             const spreadsheet = await sheets.spreadsheets.create({
                 resource: {
                     properties: {
-                        title: `${userName}'s CRM Data - SimpleSchedule`
+                        title: `${userName}'s CRM Data - ISKED`
                     },
                     sheets: [
                         {
