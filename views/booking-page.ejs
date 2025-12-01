@@ -1059,7 +1059,13 @@
                     datesToLoad.push(dateStr);
                     
                     const promise = fetch(`${slotsUrl}?date=${dateStr}`)
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                // If response is not ok, treat as no availability
+                                return { slots: [] };
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             const hasSlots = data.slots && data.slots.length > 0;
                             availabilityCache.set(cacheKey, hasSlots);
@@ -1175,6 +1181,12 @@
             
             try {
                 const response = await fetch(`${slotsUrl}?date=${selectedDate}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to load time slots' }));
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.slots && data.slots.length > 0) {

@@ -670,18 +670,23 @@ router.get('/:username', async (req, res) => {
     const userId = result.rows[0].id;
     
     // Find first active duration for the user, or default to 60 minutes
-    const durationResult = await db.query(
-      'SELECT duration_minutes, meeting_link FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, duration_minutes ASC LIMIT 1',
-      [userId]
-    );
-    
     let duration = null; // null means use default route without duration (defaults to 60 minutes)
     let meetingLink = result.rows[0].meeting_link;
     
-    // If user has an active duration configured, use it
-    if (durationResult.rows.length > 0) {
-      duration = durationResult.rows[0].duration_minutes;
-      meetingLink = durationResult.rows[0].meeting_link || meetingLink;
+    try {
+      const durationResult = await db.query(
+        'SELECT duration_minutes, meeting_link FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY COALESCE(display_order, 0) ASC, duration_minutes ASC LIMIT 1',
+        [userId]
+      );
+      
+      // If user has an active duration configured, use it
+      if (durationResult.rows.length > 0) {
+        duration = durationResult.rows[0].duration_minutes;
+        meetingLink = durationResult.rows[0].meeting_link || meetingLink;
+      }
+    } catch (error) {
+      // If query fails, log error but continue with null duration (will use default route)
+      console.error('Error fetching meeting duration, using default route:', error);
     }
     // If no active durations, duration stays null - frontend will use /booking/:username/slots which defaults to 60 minutes
     
@@ -1011,13 +1016,21 @@ router.get('/:username/slots', async (req, res) => {
         const userId = userResult.rows[0].id;
         
         // Find first active duration for the user, or default to 60 minutes
-        const durationResult = await db.query(
-            'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, duration_minutes ASC LIMIT 1',
-            [userId]
-        );
-        
-        // Use first active duration if available, otherwise default to 60 minutes
-        const meetingLength = durationResult.rows.length > 0 ? durationResult.rows[0].duration_minutes : 60;
+        let meetingLength = 60; // Default to 60 minutes
+        try {
+            const durationResult = await db.query(
+                'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY COALESCE(display_order, 0) ASC, duration_minutes ASC LIMIT 1',
+                [userId]
+            );
+            
+            // Use first active duration if available
+            if (durationResult.rows.length > 0) {
+                meetingLength = durationResult.rows[0].duration_minutes;
+            }
+        } catch (error) {
+            // If query fails, log error but continue with default 60 minutes
+            console.error('Error fetching meeting duration, using default 60 minutes:', error);
+        }
         
         const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
         const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
