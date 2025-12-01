@@ -392,8 +392,15 @@ router.get('/:username/:duration/slots', async (req, res) => {
 
         res.json({ slots });
     } catch (error) {
-        console.error('Error getting available slots:', error);
-        res.status(500).json({ error: 'Failed to get available slots' });
+        console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
+        console.error('Error message:', error.message);
+        if (error.stack) {
+            console.error('Error stack:', error.stack);
+        }
+        res.status(500).json({ 
+            error: 'Failed to get available slots',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred while loading time slots'
+        });
     }
 });
 
@@ -1024,12 +1031,18 @@ router.get('/:username/slots', async (req, res) => {
             );
             
             // Use first active duration if available
-            if (durationResult.rows.length > 0) {
-                meetingLength = durationResult.rows[0].duration_minutes;
+            if (durationResult.rows.length > 0 && durationResult.rows[0].duration_minutes) {
+                meetingLength = parseInt(durationResult.rows[0].duration_minutes);
             }
         } catch (error) {
             // If query fails, log error but continue with default 60 minutes
             console.error('Error fetching meeting duration, using default 60 minutes:', error);
+        }
+        
+        // Ensure meetingLength is valid
+        if (isNaN(meetingLength) || meetingLength <= 0) {
+            console.error('Invalid meetingLength, defaulting to 60:', meetingLength);
+            meetingLength = 60;
         }
         
         const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
@@ -1283,8 +1296,15 @@ router.get('/:username/slots', async (req, res) => {
 
         res.json({ slots });
     } catch (error) {
-        console.error('Error getting available slots:', error);
-        res.status(500).json({ error: 'Failed to get available slots' });
+        console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
+        console.error('Error message:', error.message);
+        if (error.stack) {
+            console.error('Error stack:', error.stack);
+        }
+        res.status(500).json({ 
+            error: 'Failed to get available slots',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred while loading time slots'
+        });
     }
 });
 
