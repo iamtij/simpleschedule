@@ -390,6 +390,7 @@ router.get('/:username/:duration/slots', async (req, res) => {
             }
         });
 
+        console.log(`[${req.params.username}] Generated ${slots.length} slots for date: ${date}, meetingLength: ${meetingLength} minutes`);
         res.json({ slots });
     } catch (error) {
         console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
@@ -397,10 +398,10 @@ router.get('/:username/:duration/slots', async (req, res) => {
         if (error.stack) {
             console.error('Error stack:', error.stack);
         }
-        res.status(500).json({ 
-            error: 'Failed to get available slots',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred while loading time slots'
-        });
+        // Return empty slots array instead of error to allow frontend to show "no available times"
+        // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
+        console.error('Returning empty slots array due to error - this allows the page to continue working');
+        res.json({ slots: [] });
     }
 });
 
@@ -1205,6 +1206,9 @@ router.get('/:username/slots', async (req, res) => {
         const slots = [];
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime;
+        
+        // Log for debugging
+        console.log(`[${req.params.username}] Generating slots - meetingLength: ${meetingLength}, bufferTime: ${bufferTime}, totalInterval: ${totalInterval}, date: ${date}`);
 
         // Current time in minutes since midnight in client's timezone
         const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
@@ -1307,6 +1311,7 @@ router.get('/:username/slots', async (req, res) => {
             }
         });
 
+        console.log(`[${req.params.username}] Generated ${slots.length} slots for date: ${date}, meetingLength: ${meetingLength} minutes`);
         res.json({ slots });
     } catch (error) {
         console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
@@ -1314,10 +1319,10 @@ router.get('/:username/slots', async (req, res) => {
         if (error.stack) {
             console.error('Error stack:', error.stack);
         }
-        res.status(500).json({ 
-            error: 'Failed to get available slots',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred while loading time slots'
-        });
+        // Return empty slots array instead of error to allow frontend to show "no available times"
+        // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
+        console.error('Returning empty slots array due to error - this allows the page to continue working');
+        res.json({ slots: [] });
     }
 });
 
