@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const googleCalendarService = require('../services/googleCalendar');
+const googleSheetsService = require('../services/googleSheets');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
@@ -16,7 +17,8 @@ const requireLogin = (req, res, next) => {
  */
 router.get('/auth/google', requireLogin, async (req, res) => {
     try {
-        const authUrl = googleCalendarService.getAuthUrl();
+        // Force consent to ensure all scopes (including Sheets) are requested
+        const authUrl = googleCalendarService.getAuthUrl(true);
         
         // Generate a unique state token
         const stateToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -118,7 +120,8 @@ router.get('/auth/google/callback', async (req, res) => {
  */
 router.post('/dashboard/google-calendar/connect', requireLogin, async (req, res) => {
     try {
-        const authUrl = googleCalendarService.getAuthUrl();
+        // Force consent to ensure all scopes (including Sheets) are requested
+        const authUrl = googleCalendarService.getAuthUrl(true);
         
         // Generate a unique state token
         const stateToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -441,6 +444,198 @@ router.post('/dashboard/google-calendar/update-blocking', requireLogin, async (r
     } catch (error) {
         console.error('Error updating Google Calendar blocking setting:', error);
         res.status(500).json({ success: false, error: 'Failed to update blocking setting' });
+    }
+});
+
+/**
+ * POST /dashboard/google-sheets/create
+ * Create/initialize Google Sheet for CRM export
+ */
+router.post('/dashboard/google-sheets/create', requireLogin, async (req, res) => {
+    try {
+        // Verify Google connection exists
+        const tokens = await googleCalendarService.getUserTokens(req.session.userId);
+        if (!tokens || !tokens.google_access_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Google account not connected. Please connect your Google account first.'
+            });
+        }
+
+        const result = await googleSheetsService.createSheetForUser(req.session.userId);
+        
+        res.json({
+            success: true,
+            spreadsheetId: result.spreadsheetId,
+            spreadsheetUrl: result.spreadsheetUrl,
+            message: 'Google Sheet created successfully'
+        });
+    } catch (error) {
+        console.error('Error creating Google Sheet:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to create Google Sheet'
+        });
+    }
+});
+
+/**
+ * POST /dashboard/google-sheets/export
+ * Export all CRM data to Google Sheets
+ */
+router.post('/dashboard/google-sheets/export', requireLogin, async (req, res) => {
+    try {
+        // Verify Google connection exists
+        const tokens = await googleCalendarService.getUserTokens(req.session.userId);
+        if (!tokens || !tokens.google_access_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Google account not connected. Please connect your Google account first.'
+            });
+        }
+
+        const result = await googleSheetsService.exportAll(req.session.userId);
+        
+        res.json({
+            success: true,
+            contactsExported: result.contacts,
+            interactionsExported: result.interactions,
+            spreadsheetUrl: result.spreadsheetUrl,
+            message: `Exported ${result.contacts} contacts and ${result.interactions} interactions to Google Sheets`
+        });
+    } catch (error) {
+        console.error('Error exporting to Google Sheets:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to export CRM data to Google Sheets'
+        });
+    }
+});
+
+/**
+ * GET /dashboard/google-sheets/status
+ * Get Google Sheets integration status
+ */
+router.get('/dashboard/google-sheets/status', requireLogin, async (req, res) => {
+    try {
+        const status = await googleSheetsService.getStatus(req.session.userId);
+        
+        console.log('Google Sheets status check result:', {
+            hasGoogleConnection: status.hasGoogleConnection,
+            hasSheetsAccess: status.hasSheetsAccess,
+            hasSheetId: status.hasSheetId,
+            error: status.sheetsAccessError
+        });
+        
+        res.json({
+            success: true,
+            ...status
+        });
+    } catch (error) {
+        console.error('Error getting Google Sheets status:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get Google Sheets status',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * POST /dashboard/google-sheets/disconnect
+ * Disconnect Google Sheets integration
+ */
+router.post('/dashboard/google-sheets/disconnect', requireLogin, async (req, res) => {
+    try {
+        await googleSheetsService.disconnect(req.session.userId);
+        
+        res.json({
+            success: true,
+            message: 'Google Sheets integration disconnected successfully'
+        });
+    } catch (error) {
+        console.error('Error disconnecting Google Sheets:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to disconnect Google Sheets integration'
+        });
+    }
+});
+
+/**
+ * GET /dashboard/google-sheets/test
+ * Test Google Sheets API access (for debugging)
+ */
+router.get('/dashboard/google-sheets/test', requireLogin, async (req, res) => {
+    try {
+        const tokens = await googleCalendarService.getUserTokens(req.session.userId);
+        
+        if (!tokens || !tokens.google_access_token) {
+            return res.json({
+                success: false,
+                error: 'No Google connection found',
+                hasTokens: false
+            });
+        }
+
+        // Try to access Sheets API
+        try {
+            const sheets = await googleSheetsService.getSheetsService(req.session.userId);
+            
+            // Try a test API call
+            try {
+                await sheets.spreadsheets.get({
+                    spreadsheetId: 'test_12345'
+                });
+            } catch (apiError) {
+                return res.json({
+                    success: true,
+                    hasTokens: true,
+                    sheetsServiceCreated: true,
+                    apiTest: {
+                        code: apiError.code,
+                        message: apiError.message,
+                        errors: apiError.errors,
+                        is404: apiError.code === 404,
+                        is403: apiError.code === 403,
+                        isScopeError: (apiError.message || '').includes('insufficient') || 
+                                    (apiError.message || '').includes('scope'),
+                        isApiNotEnabled: (apiError.message || '').includes('API has not been used') ||
+                                       (apiError.message || '').includes('API not enabled') ||
+                                       (apiError.errors?.[0]?.message || '').includes('API has not been used')
+                    },
+                    interpretation: apiError.code === 404 
+                        ? 'Sheets API is accessible (404 = sheet not found, but API works)'
+                        : apiError.code === 403 && ((apiError.message || '').includes('insufficient') || (apiError.message || '').includes('scope'))
+                        ? 'Sheets scope not granted - need to reconnect'
+                        : apiError.code === 403 && ((apiError.message || '').includes('API has not been used') || (apiError.message || '').includes('API not enabled'))
+                        ? 'Sheets API not enabled in Google Cloud Console'
+                        : 'Unknown error - check details'
+                });
+            }
+            
+            return res.json({
+                success: true,
+                hasTokens: true,
+                sheetsServiceCreated: true,
+                apiTest: 'Unexpected success'
+            });
+        } catch (serviceError) {
+            return res.json({
+                success: false,
+                hasTokens: true,
+                sheetsServiceCreated: false,
+                error: serviceError.message,
+                stack: serviceError.stack
+            });
+        }
+    } catch (error) {
+        console.error('Error testing Google Sheets:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to test Google Sheets',
+            stack: error.stack
+        });
     }
 });
 

@@ -10,10 +10,11 @@ class GoogleCalendarService {
             process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL}/auth/google/callback`
         );
         
-        // Scopes for calendar access
+        // Scopes for calendar and sheets access
         this.scopes = [
             'https://www.googleapis.com/auth/calendar.readonly',
-            'https://www.googleapis.com/auth/calendar.events'
+            'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/spreadsheets'
         ];
         
         // Add caching for calendar list and events
@@ -53,12 +54,14 @@ class GoogleCalendarService {
     /**
      * Get the Google OAuth2 authorization URL
      */
-    getAuthUrl() {
-        return this.oauth2Client.generateAuthUrl({
+    getAuthUrl(forceConsent = false) {
+        const params = {
             access_type: 'offline',
             scope: this.scopes,
-            prompt: 'consent' // Force consent screen to get refresh token
-        });
+            prompt: 'consent' // Force consent screen to ensure all scopes are requested and to get refresh token
+        };
+        
+        return this.oauth2Client.generateAuthUrl(params);
     }
 
     /**
