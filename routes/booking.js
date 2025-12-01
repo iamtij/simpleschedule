@@ -1056,7 +1056,20 @@ router.get('/:username/slots', async (req, res) => {
 
         // Create date object preserving the date
         const [year, month, day] = date.split('-').map(Number);
+        
+        // Validate date components
+        if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+            console.error('Invalid date format for /:username/slots:', date, 'username:', req.params.username);
+            return res.status(400).json({ error: 'Invalid date format' });
+        }
+        
         const requestedDate = new Date(Date.UTC(year, month - 1, day));
+        
+        // Validate the date is valid
+        if (isNaN(requestedDate.getTime())) {
+            console.error('Invalid date after parsing for /:username/slots:', date, 'username:', req.params.username);
+            return res.status(400).json({ error: 'Invalid date' });
+        }
         
         // Get current time in client's timezone properly
         const now = new Date();

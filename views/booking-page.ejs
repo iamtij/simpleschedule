@@ -1180,14 +1180,21 @@
             timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-4">Loading available times...</div>';
             
             try {
-                const response = await fetch(`${slotsUrl}?date=${selectedDate}`);
+                const url = `${slotsUrl}?date=${selectedDate}`;
+                console.log('Loading time slots from URL:', url);
+                console.log('Duration:', duration, 'Slots URL:', slotsUrl);
+                
+                const response = await fetch(url);
+                console.log('Response status:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Failed to load time slots' }));
-                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                    console.error('Error response:', errorData);
+                    throw new Error(errorData.error || errorData.message || `Server error: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('Received slots data:', data);
                 
                 if (data.slots && data.slots.length > 0) {
                     timeSlotsContainer.innerHTML = '';
@@ -1206,7 +1213,14 @@
                 
             } catch (error) {
                 console.error('Error loading time slots:', error);
-                timeSlotsContainer.innerHTML = '<div class="text-center text-red-500 py-8">Error loading time slots</div>';
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    selectedDate: selectedDate,
+                    slotsUrl: slotsUrl,
+                    duration: duration
+                });
+                timeSlotsContainer.innerHTML = '<div class="text-center text-red-500 py-8">Error loading time slots: ' + (error.message || 'Unknown error') + '</div>';
             }
         }
         
