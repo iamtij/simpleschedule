@@ -21,10 +21,10 @@
             overflow: hidden;
             transition: max-height 0.3s ease-out;
         }
-        .accordion-content:not(.hidden) {
+        .accordion-content:not(.accordion-hidden) {
             max-height: 10000px;
         }
-        .accordion-content.hidden {
+        .accordion-content.accordion-hidden {
             max-height: 0;
         }
     </style>
@@ -259,7 +259,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <div id="integrations-content" class="accordion-content hidden">
+                <div id="integrations-content" class="accordion-content accordion-hidden">
                     <div class="px-6 py-5 space-y-8 border-t border-gray-200">
                         <!-- Google Calendar Integration Section -->
                         <div>
@@ -441,7 +441,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <div id="availability-content" class="accordion-content hidden">
+                <div id="availability-content" class="accordion-content accordion-hidden">
                     <div class="px-6 py-5 border-t border-gray-200">
                     <form id="availability-form" method="POST" action="/settings/availability">
                         <div class="mb-6">
@@ -466,6 +466,32 @@
                                         </div>
                                     </div>
                                 <% }); %>
+                            </div>
+                        </div>
+
+                        <!-- Date-Specific Availability Section -->
+                        <div class="mb-8 border-t pt-6">
+                            <h3 class="text-lg font-medium mb-4">Date-Specific Availability</h3>
+                            <p class="text-sm text-gray-500 mb-4">Override your regular schedule for specific dates. Date-specific availability takes precedence over day-of-week availability.</p>
+                            
+                            <!-- Add Date Section -->
+                            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                                <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <label for="date-picker" class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                                        <input type="date" id="date-picker" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="">
+                                    </div>
+                                    <div class="flex sm:flex-shrink-0">
+                                        <button type="button" id="add-date-btn" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                                            Add Date
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Date Availability List -->
+                            <div id="date-availability-container" class="space-y-4">
+                                <!-- Date availability entries will be dynamically added here -->
                             </div>
                         </div>
 
@@ -558,13 +584,32 @@
             const content = document.getElementById(section + '-content');
             const icon = document.getElementById(section + '-icon');
             
-            if (content.classList.contains('hidden')) {
-                // Expand
+            // List of all accordion sections
+            const allSections = ['profile', 'integrations', 'availability'];
+            
+            if (content.classList.contains('accordion-hidden') || content.classList.contains('hidden')) {
+                // Expand - close all other accordions first
+                allSections.forEach(s => {
+                    if (s !== section) {
+                        const otherContent = document.getElementById(s + '-content');
+                        const otherIcon = document.getElementById(s + '-icon');
+                        if (otherContent) {
+                            otherContent.classList.add('accordion-hidden');
+                            otherContent.classList.add('hidden');
+                        }
+                        if (otherIcon) {
+                            otherIcon.classList.add('rotate-180');
+                        }
+                    }
+                });
+                
+                // Now expand the selected accordion
+                content.classList.remove('accordion-hidden');
                 content.classList.remove('hidden');
                 if (icon) icon.classList.remove('rotate-180');
             } else {
                 // Collapse
-                content.classList.add('hidden');
+                content.classList.add('accordion-hidden');
                 if (icon) icon.classList.add('rotate-180');
             }
         }
@@ -620,6 +665,49 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Display last save logs from localStorage (persists across page refresh)
+            try {
+                const lastSave = localStorage.getItem('lastDateAvailabilitySave');
+                if (lastSave) {
+                    const saveData = JSON.parse(lastSave);
+                    console.log('%c=== LAST DATE AVAILABILITY SAVE (from localStorage) ===', 'background: #222; color: #bada55; font-size: 14px; padding: 4px;');
+                    console.log('Timestamp:', saveData.timestamp);
+                    console.log('Dates in DOM when saved:', saveData.datesInDOM);
+                    console.log('Request payload:', saveData.requestPayload);
+                    console.log('Response:', saveData.response);
+                    if (saveData.logs && saveData.logs.length > 0) {
+                        console.log('All logs from save operation:');
+                        saveData.logs.forEach((logEntry, idx) => {
+                            console.log(`[${idx + 1}] ${logEntry.message}`, logEntry.data || '');
+                        });
+                    }
+                    console.log('%c=== END OF LAST SAVE LOGS ===', 'background: #222; color: #bada55; font-size: 14px; padding: 4px;');
+                } else {
+                    console.log('No previous save logs found in localStorage');
+                }
+            } catch (e) {
+                console.error('Could not load last save from localStorage:', e);
+            }
+            
+            // Also add a global function to manually check localStorage
+            window.checkLastDateSave = function() {
+                try {
+                    const lastSave = localStorage.getItem('lastDateAvailabilitySave');
+                    if (lastSave) {
+                        const saveData = JSON.parse(lastSave);
+                        console.log('=== MANUAL CHECK: LAST DATE AVAILABILITY SAVE ===');
+                        console.log(JSON.stringify(saveData, null, 2));
+                        return saveData;
+                    } else {
+                        console.log('No save data found in localStorage');
+                        return null;
+                    }
+                } catch (e) {
+                    console.error('Error checking localStorage:', e);
+                    return null;
+                }
+            };
+            
             // Auto-open availability section if coming from onboarding
             if (window.location.hash === '#availability') {
                 setTimeout(() => {
@@ -636,6 +724,10 @@
             initMeetingLinkEditing();
             initCopyLink();
             initAvailabilitySettings();
+            // Delay date availability loading slightly to ensure DOM is ready
+            setTimeout(() => {
+                initDateAvailabilitySettings();
+            }, 100);
             initGoogleCalendarIntegration();
             handleUrlMessages();
             handleAvailabilitySuccess();
@@ -1219,12 +1311,20 @@
         
         function checkGoogleCalendarStatus() {
             fetch('/dashboard/google-calendar/status')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 updateConnectionStatus(data.connected);
             })
             .catch(error => {
-                console.error('Error checking Google Calendar status:', error);
+                // Only log non-network errors (server is down is expected)
+                if (error.message && !error.message.includes('Failed to fetch') && !error.message.includes('NetworkError')) {
+                    console.error('Error checking Google Calendar status:', error);
+                }
                 updateConnectionStatus(false);
             });
         }
@@ -1262,22 +1362,40 @@
     }
 
     function loadCalendarList() {
+        const select = document.getElementById('calendar-select');
+        if (!select) return; // Exit if element doesn't exist
         
         fetch('/dashboard/google-calendar/list')
-        .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    populateCalendarDropdown(data.calendars);
-                } else {
-                console.error('Failed to load calendars:', data.error);
-                const select = document.getElementById('calendar-select');
-                select.innerHTML = '<option value="">Error loading calendars</option>';
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateCalendarDropdown(data.calendars);
+            } else {
+                // Only log if it's not a connection issue
+                if (data.error && !data.error.includes('not connected')) {
+                    console.error('Failed to load calendars:', data.error);
+                }
+                if (select) {
+                    select.innerHTML = '<option value="">Error loading calendars</option>';
+                }
             }
         })
         .catch(error => {
+            // Suppress connection refused errors (expected when server is down)
+            if (error.message && error.message.includes('Failed to fetch')) {
+                // Server is not available - silently fail
+                return;
+            }
+            // Only log unexpected errors
             console.error('Error loading calendar list:', error);
-            const select = document.getElementById('calendar-select');
-            select.innerHTML = '<option value="">Error loading calendars</option>';
+            if (select) {
+                select.innerHTML = '<option value="">Error loading calendars</option>';
+            }
         });
     }
 
@@ -1788,8 +1906,29 @@
                     title: 'Availability Saved!',
                     message: 'Your availability has been updated successfully.'
                 });
-                // Clear the URL parameters
-                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Open availability section if it's closed
+                const availabilityContent = document.getElementById('availability-content');
+                if (availabilityContent && (availabilityContent.classList.contains('accordion-hidden') || availabilityContent.classList.contains('hidden'))) {
+                    toggleAccordion('availability');
+                }
+                
+                // Reload date availability after opening accordion - FORCE RELOAD FROM API
+                setTimeout(() => {
+                    console.log('Reloading date availability after save (from API)...');
+                    loadDateAvailabilitySettings(true); // true = force reload from API
+                }, 300);
+                
+                // Scroll to availability section smoothly
+                setTimeout(() => {
+                    const availabilitySection = document.getElementById('availability-section');
+                    if (availabilitySection) {
+                        availabilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+                
+                // Clear the URL parameters but keep the hash
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
             }
             
             if (error) {
@@ -1858,18 +1997,21 @@
                 
                 // Clear any previous conflict highlights
                 clearConflictHighlights();
+                clearDateConflictHighlights();
                 
-                // Validate for conflicts before submitting
-                const conflicts = validateTimeBlocks();
+                // Validate for conflicts before submitting (both day-of-week and date-specific)
+                const dayConflicts = validateTimeBlocks();
+                const dateConflicts = validateDateAvailabilityBlocks();
+                const allConflicts = [...dayConflicts, ...dateConflicts];
                 
-                if (conflicts.length > 0) {
+                if (allConflicts.length > 0) {
                     // Show conflicts and highlight them
-                    showConflicts(conflicts);
+                    showConflicts(allConflicts);
                     
                     // Re-enable submit button
                     const submitBtn = this.querySelector('button[type="submit"]');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Save Settings';
+                    submitBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Save Availability Settings';
                     
                     return; // Don't submit
                 }
@@ -1970,8 +2112,56 @@
                     }
                 });
                 
-                // Submit the form now that validation passed
-                this.submit();
+                // Save date availability first, then submit the form
+                const self = this;
+                const form = this;
+                
+                // Wait for date availability to save before submitting
+                (async () => {
+                    try {
+                        console.log('Starting to save date availability before form submit...');
+                        const saveResult = await saveDateAvailabilityBeforeSubmit();
+                        console.log('Date availability save result:', saveResult);
+                        console.log('Date availability saved successfully, submitting form...');
+                        // Delay to ensure the database transaction is fully committed
+                        // This is critical to prevent race conditions where the page reloads before the save completes
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        // Submit the form now that validation passed and date availability is saved
+                        console.log('Submitting form...');
+                        form.submit();
+                    } catch (error) {
+                        console.error('❌ ERROR saving date availability:', error);
+                        console.error('Error stack:', error.stack);
+                        console.error('Error message:', error.message);
+                        console.error('Error name:', error.name);
+                        
+                        // Show error with alert so user can't miss it
+                        const errorMsg = `Failed to save date availability: ${error.message || 'Unknown error'}\n\nCheck the browser console for details.`;
+                        alert(errorMsg);
+                        
+                        // Also show toast
+                        if (typeof toast !== 'undefined') {
+                            toast.show({
+                                type: 'error',
+                                title: 'Date Availability Save Failed',
+                                message: error.message || 'Unknown error occurred. Check console for details.'
+                            });
+                        }
+                        
+                        // Don't submit form if date availability save fails - let user fix the issue
+                        const submitBtn = form.querySelector('button[type="submit"]');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Save Availability Settings';
+                        }
+                        
+                        // Stop here - don't submit the form
+                        return;
+                    }
+                })();
+                
+                // Prevent default form submission - we'll submit manually after async save
+                return false;
             });
             
             // Initialize meeting durations UI
@@ -1982,6 +2172,756 @@
             
             // Add real-time validation
             addRealTimeValidation();
+        }
+
+        // Initialize date availability settings functionality
+        function initDateAvailabilitySettings() {
+            // Set minimum date to today
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker) {
+                const today = new Date().toISOString().split('T')[0];
+                datePicker.setAttribute('min', today);
+            }
+
+            // Handle add date button
+            const addDateBtn = document.getElementById('add-date-btn');
+            const datePickerInput = document.getElementById('date-picker');
+            
+            if (addDateBtn && datePickerInput) {
+                addDateBtn.addEventListener('click', function() {
+                    const selectedDate = datePickerInput.value;
+                    if (!selectedDate) {
+                        if (typeof toast !== 'undefined' && toast.show) {
+                            toast.show({
+                                type: 'error',
+                                title: 'Date Required',
+                                message: 'Please select a date from the calendar picker'
+                            });
+                        } else {
+                            alert('Please select a date');
+                        }
+                        return;
+                    }
+                    addDateAvailability(selectedDate);
+                    datePickerInput.value = '';
+                });
+            }
+
+            // Use event delegation for remove date buttons (works for dynamically added elements)
+            // Attach to document to ensure it works even if container is hidden
+            // Event delegation for date availability container
+            // This handles clicks on dynamically added elements
+            const dateContainer = document.getElementById('date-availability-container');
+            if (dateContainer) {
+                console.log('✅ Setting up event delegation for date-availability-container');
+                dateContainer.addEventListener('click', function(e) {
+                    // Handle remove date button - check first before other handlers
+                    const removeDateBtn = e.target.closest('.remove-date-btn');
+                    if (removeDateBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        console.log('=== REMOVE DATE (event delegation) ===');
+                        console.log('Clicked element:', e.target);
+                        console.log('Remove button found:', removeDateBtn);
+                        const dateEntry = removeDateBtn.closest('.date-entry');
+                        console.log('Date entry found:', dateEntry);
+                        if (dateEntry) {
+                            const dateValue = dateEntry.getAttribute('data-date');
+                            console.log('Removing date entry via event delegation:', dateValue);
+                            dateEntry.remove();
+                            clearDateConflictHighlights();
+                            console.log('✅ Date entry removed via event delegation');
+                        } else {
+                            console.error('❌ Could not find date-entry parent in event delegation');
+                        }
+                        return false;
+                    }
+                    
+                    // Handle add time block button
+                    if (e.target.classList.contains('add-date-block-btn') || e.target.closest('.add-date-block-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const btn = e.target.classList.contains('add-date-block-btn') ? e.target : e.target.closest('.add-date-block-btn');
+                        const dateStr = btn.getAttribute('data-date');
+                        if (dateStr) {
+                            addDateTimeBlock(dateStr);
+                        }
+                        return false;
+                    }
+                    
+                    // Handle remove time block button
+                    if (e.target.classList.contains('remove-date-block-btn') || e.target.closest('.remove-date-block-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const btn = e.target.classList.contains('remove-date-block-btn') ? e.target : e.target.closest('.remove-date-block-btn');
+                        const timeBlock = btn.closest('.date-time-block');
+                        if (timeBlock) {
+                            timeBlock.remove();
+                            clearDateConflictHighlights();
+                        }
+                        return false;
+                    }
+                });
+            }
+            
+            console.log('Date availability event delegation initialized');
+
+            // Load existing date availability
+            loadDateAvailabilitySettings();
+        }
+
+        // Add date availability entry
+        function addDateAvailability(dateStr) {
+            const container = document.getElementById('date-availability-container');
+            if (!container) return;
+
+            // Check if date already exists
+            const existingEntry = container.querySelector(`[data-date="${dateStr}"]`);
+            if (existingEntry) {
+                if (typeof toast !== 'undefined' && toast.show) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Date Already Added',
+                        message: 'This date already has availability configured. Please edit the existing entry.'
+                    });
+                } else {
+                    alert('This date already has availability configured. Please edit the existing entry.');
+                }
+                return;
+            }
+
+            const dateEntry = document.createElement('div');
+            dateEntry.className = 'date-entry border rounded-lg p-4 bg-white';
+            dateEntry.setAttribute('data-date', dateStr);
+            
+            const dateObj = new Date(dateStr);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            dateEntry.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900">${formattedDate}</h4>
+                        <p class="text-sm text-gray-500">${dateStr}</p>
+                    </div>
+                    <button type="button" class="remove-date-btn mt-2 sm:mt-0 text-sm text-red-600 hover:text-red-800" data-date="${dateStr}">
+                        Remove Date
+                    </button>
+                </div>
+                <div class="date-time-blocks space-y-2" data-date="${dateStr}">
+                    <!-- Time blocks will be added here -->
+                </div>
+                <button type="button" class="add-date-block-btn mt-3 text-sm text-blue-600 hover:text-blue-800" data-date="${dateStr}">
+                    + Add Time Block
+                </button>
+            `;
+
+            // Attach direct event listener - use a simple, reliable approach
+            const removeBtn = dateEntry.querySelector('.remove-date-btn');
+            if (removeBtn) {
+                console.log(`✅ Attaching remove handler to button for date: ${dateStr}`);
+                
+                // Store the dateStr in the button for reference
+                removeBtn.setAttribute('data-action', 'remove-date');
+                
+                // Simple, direct handler - use capture phase to catch early
+                removeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    console.log('=== REMOVE DATE BUTTON CLICKED (addEventListener) ===');
+                    console.log('Button element:', this);
+                    console.log('Date to remove:', dateStr);
+                    
+                    const dateEntryToRemove = this.closest('.date-entry');
+                    console.log('Found date entry:', dateEntryToRemove);
+                    
+                    if (dateEntryToRemove) {
+                        console.log('Removing date entry from DOM...');
+                        const dateValue = dateEntryToRemove.getAttribute('data-date');
+                        dateEntryToRemove.remove();
+                        clearDateConflictHighlights();
+                        
+                        // Verify removal
+                        setTimeout(() => {
+                            const stillExists = document.querySelector(`.date-entry[data-date="${dateValue}"]`);
+                            const totalEntries = document.querySelectorAll('.date-entry').length;
+                            if (stillExists) {
+                                console.error('❌ ERROR: Date entry still exists in DOM after removal!');
+                            } else {
+                                console.log('✅ Date entry successfully removed from DOM');
+                                console.log('Remaining date entries:', totalEntries);
+                            }
+                        }, 50);
+                    } else {
+                        console.error('❌ Could not find .date-entry parent element');
+                    }
+                    
+                    return false;
+                }, true); // Use capture phase to catch early
+                
+                // Also set onclick as backup
+                removeBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('=== REMOVE DATE BUTTON CLICKED (onclick) ===');
+                    const entry = this.closest('.date-entry');
+                    if (entry) {
+                        console.log('Removing via onclick handler');
+                        entry.remove();
+                        clearDateConflictHighlights();
+                    }
+                    return false;
+                };
+                
+                console.log(`✅ Remove handler attached successfully for date: ${dateStr}`);
+            } else {
+                console.error('❌ Could not find .remove-date-btn in dateEntry for date:', dateStr);
+                console.error('Date entry HTML:', dateEntry.innerHTML.substring(0, 200));
+            }
+            
+            const addBlockBtn = dateEntry.querySelector('.add-date-block-btn');
+            if (addBlockBtn) {
+                addBlockBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addDateTimeBlock(dateStr);
+                });
+            }
+
+            container.appendChild(dateEntry);
+            
+            // Add initial time block
+            addDateTimeBlock(dateStr);
+        }
+
+        // Add time block for a specific date
+        function addDateTimeBlock(dateStr) {
+            const timeBlocksContainer = document.querySelector(`.date-time-blocks[data-date="${dateStr}"]`);
+            if (!timeBlocksContainer) return;
+
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'date-time-block flex flex-wrap items-center gap-3';
+            blockDiv.innerHTML = `
+                <input type="time" class="date-block-start border rounded px-3 py-2 text-sm w-36" value="09:00">
+                <span class="text-gray-500 px-2">to</span>
+                <input type="time" class="date-block-end border rounded px-3 py-2 text-sm w-36" value="17:00">
+                <button type="button" class="remove-date-block-btn text-sm text-red-600 hover:text-red-800" data-date="${dateStr}">
+                    Remove
+                </button>
+            `;
+
+            // Add remove block handler (both direct and delegation for reliability)
+            const removeBlockBtn = blockDiv.querySelector('.remove-date-block-btn');
+            if (removeBlockBtn) {
+                removeBlockBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    blockDiv.remove();
+                    clearDateConflictHighlights();
+                });
+            }
+            
+            // Add change handlers to clear highlights when times are changed
+            const startInput = blockDiv.querySelector('.date-block-start');
+            const endInput = blockDiv.querySelector('.date-block-end');
+            if (startInput) {
+                startInput.addEventListener('change', function() {
+                    clearDateConflictHighlights();
+                });
+            }
+            if (endInput) {
+                endInput.addEventListener('change', function() {
+                    clearDateConflictHighlights();
+                });
+            }
+
+            timeBlocksContainer.appendChild(blockDiv);
+        }
+
+        // Load existing date availability settings
+        // If forceReload is true, fetch from API instead of using embedded data
+        async function loadDateAvailabilitySettings(forceReload = false) {
+            try {
+                console.log('=== Loading Date Availability Settings ===', forceReload ? '(FORCE RELOAD FROM API)' : '(from embedded data)');
+                
+                // Ensure availability section is open so container is accessible
+                const availabilityContent = document.getElementById('availability-content');
+                if (availabilityContent && (availabilityContent.classList.contains('accordion-hidden') || availabilityContent.classList.contains('hidden'))) {
+                    console.log('Opening availability section to load date availability...');
+                    toggleAccordion('availability');
+                    // Wait a bit for the accordion to open
+                    setTimeout(() => {
+                        if (forceReload) {
+                            loadDateAvailabilitySettingsFromAPI();
+                        } else {
+                            loadDateAvailabilitySettingsInternal();
+                        }
+                    }, 100);
+                    return;
+                }
+                
+                if (forceReload) {
+                    await loadDateAvailabilitySettingsFromAPI();
+                } else {
+                    loadDateAvailabilitySettingsInternal();
+                }
+            } catch (error) {
+                console.error('Error in loadDateAvailabilitySettings:', error);
+            }
+        }
+        
+        // Load date availability from API (fresh data from database)
+        async function loadDateAvailabilitySettingsFromAPI() {
+            try {
+                console.log('=== Loading Date Availability from API ===');
+                window.isLoadingDateAvailability = true;
+                
+                const container = document.getElementById('date-availability-container');
+                if (!container) {
+                    console.error('Date availability container not found!');
+                    window.isLoadingDateAvailability = false;
+                    return;
+                }
+                
+                // Fetch fresh data from API
+                const response = await fetch('/settings/date-availability', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load date availability: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('API response:', result);
+                
+                const dateAvailabilityBlocks = result.date_availability_blocks || [];
+                console.log('Date availability blocks from API:', dateAvailabilityBlocks);
+                console.log('Number of blocks:', dateAvailabilityBlocks.length);
+
+                // CRITICAL: Clear the container first to remove any dates that were deleted
+                console.log('=== CLEARING EXISTING DATE ENTRIES ===');
+                const existingEntries = container.querySelectorAll('.date-entry');
+                console.log(`Found ${existingEntries.length} existing date entries to clear`);
+                existingEntries.forEach(entry => {
+                    const dateStr = entry.getAttribute('data-date');
+                    console.log(`Removing existing date entry: ${dateStr}`);
+                    entry.remove();
+                });
+                console.log('✅ Container cleared - all existing date entries removed');
+
+                if (!dateAvailabilityBlocks || dateAvailabilityBlocks.length === 0) {
+                    console.log('No date availability blocks from API - container is now empty');
+                    window.isLoadingDateAvailability = false;
+                    return;
+                }
+
+                // Group by date
+                const blocksByDate = {};
+                dateAvailabilityBlocks.forEach(block => {
+                    if (!blocksByDate[block.date]) {
+                        blocksByDate[block.date] = [];
+                    }
+                    blocksByDate[block.date].push({
+                        start: block.start_time,
+                        end: block.end_time
+                    });
+                });
+
+                console.log('Grouped blocks by date:', blocksByDate);
+
+                // Add each date with its time blocks
+                console.log('Processing dates:', Object.keys(blocksByDate));
+                Object.keys(blocksByDate).forEach(dateStr => {
+                    console.log(`Processing date: ${dateStr} with ${blocksByDate[dateStr].length} blocks`);
+                    
+                    console.log('Adding date entry for:', dateStr);
+                    addDateAvailability(dateStr);
+                    
+                    // Wait a bit for DOM to update
+                    setTimeout(() => {
+                        const timeBlocksContainer = document.querySelector(`.date-time-blocks[data-date="${dateStr}"]`);
+                        
+                        if (!timeBlocksContainer) {
+                            console.error('Time blocks container not found for date:', dateStr);
+                            return;
+                        }
+                        
+                        // Remove the initial empty block
+                        const initialBlock = timeBlocksContainer.firstElementChild;
+                        if (initialBlock) {
+                            initialBlock.remove();
+                        }
+
+                        // Add the saved blocks
+                        blocksByDate[dateStr].forEach((block, idx) => {
+                            console.log(`Adding block ${idx} for ${dateStr}:`, block);
+                            addDateTimeBlock(dateStr);
+                            const lastBlock = timeBlocksContainer.lastElementChild;
+                            if (lastBlock) {
+                                const startInput = lastBlock.querySelector('.date-block-start');
+                                const endInput = lastBlock.querySelector('.date-block-end');
+                                if (startInput) {
+                                    startInput.value = block.start;
+                                    console.log(`Set start time to: ${block.start}`);
+                                }
+                                if (endInput) {
+                                    endInput.value = block.end;
+                                    console.log(`Set end time to: ${block.end}`);
+                                }
+                            }
+                        });
+                    }, 50);
+                });
+                
+                // Clear the loading flag
+                window.isLoadingDateAvailability = false;
+                console.log('=== Finished Loading Date Availability Settings from API ===');
+            } catch (error) {
+                console.error('Error loading date availability settings from API:', error);
+                console.error('Error stack:', error.stack);
+                window.isLoadingDateAvailability = false;
+                // Fallback to embedded data on error
+                console.log('Falling back to embedded data...');
+                loadDateAvailabilitySettingsInternal();
+            }
+        }
+        
+        function loadDateAvailabilitySettingsInternal() {
+            try {
+                // Set flag to prevent duplicate alerts during loading
+                window.isLoadingDateAvailability = true;
+                
+                const container = document.getElementById('date-availability-container');
+                if (!container) {
+                    console.error('Date availability container not found!');
+                    window.isLoadingDateAvailability = false;
+                    return;
+                }
+                
+                const data = <%- JSON.stringify(availabilitySettings || {}) %>;
+                console.log('Full availabilitySettings data:', data);
+                console.log('Keys in availabilitySettings:', Object.keys(data));
+                
+                const dateAvailabilityBlocks = data.date_availability_blocks || [];
+                console.log('Date availability blocks from data:', dateAvailabilityBlocks);
+                console.log('Type of dateAvailabilityBlocks:', typeof dateAvailabilityBlocks, Array.isArray(dateAvailabilityBlocks));
+                console.log('Number of blocks:', dateAvailabilityBlocks.length);
+
+                // CRITICAL FIX: Clear the container first to remove any dates that were deleted
+                // This ensures the DOM matches the database state
+                console.log('=== CLEARING EXISTING DATE ENTRIES ===');
+                const existingEntries = container.querySelectorAll('.date-entry');
+                console.log(`Found ${existingEntries.length} existing date entries to clear`);
+                existingEntries.forEach(entry => {
+                    const dateStr = entry.getAttribute('data-date');
+                    console.log(`Removing existing date entry: ${dateStr}`);
+                    entry.remove();
+                });
+                console.log('✅ Container cleared - all existing date entries removed');
+
+                if (!dateAvailabilityBlocks || dateAvailabilityBlocks.length === 0) {
+                    console.log('No date availability blocks to load - array is empty or undefined');
+                    console.log('This could mean: 1) No data saved yet, 2) Data not loaded from server, 3) Data format issue');
+                    console.log('✅ Container is now empty, which is correct if no dates are configured');
+                    window.isLoadingDateAvailability = false;
+                    return;
+                }
+
+                // Group by date
+                const blocksByDate = {};
+                dateAvailabilityBlocks.forEach(block => {
+                    if (!blocksByDate[block.date]) {
+                        blocksByDate[block.date] = [];
+                    }
+                    blocksByDate[block.date].push({
+                        start: block.start_time,
+                        end: block.end_time
+                    });
+                });
+
+                console.log('Grouped blocks by date:', blocksByDate);
+
+                // Add each date with its time blocks
+                console.log('Processing dates:', Object.keys(blocksByDate));
+                Object.keys(blocksByDate).forEach(dateStr => {
+                    console.log(`Processing date: ${dateStr} with ${blocksByDate[dateStr].length} blocks`);
+                    
+                    console.log('Adding date entry for:', dateStr);
+                    addDateAvailability(dateStr);
+                    
+                    // Wait a bit for DOM to update
+                    setTimeout(() => {
+                        const timeBlocksContainer = document.querySelector(`.date-time-blocks[data-date="${dateStr}"]`);
+                        
+                        if (!timeBlocksContainer) {
+                            console.error('Time blocks container not found for date:', dateStr);
+                            return;
+                        }
+                        
+                        // Remove the initial empty block
+                        const initialBlock = timeBlocksContainer.firstElementChild;
+                        if (initialBlock) {
+                            initialBlock.remove();
+                        }
+
+                        // Add the saved blocks
+                        blocksByDate[dateStr].forEach((block, idx) => {
+                            console.log(`Adding block ${idx} for ${dateStr}:`, block);
+                            addDateTimeBlock(dateStr);
+                            const lastBlock = timeBlocksContainer.lastElementChild;
+                            if (lastBlock) {
+                                const startInput = lastBlock.querySelector('.date-block-start');
+                                const endInput = lastBlock.querySelector('.date-block-end');
+                                if (startInput) {
+                                    startInput.value = block.start;
+                                    console.log(`Set start time to: ${block.start}`);
+                                }
+                                if (endInput) {
+                                    endInput.value = block.end;
+                                    console.log(`Set end time to: ${block.end}`);
+                                }
+                            }
+                        });
+                    }, 50);
+                });
+                
+                // Clear the loading flag
+                window.isLoadingDateAvailability = false;
+                console.log('=== Finished Loading Date Availability Settings ===');
+            } catch (error) {
+                console.error('Error loading date availability settings:', error);
+                console.error('Error stack:', error.stack);
+                window.isLoadingDateAvailability = false;
+            }
+        }
+
+        // Save date availability settings (called before form submission)
+        async function saveDateAvailabilityBeforeSubmit() {
+            try {
+                // CRITICAL: Query the container directly and filter to only get entries actually in DOM
+                // This ensures we don't process entries that were removed
+                const container = document.getElementById('date-availability-container');
+                if (!container) {
+                    console.warn('Date availability container not found - nothing to save');
+                    return { success: true };
+                }
+                
+                // Small delay to ensure any DOM removals are fully processed
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                // Re-query the container RIGHT NOW to get the most current state
+                // This ensures we don't process entries that were just removed
+                const allEntries = container.querySelectorAll('.date-entry');
+                console.log(`Found ${allEntries.length} date entries in container`);
+                
+                // Filter to only get entries that are ACTUALLY in the DOM
+                const dateEntries = Array.from(allEntries).filter(entry => {
+                    const isInDOM = document.contains(entry) && container.contains(entry);
+                    if (!isInDOM) {
+                        console.log(`Filtering out removed date entry: ${entry.getAttribute('data-date')}`);
+                    }
+                    return isInDOM;
+                });
+                
+                console.log(`After filtering: ${dateEntries.length} entries are actually in DOM`);
+                
+                const dateBlocks = {};
+
+                // Store logs in localStorage so they persist after page refresh
+                const saveLogs = [];
+                const log = (message, data = null) => {
+                    const logEntry = { message, data, timestamp: new Date().toISOString() };
+                    saveLogs.push(logEntry);
+                    console.log(message, data || '');
+                };
+
+                log('=== SAVING DATE AVAILABILITY ===');
+                log('Total entries found:', allEntries.length);
+                log('Entries actually in DOM (after filtering):', dateEntries.length);
+                
+                // Log all date entries that are currently in the DOM
+                const datesInDOM = [];
+                dateEntries.forEach((entry, idx) => {
+                    const dateStr = entry.getAttribute('data-date');
+                    // Double-check the entry is actually in the DOM
+                    const isInDOM = document.contains(entry) && container.contains(entry);
+                    log(`  Date entry ${idx}: ${dateStr} - In DOM: ${isInDOM}`);
+                    if (isInDOM && dateStr) {
+                        datesInDOM.push(dateStr);
+                    } else {
+                        log(`    ⚠️ Date entry ${dateStr} is NOT in DOM - will be excluded`);
+                    }
+                });
+                log('✅ Dates that will be saved (only those in DOM):', datesInDOM);
+                
+                // Process only entries that are confirmed to be in the DOM
+                dateEntries.forEach((entry, idx) => {
+                    const dateStr = entry.getAttribute('data-date');
+                    console.log(`Processing date entry ${idx}: ${dateStr}`);
+                    
+                    if (!dateStr) {
+                        console.warn('Date entry missing data-date attribute:', entry);
+                        return;
+                    }
+                    
+                    // Final check: ensure entry is still in DOM
+                    if (!document.contains(entry) || !container.contains(entry)) {
+                        console.warn(`  ⚠️ Date entry ${dateStr} is not in DOM - skipping`);
+                        return;
+                    }
+                    
+                    const timeBlocks = entry.querySelectorAll('.date-time-block');
+                    console.log(`  Found ${timeBlocks.length} time blocks for ${dateStr}`);
+                    const blocks = [];
+
+                    timeBlocks.forEach((block, blockIdx) => {
+                        const startInput = block.querySelector('.date-block-start');
+                        const endInput = block.querySelector('.date-block-end');
+                        
+                        console.log(`    Block ${blockIdx}: start=${startInput?.value}, end=${endInput?.value}`);
+                        
+                        if (startInput && endInput && startInput.value && endInput.value) {
+                            // Validate that start time is before end time
+                            if (startInput.value < endInput.value) {
+                                blocks.push({
+                                    start: startInput.value,
+                                    end: endInput.value
+                                });
+                                console.log(`    ✅ Added block: ${startInput.value} - ${endInput.value}`);
+                            } else {
+                                console.warn(`    ⚠️ Skipped block: start time (${startInput.value}) is not before end time (${endInput.value})`);
+                            }
+                        } else {
+                            console.warn(`    ⚠️ Skipped block: missing or empty time values`);
+                        }
+                    });
+
+                    if (blocks.length > 0) {
+                        dateBlocks[dateStr] = blocks;
+                        console.log(`  ✅ Added ${blocks.length} blocks for date ${dateStr}`);
+                    } else {
+                        console.warn(`  ⚠️ No valid blocks for date ${dateStr} - this date will NOT be saved`);
+                    }
+                });
+
+                // If no date blocks, check if user added dates but they're invalid
+                // CRITICAL: Even if dateBlocks is empty, we still need to send the request
+                // to the server with replace_all: true to delete all existing entries
+                if (Object.keys(dateBlocks).length === 0) {
+                    console.log('No date availability blocks to save - dateEntries count:', dateEntries.length);
+                    if (dateEntries.length > 0) {
+                        console.warn('⚠️ WARNING: Date entries exist but no valid blocks found!');
+                        let hasAnyTimeValues = false;
+                        dateEntries.forEach(entry => {
+                            const dateStr = entry.getAttribute('data-date');
+                            const timeBlocks = entry.querySelectorAll('.date-time-block');
+                            console.log(`Date ${dateStr} has ${timeBlocks.length} time blocks`);
+                            timeBlocks.forEach((block, idx) => {
+                                const startInput = block.querySelector('.date-block-start');
+                                const endInput = block.querySelector('.date-block-end');
+                                const startVal = startInput?.value || '';
+                                const endVal = endInput?.value || '';
+                                console.log(`  Block ${idx}: start=${startVal || 'EMPTY'}, end=${endVal || 'EMPTY'}`);
+                                if (startVal || endVal) {
+                                    hasAnyTimeValues = true;
+                                }
+                            });
+                        });
+                        
+                        // If user added dates but no valid blocks, show error
+                        if (hasAnyTimeValues) {
+                            throw new Error('You have date entries but the time blocks are invalid. Please ensure each date has at least one time block where start time is before end time.');
+                        }
+                        // If no time values at all, continue to send request to delete all entries
+                        // (user removed all dates, so we need to tell server to delete them)
+                    }
+                    // DO NOT return early - continue to send request with empty dateBlocks and replace_all: true
+                    // This will delete all existing entries from the database
+                    console.log('⚠️ IMPORTANT: dateBlocks is EMPTY - will send request to DELETE ALL date availability entries');
+                }
+
+                log('=== FINAL DATE BLOCKS TO SAVE ===');
+                log('Dates to save:', Object.keys(dateBlocks));
+                log('Number of dates to save:', Object.keys(dateBlocks).length);
+                log('Full date blocks object:', JSON.stringify(dateBlocks, null, 2));
+                
+                // Verify: if dateBlocks is empty, all dates should be deleted
+                if (Object.keys(dateBlocks).length === 0) {
+                    log('⚠️ IMPORTANT: dateBlocks is EMPTY - this means ALL date availability will be DELETED from database');
+                    log('This is correct if you removed all dates from the UI');
+                }
+
+                // Send to server with replace_all: true to delete all existing and insert only what's in DOM
+                log('📤 Sending POST request to /settings/date-availability...');
+                const requestPayload = {
+                    date_blocks: dateBlocks,
+                    replace_all: true  // This will DELETE all existing entries and only insert the ones in dateBlocks
+                };
+                log('Request payload:', JSON.stringify(requestPayload, null, 2));
+                
+                // Store in localStorage before sending
+                try {
+                    localStorage.setItem('lastDateAvailabilitySave', JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        logs: saveLogs,
+                        requestPayload: requestPayload,
+                        datesInDOM: datesInDOM
+                    }));
+                } catch (e) {
+                    console.warn('Could not save to localStorage:', e);
+                }
+                
+                const response = await fetch('/settings/date-availability', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Important: include cookies for session
+                    body: JSON.stringify({
+                        date_blocks: dateBlocks,
+                        replace_all: true
+                    })
+                });
+
+                console.log('Response status:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Response error text:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const result = await response.json();
+                log('✅ Date availability save response:', result);
+                log('✅ Blocks inserted:', result.blocks_inserted);
+                log('✅ Entries deleted:', result.entries_deleted);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to save date availability');
+                }
+
+                log(`✅ Successfully saved ${result.blocks_inserted || Object.keys(dateBlocks).length} date availability entries`);
+                
+                // Update localStorage with response
+                try {
+                    const savedData = JSON.parse(localStorage.getItem('lastDateAvailabilitySave') || '{}');
+                    savedData.response = result;
+                    savedData.success = true;
+                    localStorage.setItem('lastDateAvailabilitySave', JSON.stringify(savedData));
+                } catch (e) {
+                    console.warn('Could not update localStorage:', e);
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Error saving date availability:', error);
+                throw error;
+            }
         }
 
         // Convert time string (HH:MM) to minutes since midnight
@@ -2008,7 +2948,7 @@
             return (start1 < end2 && start2 < end1);
         }
 
-        // Validate all time blocks for conflicts
+        // Validate all time blocks for conflicts (day-of-week)
         function validateTimeBlocks() {
             const conflicts = [];
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -2050,6 +2990,7 @@
                             
                             if (blocksOverlap(block1, block2)) {
                                 conflicts.push({
+                                    type: 'day-of-week',
                                     day: dayIndex,
                                     dayName: dayNames[dayIndex],
                                     block1: block1,
@@ -2064,40 +3005,137 @@
             return conflicts;
         }
 
+        // Validate date-specific availability blocks for conflicts
+        function validateDateAvailabilityBlocks() {
+            const conflicts = [];
+            
+            // Get all date entries
+            const dateEntries = document.querySelectorAll('.date-entry');
+            
+            dateEntries.forEach(dateEntry => {
+                const dateStr = dateEntry.getAttribute('data-date');
+                if (!dateStr) return;
+                
+                const timeBlocksContainer = dateEntry.querySelector('.date-time-blocks');
+                if (!timeBlocksContainer) return;
+                
+                const timeBlocks = timeBlocksContainer.querySelectorAll('.date-time-block');
+                const validBlocks = [];
+                
+                // Collect all valid blocks for this date
+                timeBlocks.forEach((blockElement, index) => {
+                    const startInput = blockElement.querySelector('.date-block-start');
+                    const endInput = blockElement.querySelector('.date-block-end');
+                    
+                    if (startInput && endInput && startInput.value && endInput.value) {
+                        // Validate start < end
+                        if (startInput.value < endInput.value) {
+                            validBlocks.push({
+                                index: index,
+                                element: blockElement,
+                                start: startInput.value,
+                                end: endInput.value,
+                                startInput: startInput,
+                                endInput: endInput
+                            });
+                        }
+                    }
+                });
+                
+                // Check for overlaps within this date
+                if (validBlocks.length > 1) {
+                    for (let i = 0; i < validBlocks.length; i++) {
+                        for (let j = i + 1; j < validBlocks.length; j++) {
+                            const block1 = validBlocks[i];
+                            const block2 = validBlocks[j];
+                            
+                            if (blocksOverlap(block1, block2)) {
+                                conflicts.push({
+                                    type: 'date-specific',
+                                    date: dateStr,
+                                    block1: block1,
+                                    block2: block2
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+            
+            return conflicts;
+        }
+
         // Show conflict errors and highlight conflicting blocks
         function showConflicts(conflicts) {
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             
-            // Group conflicts by day
-            const conflictsByDay = {};
-            conflicts.forEach(conflict => {
-                if (!conflictsByDay[conflict.day]) {
-                    conflictsByDay[conflict.day] = [];
-                }
-                conflictsByDay[conflict.day].push(conflict);
-            });
+            // Separate day-of-week and date-specific conflicts
+            const dayConflicts = conflicts.filter(c => c.type === 'day-of-week');
+            const dateConflicts = conflicts.filter(c => c.type === 'date-specific');
             
             // Build error message
             let errorMessage = 'Time block conflicts detected:\n\n';
             
-            Object.keys(conflictsByDay).forEach(dayIndex => {
-                const dayConflicts = conflictsByDay[dayIndex];
-                const dayName = dayNames[parseInt(dayIndex)];
-                
-                errorMessage += `${dayName}:\n`;
-                
+            // Handle day-of-week conflicts
+            if (dayConflicts.length > 0) {
+                const conflictsByDay = {};
                 dayConflicts.forEach(conflict => {
-                    const block1Time = `${conflict.block1.start} - ${conflict.block1.end}`;
-                    const block2Time = `${conflict.block2.start} - ${conflict.block2.end}`;
-                    errorMessage += `  • Blocks "${block1Time}" and "${block2Time}" overlap\n`;
-                    
-                    // Highlight conflicting blocks
-                    conflict.block1.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
-                    conflict.block2.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                    if (!conflictsByDay[conflict.day]) {
+                        conflictsByDay[conflict.day] = [];
+                    }
+                    conflictsByDay[conflict.day].push(conflict);
                 });
                 
-                errorMessage += '\n';
-            });
+                Object.keys(conflictsByDay).forEach(dayIndex => {
+                    const dayConflictList = conflictsByDay[dayIndex];
+                    const dayName = dayNames[parseInt(dayIndex)];
+                    
+                    errorMessage += `${dayName}:\n`;
+                    
+                    dayConflictList.forEach(conflict => {
+                        const block1Time = `${conflict.block1.start} - ${conflict.block1.end}`;
+                        const block2Time = `${conflict.block2.start} - ${conflict.block2.end}`;
+                        errorMessage += `  • Blocks "${block1Time}" and "${block2Time}" overlap\n`;
+                        
+                        // Highlight conflicting blocks
+                        conflict.block1.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                        conflict.block2.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                    });
+                    
+                    errorMessage += '\n';
+                });
+            }
+            
+            // Handle date-specific conflicts
+            if (dateConflicts.length > 0) {
+                const conflictsByDate = {};
+                dateConflicts.forEach(conflict => {
+                    if (!conflictsByDate[conflict.date]) {
+                        conflictsByDate[conflict.date] = [];
+                    }
+                    conflictsByDate[conflict.date].push(conflict);
+                });
+                
+                Object.keys(conflictsByDate).forEach(dateStr => {
+                    const dateConflictList = conflictsByDate[dateStr];
+                    const dateObj = new Date(dateStr);
+                    const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    
+                    errorMessage += `${formattedDate}:\n`;
+                    
+                    dateConflictList.forEach(conflict => {
+                        const block1Time = `${conflict.block1.start} - ${conflict.block1.end}`;
+                        const block2Time = `${conflict.block2.start} - ${conflict.block2.end}`;
+                        errorMessage += `  • Blocks "${block1Time}" and "${block2Time}" overlap\n`;
+                        
+                        // Highlight conflicting blocks
+                        conflict.block1.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                        conflict.block2.element.classList.add('border-red-500', 'border-2', 'bg-red-50');
+                    });
+                    
+                    errorMessage += '\n';
+                });
+            }
             
             errorMessage += 'Please adjust the overlapping time blocks and try again.';
             
@@ -2116,16 +3154,30 @@
             // Scroll to first conflict
             if (conflicts.length > 0) {
                 const firstConflict = conflicts[0];
-                const dayContainer = document.querySelector(`.day-container[data-day="${firstConflict.day}"]`);
-                if (dayContainer) {
-                    dayContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstConflict.type === 'day-of-week') {
+                    const dayContainer = document.querySelector(`.day-container[data-day="${firstConflict.day}"]`);
+                    if (dayContainer) {
+                        dayContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                } else if (firstConflict.type === 'date-specific') {
+                    const dateEntry = document.querySelector(`.date-entry[data-date="${firstConflict.date}"]`);
+                    if (dateEntry) {
+                        dateEntry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             }
         }
 
-        // Clear conflict highlights
+        // Clear conflict highlights for day-of-week blocks
         function clearConflictHighlights() {
             document.querySelectorAll('.time-block').forEach(block => {
+                block.classList.remove('border-red-500', 'border-2', 'bg-red-50');
+            });
+        }
+
+        // Clear conflict highlights for date-specific blocks
+        function clearDateConflictHighlights() {
+            document.querySelectorAll('.date-time-block').forEach(block => {
                 block.classList.remove('border-red-500', 'border-2', 'bg-red-50');
             });
         }
@@ -2137,6 +3189,10 @@
                 if (e.target.classList.contains('block-start') || e.target.classList.contains('block-end')) {
                     // Clear highlights when user changes time
                     clearConflictHighlights();
+                }
+                if (e.target.classList.contains('date-block-start') || e.target.classList.contains('date-block-end')) {
+                    // Clear highlights when user changes date-specific time
+                    clearDateConflictHighlights();
                 }
             });
         }
