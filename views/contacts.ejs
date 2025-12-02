@@ -643,7 +643,42 @@
         }
 
         // Show add contact modal
-        function showAddContactModal() {
+        async function showAddContactModal() {
+            // Check subscription status before showing modal
+            const userHasAccess = <%= typeof user.hasAccess !== 'undefined' ? user.hasAccess : true %>;
+            
+            console.log('Checking subscription - hasAccess:', userHasAccess);
+            
+            if (userHasAccess === false) {
+                // Trial expired - show subscription prompt instead
+                console.log('Trial expired, showing subscription prompt');
+                showSubscriptionPrompt();
+                return;
+            }
+            
+            // Also do a quick API check as backup
+            try {
+                const testResponse = await fetch('/crm/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: 'test', email: 'test@test.com' })
+                });
+                
+                if (testResponse.status === 403) {
+                    const testData = await testResponse.json();
+                    if (testData.code === 'SUBSCRIPTION_REQUIRED') {
+                        console.log('API check: Subscription required');
+                        showSubscriptionPrompt();
+                        return;
+                    }
+                }
+            } catch (e) {
+                // If API check fails, proceed with showing modal
+                console.log('API check failed, proceeding with modal');
+            }
+            
             document.getElementById('add-contact-modal').classList.remove('hidden');
         }
 
@@ -674,7 +709,26 @@
                     body: JSON.stringify(contactData)
                 });
                 
-                const data = await response.json();
+                // Parse response once
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // If JSON parsing fails, create a basic error object
+                    data = { 
+                        success: false, 
+                        error: 'Failed to parse response',
+                        code: response.status === 403 ? 'SUBSCRIPTION_REQUIRED' : undefined
+                    };
+                }
+                
+                // Check if subscription is required (403 status or code)
+                if (response.status === 403 || data.code === 'SUBSCRIPTION_REQUIRED') {
+                    console.log('Subscription required detected:', { status: response.status, code: data.code });
+                    hideAddContactModal();
+                    showSubscriptionPrompt();
+                    return;
+                }
                 
                 if (data.success) {
                     hideAddContactModal();
@@ -693,13 +747,26 @@
                     });
                 }
             } catch (error) {
-
+                console.error('Error adding contact:', error);
                 toast.show({
                     type: 'error',
                     title: 'Error',
                     message: 'Failed to add contact'
                 });
             }
+        }
+
+        // Show subscription prompt when trial expired
+        function showSubscriptionPrompt() {
+            console.log('Showing subscription prompt');
+            hideAddContactModal();
+            
+            toast.show({
+                type: 'error',
+                title: 'Subscription Required',
+                message: 'Your free trial has expired. Please upgrade to Pro to continue adding contacts.',
+                duration: 5000
+            });
         }
         
         // Handle search

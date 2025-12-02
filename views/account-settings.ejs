@@ -236,7 +236,7 @@
                     </div>
                     
                     <!-- Profile Section Save Button -->
-                    <div class="mt-6 pt-6 border-t border-gray-200">
+                    <div class="mt-6 pt-6 border-t border-gray-200 pb-6">
                         <div class="flex justify-end">
                             <button type="button" id="save-profile-btn" 
                                 class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -247,6 +247,61 @@
                             </button>
                         </div>
                         <p class="mt-2 text-sm text-gray-500 text-right">Note: Individual fields are saved automatically when edited</p>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- Subscription Section -->
+            <div class="bg-white shadow rounded-lg">
+                <button class="accordion-header w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50" onclick="toggleAccordion('subscription')">
+                    <h2 class="text-lg font-medium text-gray-900">Subscription</h2>
+                    <svg id="subscription-icon" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="subscription-content" class="accordion-content">
+                    <div class="px-6 py-5 space-y-6 border-t border-gray-200">
+                        <!-- Current Subscription Status -->
+                        <div id="subscription-status" class="p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-900">Current Plan</h3>
+                                    <p id="subscription-plan" class="text-sm text-gray-600 mt-1">Loading...</p>
+                                    <p id="subscription-expiry" class="text-xs text-gray-500 mt-1"></p>
+                                </div>
+                                <div id="subscription-badge" class="px-3 py-1 rounded-full text-xs font-medium"></div>
+                            </div>
+                        </div>
+
+                        <!-- Subscription Actions -->
+                        <div class="space-y-4">
+                            <button id="open-paywall-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span id="paywall-btn-text">Upgrade to Pro</span>
+                            </button>
+                        </div>
+
+                        <!-- Payment History Table -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Payment History</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payment-history-tbody" class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading payment history...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -567,7 +622,7 @@
                         </div>
 
                         <!-- Availability Section Save Button -->
-                        <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="mt-6 pt-6 border-t border-gray-200 pb-6">
                             <div class="flex justify-end">
                                 <button type="submit" class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -589,6 +644,180 @@
         </div>
     </main>
 
+    <!-- Payment Proof Submission Modal -->
+    <div id="paywall-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-full shadow-lg rounded-md bg-white max-w-lg">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Upgrade to ISKED Pro</h3>
+                    <button id="close-paywall-btn" class="text-gray-400 hover:text-gray-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Features List -->
+                <div class="mb-6">
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Unlimited bookings
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Unlimited contacts
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Advanced CRM features
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Priority support
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Pricing Options -->
+                <form id="payment-proof-form" class="space-y-4 mb-6">
+                    <!-- Plan Selection -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Plan</label>
+                        
+                        <!-- Monthly Plan -->
+                        <% if (typeof monthlySubscriptionEnabled !== 'undefined' && monthlySubscriptionEnabled) { %>
+                        <div class="plan-option p-4 border-2 rounded-lg cursor-pointer transition-all border-gray-300 hover:border-gray-400" data-plan="monthly">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Monthly</h4>
+                                    <p class="text-sm text-gray-600">PHP 499/month</p>
+                                </div>
+                                <input type="radio" name="planType" value="monthly" class="plan-radio" required>
+                            </div>
+                        </div>
+                        <% } %>
+
+                        <!-- Yearly Plan -->
+                        <div class="plan-option p-4 border-2 rounded-lg cursor-pointer transition-all border-blue-500 bg-blue-50" data-plan="yearly">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-blue-600">BEST VALUE</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Yearly</h4>
+                                    <p class="text-sm text-gray-600">PHP 3,999/year</p>
+                                    <p class="text-xs text-gray-500 mt-1">Save PHP 1,989 (33% off)</p>
+                                </div>
+                                <input type="radio" name="planType" value="yearly" class="plan-radio" checked required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QR Code Display -->
+                    <div id="qr-code-section" class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Scan to Pay</label>
+                        
+                        <!-- Monthly QR Code -->
+                        <div id="qr-monthly" class="qr-code-container hidden">
+                            <div class="bg-white border-2 border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                                <img id="qr-img-monthly" 
+                                     src="/qr-codes/gcash-monthly-499.jpg" 
+                                     alt="GCash QR Code for PHP 499 Monthly Plan" 
+                                     class="max-w-full h-auto rounded-lg mb-3" 
+                                     style="max-height: 300px;"
+                                     onerror="this.style.display='none'; this.parentElement.querySelector('.qr-error-message').classList.remove('hidden');">
+                                <div class="qr-error-message hidden text-center py-8 w-full">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    <p class="text-sm text-gray-600">QR code image not found</p>
+                                    <p class="text-xs text-gray-500 mt-1">Please upload: gcash-monthly-499.jpg</p>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900">PHP 499.00</p>
+                                <p class="text-xs text-gray-600 mt-1">Monthly Plan</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Yearly QR Code -->
+                        <div id="qr-yearly" class="qr-code-container hidden">
+                            <div class="bg-white border-2 border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                                <img id="qr-img-yearly" 
+                                     src="/qr-codes/gcash-yearly-3999.jpg" 
+                                     alt="GCash QR Code for PHP 3,999 Yearly Plan" 
+                                     class="max-w-full h-auto rounded-lg mb-3" 
+                                     style="max-height: 300px;"
+                                     onerror="this.style.display='none'; this.parentElement.querySelector('.qr-error-message').classList.remove('hidden');">
+                                <div class="qr-error-message hidden text-center py-8 w-full">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    <p class="text-sm text-gray-600">QR code image not found</p>
+                                    <p class="text-xs text-gray-500 mt-1">Please upload: gcash-yearly-3999.jpg</p>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900">PHP 3,999.00</p>
+                                <p class="text-xs text-gray-600 mt-1">Yearly Plan</p>
+                            </div>
+                        </div>
+                        
+                        <!-- No Plan Selected Message -->
+                        <div id="qr-placeholder" class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                            <p class="text-sm text-gray-500">Please select a plan above to see the payment QR code</p>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Proof of Payment</label>
+                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                            <div class="space-y-1 text-center">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <div class="flex text-sm text-gray-600">
+                                    <label for="proof-file" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                        <span>Upload a file</span>
+                                        <input id="proof-file" name="proof" type="file" class="sr-only" accept="image/*,.pdf" required>
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500">PNG, JPG, GIF, PDF up to 10MB</p>
+                                <p id="file-name" class="text-sm text-gray-700 mt-2 hidden"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submit-payment-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Send Payment
+                    </button>
+                </form>
+
+                <!-- Loading State -->
+                <div id="paywall-loading" class="hidden text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <p class="mt-2 text-sm text-gray-600">Submitting payment proof...</p>
+                </div>
+
+                <!-- Success Message -->
+                <div id="paywall-success" class="hidden text-sm text-green-600 mb-4 p-3 bg-green-50 rounded-lg">
+                    Payment proof submitted successfully! We will review it and activate your Pro subscription shortly.
+                </div>
+
+                <!-- Error Message -->
+                <div id="paywall-error" class="hidden text-sm text-red-600 mb-4 p-3 bg-red-50 rounded-lg"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Simple Accordion Toggle Function
         function toggleAccordion(section) {
@@ -596,7 +825,7 @@
             const icon = document.getElementById(section + '-icon');
             
             // List of all accordion sections
-            const allSections = ['profile', 'integrations', 'availability'];
+            const allSections = ['profile', 'subscription', 'integrations', 'availability'];
             
             if (content.classList.contains('accordion-hidden') || content.classList.contains('hidden')) {
                 // Expand - close all other accordions first
@@ -607,6 +836,7 @@
                         if (otherContent) {
                             otherContent.classList.add('accordion-hidden');
                             otherContent.classList.add('hidden');
+                            otherContent.style.maxHeight = ''; // Clear any inline styles
                         }
                         if (otherIcon) {
                             otherIcon.classList.add('rotate-180');
@@ -617,12 +847,37 @@
                 // Now expand the selected accordion
                 content.classList.remove('accordion-hidden');
                 content.classList.remove('hidden');
+                content.style.maxHeight = ''; // Clear inline style to allow CSS to control it
                 if (icon) icon.classList.remove('rotate-180');
+                
+                // Load payment history when subscription section is opened
+                if (section === 'subscription') {
+                    loadPaymentHistory();
+                }
             } else {
                 // Collapse
                 content.classList.add('accordion-hidden');
+                content.style.maxHeight = ''; // Clear inline style, let CSS handle it
                 if (icon) icon.classList.add('rotate-180');
             }
+        }
+
+        // Close all accordions
+        function closeAllAccordions() {
+            const allSections = ['profile', 'subscription', 'integrations', 'availability'];
+            allSections.forEach(section => {
+                const content = document.getElementById(section + '-content');
+                const icon = document.getElementById(section + '-icon');
+                if (content) {
+                    content.classList.add('accordion-hidden');
+                    content.classList.add('hidden');
+                    // Clear any inline styles to let CSS handle it
+                    content.style.maxHeight = '';
+                }
+                if (icon) {
+                    icon.classList.add('rotate-180');
+                }
+            });
         }
 
         // Save Profile Settings
@@ -711,17 +966,6 @@
                 }
             };
             
-            // Auto-open availability section if coming from onboarding
-            if (window.location.hash === '#availability') {
-                setTimeout(() => {
-                    toggleAccordion('availability');
-                    // Scroll to the availability section
-                    const availabilitySection = document.getElementById('availability-section');
-                    if (availabilitySection) {
-                        availabilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }, 100);
-            }
             initUsernameEditing();
             initDisplayNameEditing();
             initMeetingLinkEditing();
@@ -741,21 +985,51 @@
                 saveProfileBtn.addEventListener('click', saveProfileSettings);
             }
             
-            // Open sections based on URL hash
-            const hash = window.location.hash.substring(1);
-            if (hash && ['profile', 'integrations', 'availability'].includes(hash)) {
-                const content = document.getElementById(hash + '-content');
-                if (content && content.classList.contains('hidden')) {
-                    toggleAccordion(hash);
-                }
-                // Scroll to section
-                setTimeout(() => {
-                    const section = document.querySelector(`[onclick="toggleAccordion('${hash}')"]`);
-                    if (section) {
-                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Close all accordions immediately on page load
+            // Use setTimeout to ensure DOM is fully ready
+            setTimeout(() => {
+                closeAllAccordions();
+                
+                // Open sections based on URL hash (after closing all)
+                const hash = window.location.hash.substring(1);
+                if (hash && ['profile', 'integrations', 'availability', 'subscription'].includes(hash)) {
+                    const content = document.getElementById(hash + '-content');
+                    if (content) {
+                        // Open the accordion for the hash
+                        content.classList.remove('accordion-hidden');
+                        content.classList.remove('hidden');
+                        content.style.maxHeight = '';
+                        const icon = document.getElementById(hash + '-icon');
+                        if (icon) icon.classList.remove('rotate-180');
                     }
-                }, 100);
-            }
+                    // Scroll to section
+                    setTimeout(() => {
+                        const section = document.querySelector(`[onclick="toggleAccordion('${hash}')"]`);
+                        if (section) {
+                            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 100);
+                }
+            }, 10);
+
+            // Close all accordions when Settings link is clicked
+            // Use event delegation to catch clicks on Settings links
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('a[href="/settings"]');
+                if (target) {
+                    // If already on settings page, prevent navigation and close accordions
+                    if (window.location.pathname === '/settings') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeAllAccordions();
+                        // Clear hash if present
+                        if (window.location.hash) {
+                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                        }
+                    }
+                    // If navigating TO settings page, accordions will be closed on page load
+                }
+            });
         });
 
         // Handle success/error messages from URL parameters
@@ -3646,6 +3920,417 @@
                 button.innerHTML = originalHTML;
                 button.classList.remove('text-green-600', 'border-green-300');
             }, 2000);
+        }
+
+        // ============================================
+        // Subscription Status Display
+        // ============================================
+        
+        // Initialize subscription status when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Get subscription status from server
+            <% if (typeof user.subscriptionStatus !== 'undefined' && user.subscriptionStatus) { %>
+                const subscriptionStatus = {
+                    hasAccess: <%= user.subscriptionStatus.hasAccess ? 'true' : 'false' %>,
+                    isPro: <%= user.subscriptionStatus.isPro ? 'true' : 'false' %>,
+                    isTrial: <%= user.subscriptionStatus.isTrial ? 'true' : 'false' %>,
+                    daysRemaining: <%= user.subscriptionStatus.daysRemaining || 0 %>,
+                    isAdminGranted: <%= user.subscriptionStatus.isAdminGranted ? 'true' : 'false' %>,
+                    expirationDate: <%- JSON.stringify(user.subscriptionStatus.expirationDate || null) %>,
+                    productIdentifier: null
+                };
+            <% } else { %>
+                const subscriptionStatus = {
+                    hasAccess: false,
+                    isPro: false,
+                    isTrial: false,
+                    daysRemaining: 0,
+                    isAdminGranted: false,
+                    expirationDate: null,
+                    productIdentifier: null
+                };
+            <% } %>
+            
+            // Show initial status from server
+            updateSubscriptionUI(subscriptionStatus);
+            
+            // Load payment history when subscription section is opened
+            loadPaymentHistory();
+        });
+
+        function updateSubscriptionUI(status) {
+            const planElement = document.getElementById('subscription-plan');
+            const expiryElement = document.getElementById('subscription-expiry');
+            const badgeElement = document.getElementById('subscription-badge');
+            const paywallBtn = document.getElementById('open-paywall-btn');
+            const paywallBtnText = document.getElementById('paywall-btn-text');
+
+            if (!planElement) return;
+
+            // Check if user is Pro (has active Pro subscription)
+            if (status.isPro && status.hasAccess) {
+                planElement.textContent = 'ISKED Pro';
+                
+                // Check if subscription has an expiration date
+                if (status.expirationDate && status.expirationDate !== 'null' && status.expirationDate !== null) {
+                    const expiryDate = new Date(status.expirationDate);
+                    const daysRemaining = status.daysRemaining !== undefined && status.daysRemaining !== null 
+                        ? status.daysRemaining 
+                        : Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+                    
+                    if (daysRemaining <= 3 && daysRemaining > 0) {
+                        // Show warning for 3 days or less
+                        badgeElement.textContent = `${daysRemaining} days left`;
+                        badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
+                        expiryElement.textContent = `Renews on ${expiryDate.toLocaleDateString()}`;
+                        expiryElement.className = 'text-xs text-yellow-600 mt-1';
+                    } else if (daysRemaining <= 0) {
+                        // Expired or expiring today
+                        badgeElement.textContent = 'Expiring';
+                        badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                        expiryElement.textContent = `Expires on ${expiryDate.toLocaleDateString()}`;
+                        expiryElement.className = 'text-xs text-red-600 mt-1';
+                    } else {
+                        // More than 3 days left
+                        badgeElement.textContent = 'Active';
+                        badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                        expiryElement.textContent = `Renews on ${expiryDate.toLocaleDateString()}`;
+                        expiryElement.className = 'text-xs text-gray-500 mt-1';
+                    }
+                } else {
+                    // Lifetime subscription - only when there's no expiration date
+                    badgeElement.textContent = 'Active';
+                    badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                    expiryElement.textContent = 'Lifetime subscription';
+                    expiryElement.className = 'text-xs text-gray-500 mt-1';
+                }
+                
+                // Show "Renew Subscription" for Pro users
+                paywallBtnText.textContent = 'Renew Subscription';
+                paywallBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                paywallBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            } else if (status.isTrial && status.daysRemaining > 0) {
+                planElement.textContent = 'Free Trial';
+                badgeElement.textContent = `Trial - ${status.daysRemaining || 0} days left`;
+                badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
+                expiryElement.textContent = '';
+                paywallBtnText.textContent = 'Upgrade to Pro';
+                paywallBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                paywallBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            } else {
+                planElement.textContent = 'Free Trial Expired';
+                badgeElement.textContent = 'Expired';
+                badgeElement.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                expiryElement.textContent = 'Please subscribe to continue using ISKED';
+                paywallBtnText.textContent = 'Upgrade to Pro';
+                paywallBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+                paywallBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            }
+        }
+
+        // Load payment history
+        function loadPaymentHistory() {
+            const tbody = document.getElementById('payment-history-tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading payment history...</td></tr>';
+            
+            fetch('/dashboard/payment-proofs')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.proofs && data.proofs.length > 0) {
+                        tbody.innerHTML = data.proofs.map(proof => {
+                            const date = new Date(proof.submitted_at);
+                            const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                            
+                            // Get amount based on plan type
+                            const amount = proof.plan_type === 'monthly' ? 'PHP 499' : 'PHP 3,999';
+                            
+                            // Map status to display text and colors
+                            let statusText = 'Pending';
+                            let statusClass = 'bg-yellow-100 text-yellow-800';
+                            if (proof.status === 'approved') {
+                                statusText = 'Paid';
+                                statusClass = 'bg-green-100 text-green-800';
+                            } else if (proof.status === 'rejected') {
+                                statusText = 'Failed';
+                                statusClass = 'bg-red-100 text-red-800';
+                            }
+                            
+                            return `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">${dateStr}</div>
+                                        <div class="text-xs text-gray-500">${timeStr}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">${amount}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                                            ${statusText}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <a href="/dashboard/payment-proofs/${proof.id}/file" target="_blank" 
+                                           class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">No payment history yet.</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading payment history:', error);
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Error loading payment history.</td></tr>';
+                });
+        }
+
+        // Open Paywall
+        document.getElementById('open-paywall-btn')?.addEventListener('click', function() {
+            const modal = document.getElementById('paywall-modal');
+            const form = document.getElementById('payment-proof-form');
+            const errorElement = document.getElementById('paywall-error');
+            const successElement = document.getElementById('paywall-success');
+            const loadingElement = document.getElementById('paywall-loading');
+            
+            // Reset form and messages
+            form.reset();
+            form.classList.remove('hidden');
+            errorElement.classList.add('hidden');
+            successElement.classList.add('hidden');
+            loadingElement.classList.add('hidden');
+            document.getElementById('file-name').classList.add('hidden');
+            
+            // Reset plan selection visual state and QR code
+            document.querySelectorAll('.plan-option').forEach(option => {
+                if (option.dataset.plan === 'yearly') {
+                    option.classList.remove('border-gray-300');
+                    option.classList.add('border-blue-500', 'bg-blue-50');
+                    // Set yearly as default selected
+                    const radio = option.querySelector('.plan-radio');
+                    if (radio) radio.checked = true;
+                } else if (option.dataset.plan === 'monthly') {
+                    option.classList.remove('border-blue-500', 'bg-blue-50');
+                    option.classList.add('border-gray-300');
+                    const radio = option.querySelector('.plan-radio');
+                    if (radio) radio.checked = false;
+                }
+            });
+            
+            // Show yearly QR code by default (since yearly is default selection)
+            updateQRCodeDisplay('yearly');
+            
+            modal.classList.remove('hidden');
+        });
+
+        // Function to update QR code display based on selected plan
+        function updateQRCodeDisplay(planType) {
+            const monthlyQR = document.getElementById('qr-monthly');
+            const yearlyQR = document.getElementById('qr-yearly');
+            const placeholder = document.getElementById('qr-placeholder');
+            const monthlyImg = document.getElementById('qr-img-monthly');
+            const yearlyImg = document.getElementById('qr-img-yearly');
+            
+            // Hide all QR codes and placeholder
+            monthlyQR.classList.add('hidden');
+            yearlyQR.classList.add('hidden');
+            placeholder.classList.add('hidden');
+            
+            // Reset image display and error messages
+            if (monthlyImg) {
+                monthlyImg.style.display = '';
+                const monthlyError = monthlyQR.querySelector('.qr-error-message');
+                if (monthlyError) monthlyError.classList.add('hidden');
+            }
+            if (yearlyImg) {
+                yearlyImg.style.display = '';
+                const yearlyError = yearlyQR.querySelector('.qr-error-message');
+                if (yearlyError) yearlyError.classList.add('hidden');
+            }
+            
+            // Show the appropriate QR code
+            if (planType === 'monthly') {
+                monthlyQR.classList.remove('hidden');
+                // Reload image to check if it exists
+                if (monthlyImg) monthlyImg.src = monthlyImg.src;
+            } else if (planType === 'yearly') {
+                yearlyQR.classList.remove('hidden');
+                // Reload image to check if it exists
+                if (yearlyImg) yearlyImg.src = yearlyImg.src;
+            } else {
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        // Plan selection visual feedback
+        document.querySelectorAll('.plan-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const radio = this.querySelector('.plan-radio');
+                radio.checked = true;
+                const planType = this.dataset.plan;
+                
+                // Update visual state
+                document.querySelectorAll('.plan-option').forEach(opt => {
+                    if (opt.dataset.plan === 'yearly') {
+                        opt.classList.remove('border-gray-300');
+                        opt.classList.add('border-blue-500', 'bg-blue-50');
+                    } else {
+                        opt.classList.remove('border-blue-500', 'bg-blue-50');
+                        opt.classList.add('border-gray-300');
+                    }
+                });
+                
+                // Highlight selected
+                if (this.dataset.plan === 'yearly') {
+                    this.classList.add('border-blue-500', 'bg-blue-50');
+                } else {
+                    this.classList.remove('border-blue-500', 'bg-blue-50');
+                    this.classList.add('border-gray-300');
+                }
+                
+                // Update QR code display
+                updateQRCodeDisplay(planType);
+            });
+        });
+        
+        // Also handle direct radio button changes
+        document.querySelectorAll('.plan-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    updateQRCodeDisplay(this.value);
+                }
+            });
+        });
+
+        // File input change handler
+        document.getElementById('proof-file')?.addEventListener('change', function(e) {
+            const fileName = document.getElementById('file-name');
+            if (e.target.files.length > 0) {
+                fileName.textContent = e.target.files[0].name;
+                fileName.classList.remove('hidden');
+            } else {
+                fileName.classList.add('hidden');
+            }
+        });
+
+        // Payment proof form submission
+        document.getElementById('payment-proof-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = document.getElementById('payment-proof-form');
+            const loadingElement = document.getElementById('paywall-loading');
+            const errorElement = document.getElementById('paywall-error');
+            const successElement = document.getElementById('paywall-success');
+            const submitBtn = document.getElementById('submit-payment-btn');
+            
+            // Hide previous messages
+            errorElement.classList.add('hidden');
+            successElement.classList.add('hidden');
+            form.classList.add('hidden');
+            loadingElement.classList.remove('hidden');
+            submitBtn.disabled = true;
+            
+            try {
+                const formData = new FormData(form);
+                const planType = formData.get('planType');
+                const proofFile = formData.get('proof');
+                
+                if (!planType) {
+                    throw new Error('Please select a plan');
+                }
+                
+                if (!proofFile || proofFile.size === 0) {
+                    throw new Error('Please upload a proof of payment file');
+                }
+                
+                const response = await fetch('/dashboard/payment-proof', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                // Check content type before parsing
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    // Parse JSON response
+                    data = await response.json();
+                } else {
+                    // Got HTML or other non-JSON response (likely a redirect or error page)
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('Please log in to submit payment proof');
+                    }
+                    throw new Error('Server returned an unexpected response. Please try again.');
+                }
+                
+                loadingElement.classList.add('hidden');
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to submit payment proof');
+                }
+                
+                if (data.success) {
+                    successElement.classList.remove('hidden');
+                    form.reset();
+                    document.getElementById('file-name').classList.add('hidden');
+                    
+                    // Reload payment history table immediately to show the new submission
+                    loadPaymentHistory();
+                    
+                    // Close modal after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('paywall-modal').classList.add('hidden');
+                        // Reload page to refresh subscription status
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    errorElement.textContent = data.error || 'Failed to submit payment proof';
+                    errorElement.classList.remove('hidden');
+                    form.classList.remove('hidden');
+                }
+            } catch (error) {
+                loadingElement.classList.add('hidden');
+                errorElement.textContent = error.message || 'Failed to submit payment proof';
+                errorElement.classList.remove('hidden');
+                form.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Restore Purchases - Removed (no longer needed without RevenueCat)
+
+        // Close Paywall
+        document.getElementById('close-paywall-btn')?.addEventListener('click', function() {
+            document.getElementById('paywall-modal').classList.add('hidden');
+        });
+
+        // Manage Subscription - Removed (no longer needed without RevenueCat)
+
+        function showSubscriptionError(message) {
+            if (typeof toast !== 'undefined') {
+                toast.show({
+                    type: 'error',
+                    title: 'Subscription Error',
+                    message: message
+                });
+            } else {
+                alert(message);
+            }
         }
     </script>
 </body>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const telegramService = require('../services/telegram');
+const { checkUserAccess } = require('../utils/subscription');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
@@ -383,6 +384,17 @@ router.get('/:id', requireLogin, async (req, res) => {
 // Create a new contact
 router.post('/', requireLogin, async (req, res) => {
     try {
+        // Check subscription/trial access
+        const accessCheck = await checkUserAccess(req.session.userId);
+        
+        if (!accessCheck.hasAccess) {
+            return res.status(403).json({
+                success: false,
+                error: 'Subscription required. Your trial has expired. Please subscribe to continue adding contacts.',
+                code: 'SUBSCRIPTION_REQUIRED'
+            });
+        }
+        
         const {
             name, email, phone, company, position, industry,
             source, status, referral_potential, notes, tags,

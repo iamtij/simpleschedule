@@ -78,6 +78,72 @@
             </a>
         </div>
 
+        <!-- Subscription Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Free Trial Users -->
+            <div class="bg-white rounded-lg p-6 hover:shadow-lg transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-indigo-100">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Free Trial</h3>
+                        <p class="text-2xl font-semibold text-gray-900"><%= stats.freeTrialUsers || 0 %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro Users -->
+            <div class="bg-white rounded-lg p-6 hover:shadow-lg transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-emerald-100">
+                        <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Pro</h3>
+                        <p class="text-2xl font-semibold text-gray-900"><%= stats.proUsers || 0 %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expired Users -->
+            <div class="bg-white rounded-lg p-6 hover:shadow-lg transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-100">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Expired</h3>
+                        <p class="text-2xl font-semibold text-gray-900"><%= stats.expiredUsers || 0 %></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="bg-white rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">System Settings</h3>
+            <div class="space-y-4">
+                <!-- Monthly Subscription Toggle -->
+                <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900">Monthly Subscription</h4>
+                        <p class="text-xs text-gray-500 mt-1">Enable or disable monthly subscription option in the paywall</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="monthly-subscription-toggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <!-- Charts -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Bookings Chart -->
@@ -95,6 +161,42 @@
     </div>
 
     <script>
+        // Load monthly subscription setting
+        fetch('/admin/settings/monthly_subscription_enabled')
+            .then(response => response.json())
+            .then(data => {
+                const toggle = document.getElementById('monthly-subscription-toggle');
+                if (toggle) {
+                    toggle.checked = data.value;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading monthly subscription setting:', error);
+            });
+
+        // Handle monthly subscription toggle
+        document.getElementById('monthly-subscription-toggle')?.addEventListener('change', function(e) {
+            const enabled = e.target.checked;
+            
+            fetch('/admin/settings/monthly_subscription_enabled', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ value: enabled })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Monthly subscription setting updated:', data);
+            })
+            .catch(error => {
+                console.error('Error updating monthly subscription setting:', error);
+                // Revert toggle on error
+                e.target.checked = !enabled;
+                alert('Failed to update setting. Please try again.');
+            });
+        });
+
         // Fetch stats data and initialize charts
         fetch('/admin/stats')
             .then(response => response.json())

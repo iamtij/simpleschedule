@@ -84,6 +84,7 @@ const googleAuthRoutes = require('./routes/googleAuth');
 const crmRoutes = require('./routes/crm');
 const telegramRoutes = require('./routes/telegram');
 const shortUrlRoutes = require('./routes/shortUrl');
+const revenueCatRoutes = require('./routes/revenuecat');
 const reminderJob = require('./jobs/reminders');
 
 // Mount routes
@@ -94,6 +95,7 @@ app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/revenuecat', revenueCatRoutes);
 app.use('/', shortUrlRoutes); // Short URL routes (must be before root routes)
 app.use('/', googleAuthRoutes); // Google auth routes are mounted at root level
 
@@ -129,6 +131,10 @@ app.use((err, req, res, next) => {
 // Start background jobs
 // Reminder job disabled for now
 // reminderJob.start();
+
+// Start subscription expiration job
+const subscriptionExpirationJob = require('./jobs/subscriptionExpiration');
+subscriptionExpirationJob.start();
 
 // Export for Railway
 module.exports = app;

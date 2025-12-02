@@ -1454,6 +1454,16 @@
                     const contactResult = await contactResponse.json();
                     
                     if (!contactResult.success) {
+                        // Check if subscription is required
+                        if (contactResult.code === 'SUBSCRIPTION_REQUIRED' || contactResponse.status === 403) {
+                            toast.show({
+                                type: 'error',
+                                title: 'Subscription Required',
+                                message: 'Your free trial has expired. Please upgrade to Pro to continue adding contacts.',
+                                duration: 5000
+                            });
+                            throw new Error('Subscription required');
+                        }
                         throw new Error(contactResult.error || 'Failed to create new contact');
                     }
                     

@@ -1,5 +1,6 @@
 const FormData = require('form-data');
 const Mailgun = require('mailgun.js');
+const fs = require('fs');
 
 const mailgun = new Mailgun(FormData);
 const mg = mailgun.client({
@@ -352,6 +353,117 @@ The isked Team`,
         const hour12 = ((hours + 11) % 12) + 1;
 
         return `${hour12}:${minutes.padStart(2, '0')} ${suffix}`;
+    }
+
+    async sendPaymentProof(user, planType, planPrice, attachmentPath, attachmentName) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        const adminEmail = 'tjtalusan@gmail.com';
+        const planName = planType === 'monthly' ? 'Monthly (PHP 499)' : 'Yearly (PHP 3,999)';
+
+        try {
+            const messageData = {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [adminEmail],
+                subject: `Payment Proof - ${user.display_name || user.full_name || user.email} - ${planName}`,
+                text: `New payment proof submission:
+
+User Details:
+- Name: ${user.display_name || user.full_name || 'N/A'}
+- Email: ${user.email}
+- Username: ${user.username || 'N/A'}
+
+Subscription Details:
+- Plan: ${planName}
+- Price: ${planPrice}
+
+Please review the attached payment proof and activate the user's Pro subscription if verified.
+
+User ID: ${user.id}
+
+View user profile: ${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}
+`,
+                html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #3b82f6; color: white; padding: 20px; border-radius: 6px 6px 0 0; }
+        .content { background-color: #f9fafb; padding: 20px; border-radius: 0 0 6px 6px; }
+        .info-row { margin: 10px 0; padding: 10px; background-color: white; border-radius: 4px; }
+        .label { font-weight: bold; color: #4b5563; }
+        .value { color: #111827; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Payment Proof Submission</h1>
+        </div>
+        <div class="content">
+            <h2>User Details</h2>
+            <div class="info-row">
+                <span class="label">Name:</span> <span class="value">${user.display_name || user.full_name || 'N/A'}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Email:</span> <span class="value">${user.email}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Username:</span> <span class="value">${user.username || 'N/A'}</span>
+            </div>
+            
+            <h2 style="margin-top: 20px;">Subscription Details</h2>
+            <div class="info-row">
+                <span class="label">Plan:</span> <span class="value">${planName}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Price:</span> <span class="value">${planPrice}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">User ID:</span> <span class="value">${user.id}</span>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
+                <p style="margin-bottom: 15px;">
+                    Please review the attached payment proof and activate the user's Pro subscription if verified.
+                </p>
+                <p style="text-align: center; margin-top: 15px;">
+                    <a href="${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}" 
+                       style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                        View User Profile in Admin Dashboard
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
+            };
+
+            // Add attachment if provided
+            if (attachmentPath && attachmentName) {
+                try {
+                    // Read file as buffer for Mailgun
+                    const fileBuffer = fs.readFileSync(attachmentPath);
+                    messageData.attachment = [{
+                        filename: attachmentName,
+                        data: fileBuffer
+                    }];
+                } catch (fileError) {
+                    console.error('Error reading attachment file:', fileError);
+                    // Continue without attachment if file read fails
+                }
+            }
+
+            const result = await mg.messages.create(this.domain, messageData);
+            return result;
+        } catch (error) {
+            throw error;
+        }
     }
 }
 

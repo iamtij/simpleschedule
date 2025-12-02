@@ -1,10 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const mailService = require('../services/mail');
+const { checkUserAccess } = require('../utils/subscription');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
   if (!req.session.userId) {
+    // Check if this is an API request (expects JSON)
+    if (req.headers.accept && req.headers.accept.includes('application/json')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Authentication required' 
+      });
+    }
     return res.redirect('/');
   }
   next();
@@ -25,6 +37,10 @@ router.get('/contacts/:id', requireLogin, async (req, res) => {
     }
     const user = userResult.rows[0];
 
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
+
     res.render('contact-detail', { user, contactId: id });
   } catch (error) {
     return res.redirect('/dashboard/contacts');
@@ -43,6 +59,10 @@ router.get('/contacts', requireLogin, async (req, res) => {
       return res.redirect('/');
     }
     const user = userResult.rows[0];
+
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
 
     res.render('contacts', { user });
   } catch (error) {
@@ -86,6 +106,10 @@ router.get('/', requireLogin, async (req, res) => {
       return res.redirect('/');
     }
     const user = userResult.rows[0];
+
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
 
     // Get bookings
     const bookingsResult = await db.query(
@@ -206,6 +230,10 @@ router.get('/bookings', requireLogin, async (req, res) => {
     }
     
     const user = userResult.rows[0];
+    
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
     
     // Get filter parameter (upcoming, past, or all) - default to upcoming
     const filter = req.query.filter || 'upcoming';
@@ -553,6 +581,249 @@ router.post('/account', requireLogin, async (req, res) => {
     }
 });
 
+// Configure multer for file uploads
+const uploadDir = path.join(__dirname, '../uploads/payment-proofs');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'payment-proof-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        // Accept images and PDFs
+        const allowedTypes = /jpeg|jpg|png|gif|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files (jpeg, jpg, png, gif) and PDF files are allowed'));
+        }
+    }
+});
+
+// Payment proof submission
+router.post('/payment-proof', requireLogin, upload.single('proof'), async (req, res) => {
+    try {
+        const { planType } = req.body;
+        
+        if (!planType || (planType !== 'monthly' && planType !== 'yearly')) {
+            // Delete uploaded file if validation fails
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid plan type. Must be "monthly" or "yearly"' 
+            });
+        }
+
+        // Check if monthly subscription is enabled when monthly plan is selected
+        if (planType === 'monthly') {
+            let monthlySubscriptionEnabled = true; // Default to enabled
+            try {
+                const settingResult = await db.query(
+                    'SELECT setting_value FROM system_settings WHERE setting_key = $1',
+                    ['monthly_subscription_enabled']
+                );
+                if (settingResult.rows.length > 0) {
+                    monthlySubscriptionEnabled = settingResult.rows[0].setting_value === 'true';
+                }
+            } catch (error) {
+                console.error('Error fetching monthly subscription setting:', error);
+                // Use default value if table doesn't exist yet
+            }
+
+            if (!monthlySubscriptionEnabled) {
+                // Delete uploaded file if validation fails
+                if (req.file) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Monthly subscription is currently disabled' 
+                });
+            }
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Payment proof file is required' 
+            });
+        }
+
+        // Get user data
+        const userResult = await db.query(
+            'SELECT id, email, username, full_name, display_name FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            // Delete uploaded file if user not found
+            fs.unlinkSync(req.file.path);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'User not found' 
+            });
+        }
+
+        const user = userResult.rows[0];
+        const planPrice = planType === 'monthly' ? 'PHP 499' : 'PHP 3,999';
+
+        // Save payment proof to database
+        try {
+            const proofResult = await db.query(
+                `INSERT INTO payment_proofs (user_id, plan_type, file_path, original_filename, file_size, status)
+                 VALUES ($1, $2, $3, $4, $5, 'pending')
+                 RETURNING id`,
+                [
+                    user.id,
+                    planType,
+                    req.file.path,
+                    req.file.originalname,
+                    req.file.size
+                ]
+            );
+            console.log('Payment proof saved to database with ID:', proofResult.rows[0].id);
+        } catch (dbError) {
+            console.error('Error saving payment proof to database:', dbError);
+            // Continue even if database save fails - email will still be sent
+        }
+
+        // Send email with payment proof
+        try {
+            await mailService.sendPaymentProof(
+                user,
+                planType,
+                planPrice,
+                req.file.path,
+                req.file.originalname
+            );
+        } catch (emailError) {
+            console.error('Error sending payment proof email:', emailError);
+            // Don't fail the request if email fails, but log it
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Payment proof submitted successfully. We will review it and activate your Pro subscription shortly.' 
+        });
+    } catch (error) {
+        // Delete uploaded file on error
+        if (req.file && req.file.path) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (unlinkError) {
+                console.error('Error deleting uploaded file:', unlinkError);
+            }
+        }
+        
+        console.error('Payment proof submission error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message || 'Failed to submit payment proof' 
+        });
+    }
+});
+
+// Get payment proofs for current user
+router.get('/payment-proofs', requireLogin, async (req, res) => {
+    try {
+        const proofs = await db.query(
+            `SELECT 
+                id,
+                plan_type,
+                original_filename,
+                file_size,
+                status,
+                submitted_at,
+                notes
+             FROM payment_proofs
+             WHERE user_id = $1
+             ORDER BY submitted_at DESC`,
+            [req.session.userId]
+        );
+        
+        res.json({ success: true, proofs: proofs.rows || [] });
+    } catch (error) {
+        console.error('Error fetching payment proofs:', error);
+        // If table doesn't exist or any error, return empty array
+        res.json({ success: true, proofs: [] });
+    }
+});
+
+// Serve payment proof file for current user
+router.get('/payment-proofs/:id/file', requireLogin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const proofResult = await db.query(
+            'SELECT file_path, original_filename, user_id FROM payment_proofs WHERE id = $1',
+            [id]
+        );
+        
+        if (proofResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Payment proof not found' });
+        }
+        
+        const proof = proofResult.rows[0];
+        
+        // Verify the payment proof belongs to the current user
+        if (proof.user_id !== req.session.userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        
+        // Handle both absolute and relative paths
+        let filePath;
+        if (path.isAbsolute(proof.file_path)) {
+            filePath = proof.file_path;
+        } else {
+            filePath = path.join(__dirname, '..', proof.file_path);
+        }
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            console.error('File not found at path:', filePath);
+            return res.status(404).json({ error: 'File not found' });
+        }
+        
+        // Determine content type based on file extension
+        const ext = path.extname(proof.original_filename).toLowerCase();
+        const contentTypeMap = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.pdf': 'application/pdf'
+        };
+        const contentType = contentTypeMap[ext] || 'application/octet-stream';
+        
+        // Send file with proper content type
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${proof.original_filename}"`);
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('Error serving payment proof file:', error);
+        res.status(500).json({ error: 'Failed to serve payment proof file' });
+    }
+});
+
 // Update share status
 router.post('/update-share-status', requireLogin, async (req, res) => {
     try {
@@ -659,9 +930,25 @@ router.get('/settings', requireLogin, async (req, res) => {
             ...availabilityData
         };
 
+        // Get monthly subscription setting
+        let monthlySubscriptionEnabled = true; // Default to enabled
+        try {
+            const settingResult = await db.query(
+                'SELECT setting_value FROM system_settings WHERE setting_key = $1',
+                ['monthly_subscription_enabled']
+            );
+            if (settingResult.rows.length > 0) {
+                monthlySubscriptionEnabled = settingResult.rows[0].setting_value === 'true';
+            }
+        } catch (error) {
+            console.error('Error fetching monthly subscription setting:', error);
+            // Use default value if table doesn't exist yet
+        }
+
         res.render('account-settings', {
             user: userResult.rows[0],
             availabilitySettings: availabilitySettings,
+            monthlySubscriptionEnabled: monthlySubscriptionEnabled,
             title: 'Account Settings'
         });
     } catch (error) {

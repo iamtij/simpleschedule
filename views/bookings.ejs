@@ -971,11 +971,22 @@ function formatTimeForDisplay(timeString) {
                     form.reset();
                     currentBookingId = null;
                 } else {
-                    toast.show({
-                        type: 'error',
-                        title: 'Error',
-                        message: data.error || 'Failed to create contact'
-                    });
+                    // Check if subscription is required
+                    if (data.code === 'SUBSCRIPTION_REQUIRED' || response.status === 403) {
+                        document.getElementById('create-contact-modal').classList.add('hidden');
+                        toast.show({
+                            type: 'error',
+                            title: 'Subscription Required',
+                            message: 'Your free trial has expired. Please upgrade to Pro to continue adding contacts.',
+                            duration: 5000
+                        });
+                    } else {
+                        toast.show({
+                            type: 'error',
+                            title: 'Error',
+                            message: data.error || 'Failed to create contact'
+                        });
+                    }
                 }
             } catch (error) {
 

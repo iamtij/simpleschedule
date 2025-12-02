@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const timezone = require('../utils/timezone');
+const { checkUserAccess } = require('../utils/subscription');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
@@ -23,6 +24,10 @@ router.get('/dashboard', requireLogin, async (req, res) => {
       return res.redirect('/');
     }
     const user = userResult.rows[0];
+
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
 
     // Get bookings
     const bookingsResult = await db.query(
@@ -107,6 +112,10 @@ router.get('/bookings', requireLogin, async (req, res) => {
     }
     
     const user = userResult.rows[0];
+    
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
     
     // Get filter parameter (upcoming, past, or all) - default to upcoming
     const filter = req.query.filter || 'upcoming';
@@ -211,6 +220,10 @@ router.get('/contacts', requireLogin, async (req, res) => {
       return res.redirect('/');
     }
     const user = userResult.rows[0];
+
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    user.subscriptionStatus = subscriptionStatus;
 
     res.render('contacts', { user });
   } catch (error) {
@@ -329,8 +342,13 @@ router.get('/settings', requireLogin, async (req, res) => {
       ...availabilityData
     };
 
+    // Get subscription status
+    const subscriptionStatus = await checkUserAccess(req.session.userId);
+    const user = userResult.rows[0];
+    user.subscriptionStatus = subscriptionStatus;
+
     res.render('account-settings', {
-      user: userResult.rows[0],
+      user: user,
       availabilitySettings: availabilitySettings,
       title: 'Account Settings'
     });

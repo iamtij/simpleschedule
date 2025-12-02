@@ -1,0 +1,37 @@
+================================================================================
+QR CODE IMAGES SETUP INSTRUCTIONS
+================================================================================
+
+The 404 errors you're seeing are EXPECTED because the QR code image files 
+haven't been uploaded yet.
+
+ERROR EXPLANATION:
+------------------
+The browser is trying to load:
+- http://localhost:3000/qr-codes/gcash-monthly-499.jpg (404 - Not Found)
+- http://localhost:3000/qr-codes/gcash-yearly-3999.jpg (404 - Not Found)
+
+This is normal until you add the actual image files.
+
+HOW TO FIX:
+-----------
+1. Take screenshots or save your GCash QR code images
+2. Save them with these EXACT filenames:
+   - gcash-monthly-499.jpg (for PHP 499 monthly plan)
+   - gcash-yearly-3999.jpg (for PHP 3,999 yearly plan)
+
+3. Copy both image files to this directory:
+   /Users/admin/SimpleSchedule/public/qr-codes/
+
+4. The files should be:
+   - JPG or JPEG format
+   - High enough resolution to be scannable (at least 500x500 pixels)
+   - Named exactly as shown above
+
+5. After uploading, restart your server (if needed) and refresh the page.
+   The 404 errors will disappear and the QR codes will display properly.
+
+NOTE: These errors won't break the application - they just mean the images
+      aren't showing yet. Once you upload the files, everything will work!
+
+================================================================================

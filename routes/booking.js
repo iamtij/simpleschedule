@@ -6,6 +6,7 @@ const smsService = require('../services/sms');
 const telegramService = require('../services/telegram');
 const googleCalendarService = require('../services/googleCalendar');
 const timezone = require('../utils/timezone');
+const { checkUserAccess } = require('../utils/subscription');
 
 // Helper function to convert time string (HH:MM) to minutes since midnight
 function timeToMinutes(timeStr) {
@@ -74,6 +75,16 @@ router.get('/:username/:duration', async (req, res) => {
     }
     
     const userId = userResult.rows[0].id;
+    
+    // Check subscription/trial access
+    const accessCheck = await checkUserAccess(userId);
+    
+    if (!accessCheck.hasAccess) {
+      return res.render('booking-expired', { 
+        user: userResult.rows[0],
+        reason: accessCheck.reason || 'Subscription expired'
+      });
+    }
     
     // Check if this duration is configured for the user
     const durationResult = await db.query(
@@ -422,6 +433,16 @@ router.post('/:username/:duration', async (req, res) => {
     const userId = userResult.rows[0].id;
     const host = userResult.rows[0];
     
+    // Check subscription/trial access
+    const accessCheck = await checkUserAccess(userId);
+    
+    if (!accessCheck.hasAccess) {
+        return res.status(403).json({
+            error: 'Subscription required. Your trial has expired. Please subscribe to continue accepting bookings.',
+            code: 'SUBSCRIPTION_REQUIRED'
+        });
+    }
+    
     // Get duration-specific meeting link
     const durationResult = await db.query(
         'SELECT meeting_link FROM meeting_durations WHERE user_id = $1 AND duration_minutes = $2 AND is_active = true',
@@ -671,6 +692,16 @@ router.get('/:username', async (req, res) => {
     
     const userId = result.rows[0].id;
     
+    // Check subscription/trial access
+    const accessCheck = await checkUserAccess(userId);
+    
+    if (!accessCheck.hasAccess) {
+      return res.render('booking-expired', { 
+        user: result.rows[0],
+        reason: accessCheck.reason || 'Subscription expired'
+      });
+    }
+    
     // Find first active duration for the user, or default to 60 minutes
     let duration = null; // null means use default route without duration (defaults to 60 minutes)
     let meetingLink = result.rows[0].meeting_link;
@@ -793,6 +824,16 @@ router.post('/:username', async (req, res) => {
 
     const userId = userResult.rows[0].id;
     const host = userResult.rows[0];
+
+    // Check subscription/trial access
+    const accessCheck = await checkUserAccess(userId);
+    
+    if (!accessCheck.hasAccess) {
+        return res.status(403).json({
+            error: 'Subscription required. Your trial has expired. Please subscribe to continue accepting bookings.',
+            code: 'SUBSCRIPTION_REQUIRED'
+        });
+    }
 
     // Validate required fields
     if (!date || !start_time || !end_time || !client_name || !client_email) {

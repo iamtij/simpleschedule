@@ -7,6 +7,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const mailService = require('../services/mail');
 const Coupon = require('../models/Coupon');
+const { checkUserAccess } = require('../utils/subscription');
 
 // Register page
 router.get('/register', (req, res) => {
@@ -72,11 +73,11 @@ router.post('/register', async (req, res) => {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Insert new user
+      // Insert new user with trial_started_at
       let result;
       try {
         result = await client.query(
-          'INSERT INTO users (full_name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+          'INSERT INTO users (full_name, username, email, password, trial_started_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id',
           [full_name, username, email, hashedPassword]
         );
       } catch (insertError) {
@@ -160,11 +161,21 @@ router.post('/login', async (req, res) => {
     // Update last_login timestamp
     await db.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
+    // Check subscription status (respects admin-granted Pro, RevenueCat, and trial)
+    const subscriptionCheck = await checkUserAccess(user.id);
+    
     // Store full user object in session
     req.session.user = {
       id: user.id,
       email: user.email,
-      is_admin: user.is_admin
+      is_admin: user.is_admin,
+      is_pro: user.is_pro || false,
+      pro_expires_at: user.pro_expires_at,
+      hasAccess: subscriptionCheck.hasAccess,
+      isTrial: subscriptionCheck.isTrial || false,
+      isPro: subscriptionCheck.isPro || false,
+      isAdminGranted: subscriptionCheck.isAdminGranted || false,
+      daysRemaining: subscriptionCheck.daysRemaining
     };
     req.session.userId = user.id; // Also set userId for backward compatibility
     
