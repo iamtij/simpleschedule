@@ -444,9 +444,11 @@
                 <div id="availability-content" class="accordion-content accordion-hidden">
                     <div class="px-6 py-5 border-t border-gray-200">
                     <form id="availability-form" method="POST" action="/settings/availability">
-                        <div class="mb-6">
-                            <h3 class="text-lg font-medium mb-4">Working Days</h3>
-                            <p class="text-sm text-gray-500 mb-4">You can add multiple time blocks per day</p>
+                        <!-- Working Schedule Section -->
+                        <div class="mb-8">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1 bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">Working Schedule</h3>
+                            <p class="text-sm text-gray-500 mb-6 mt-3">Set your regular working hours by day of the week</p>
+                            
                             <div class="space-y-4">
                                 <% ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((day, index) => { %>
                                     <div class="day-container border-b last:border-0 pb-4" data-day="<%= index %>">
@@ -470,9 +472,9 @@
                         </div>
 
                         <!-- Date-Specific Availability Section -->
-                        <div class="mb-8 border-t pt-6">
-                            <h3 class="text-lg font-medium mb-4">Date-Specific Availability</h3>
-                            <p class="text-sm text-gray-500 mb-4">Override your regular schedule for specific dates. Date-specific availability takes precedence over day-of-week availability.</p>
+                        <div class="mb-8 pt-8">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1 bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">Date-Specific Availability</h3>
+                            <p class="text-sm text-gray-500 mb-6 mt-3">Override your regular schedule for specific dates. Date-specific availability takes precedence over day-of-week availability.</p>
                             
                             <!-- Add Date Section -->
                             <div class="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -495,26 +497,33 @@
                             </div>
                         </div>
 
-                        <div class="mb-8">
-                            <h3 class="text-lg font-medium mb-4">Universal Breaks</h3>
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pb-3">
-                                <div class="flex items-center w-full sm:w-1/3">
-                                    <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
-                                    <label for="break-enabled" class="text-gray-700">Enable Break Time</label>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
-                                    <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
-                                    <span class="text-gray-500 px-2">to</span>
-                                    <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
+                        <!-- Break Settings Section -->
+                        <div class="mb-8 border-t border-gray-200 pt-8">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1 bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">Break Settings</h3>
+                            <p class="text-sm text-gray-500 mb-6 mt-3">Configure break times and buffers between bookings</p>
+                            
+                            <!-- Universal Break Time -->
+                            <div class="mb-6 pb-6 border-b border-gray-200">
+                                <h4 class="text-base font-medium text-gray-800 mb-4">Universal Break Time</h4>
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                    <div class="flex items-center w-full sm:w-1/3">
+                                        <input type="checkbox" id="break-enabled" class="w-4 h-4 mr-3">
+                                        <label for="break-enabled" class="text-gray-700 font-medium">Enable Break Time</label>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-3 w-full sm:w-2/3">
+                                        <input type="time" id="break-start" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="12:00" disabled>
+                                        <span class="text-gray-500 px-2">to</span>
+                                        <input type="time" id="break-end" class="border rounded px-3 py-2 text-sm w-36 disabled:bg-gray-50 disabled:text-gray-400" value="13:00" disabled>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Buffer Between Bookings -->
-                            <div class="mt-6 border-t pt-6">
+                            <div>
+                                <h4 class="text-base font-medium text-gray-800 mb-4">Buffer Between Bookings</h4>
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                     <div class="w-full sm:w-1/3">
-                                        <label for="buffer-minutes" class="text-gray-700 font-medium">Buffer Between Bookings</label>
-                                        <p class="text-sm text-gray-500 mt-1">Add padding time after each booking</p>
+                                        <p class="text-sm text-gray-500">Add padding time after each booking to prepare for the next appointment</p>
                                     </div>
                                     <div class="w-full sm:w-2/3">
                                         <select id="buffer-minutes" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -527,13 +536,17 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Meeting Duration Settings Section -->
+                        <div class="mb-8 border-t border-gray-200 pt-8">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1 bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">Meeting Duration Settings</h3>
+                            <p class="text-sm text-gray-500 mb-6 mt-3">Configure available meeting durations and their booking links</p>
 
                             <!-- Meeting Durations -->
-                            <div class="mt-6 border-t pt-6">
-                                <div class="mb-4">
-                                    <label class="text-gray-700 font-medium">Meeting Durations</label>
-                                    <p class="text-sm text-gray-500 mt-1">Configure up to 3 different meeting durations. Each duration will have its own booking URL (e.g., /username/30, /username/60).</p>
-                                </div>
+                            <div class="mb-6 pb-6 border-b border-gray-200">
+                                <h4 class="text-base font-medium text-gray-800 mb-4">Available Durations</h4>
+                                <p class="text-sm text-gray-500 mb-4">Configure up to 3 different meeting durations. Each duration will have its own booking URL (e.g., /username/30, /username/60).</p>
                                 <div id="meeting-durations-container" class="space-y-4">
                                     <!-- Meeting durations will be added here dynamically -->
                                 </div>
@@ -543,11 +556,9 @@
                             </div>
 
                             <!-- Duration Booking Links -->
-                            <div class="mt-6 border-t pt-6">
-                                <div class="mb-4">
-                                    <label class="text-gray-700 font-medium">Duration Booking Links</label>
-                                    <p class="text-sm text-gray-500 mt-1">Copy these links to share specific meeting durations with your clients.</p>
-                                </div>
+                            <div>
+                                <h4 class="text-base font-medium text-gray-800 mb-4">Duration Booking Links</h4>
+                                <p class="text-sm text-gray-500 mb-4">Copy these links to share specific meeting durations with your clients.</p>
                                 <div id="duration-links-container" class="space-y-3">
                                     <!-- Duration links will be displayed here -->
                                 </div>

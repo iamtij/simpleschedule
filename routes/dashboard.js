@@ -207,19 +207,68 @@ router.get('/bookings', requireLogin, async (req, res) => {
     
     const user = userResult.rows[0];
     
-    // Get bookings with pagination
+    // Get filter parameter (upcoming, past, or all) - default to upcoming
+    const filter = req.query.filter || 'upcoming';
+    const searchTerm = req.query.search || '';
+    
+    // Get pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     
-    // Get total count
+    // Calculate today's date using Manila timezone
+    const now = new Date();
+    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const today = manilaTime.toISOString().split('T')[0];
+    
+    // Build WHERE clause based on filter
+    let whereConditions = ['user_id = $1'];
+    let queryParams = [req.session.userId];
+    let paramIndex = 2;
+    
+    if (filter === 'upcoming') {
+      whereConditions.push(`date >= $${paramIndex}::date`);
+      queryParams.push(today);
+      paramIndex++;
+    } else if (filter === 'past') {
+      whereConditions.push(`date < $${paramIndex}::date`);
+      queryParams.push(today);
+      paramIndex++;
+    }
+    // 'all' doesn't add any date filter
+    
+    // Add search conditions if provided
+    if (searchTerm.trim()) {
+      whereConditions.push(`(
+        LOWER(client_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(client_email) LIKE LOWER($${paramIndex}) OR
+        client_phone LIKE $${paramIndex} OR
+        LOWER(notes) LIKE LOWER($${paramIndex})
+      )`);
+      queryParams.push(`%${searchTerm}%`);
+      paramIndex++;
+    }
+    
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Get total count for pagination
     const countResult = await db.query(
-      'SELECT COUNT(*) FROM bookings WHERE user_id = $1',
-      [req.session.userId]
+      `SELECT COUNT(*) FROM bookings WHERE ${whereClause}`,
+      queryParams
     );
     const totalBookings = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalBookings / limit);
     
-    // Get bookings
+    // Determine sort order based on filter
+    let orderBy = '';
+    if (filter === 'past') {
+      orderBy = 'ORDER BY date DESC, start_time DESC'; // Most recent past first
+    } else {
+      orderBy = 'ORDER BY date ASC, start_time ASC'; // Upcoming first
+    }
+    
+    // Get bookings with pagination
+    queryParams.push(limit, offset);
     const result = await db.query(`
       SELECT 
         id,
@@ -235,16 +284,16 @@ router.get('/bookings', requireLogin, async (req, res) => {
         google_calendar_link,
         created_at
       FROM bookings 
-      WHERE user_id = $1 
-      ORDER BY date DESC, start_time DESC
-      LIMIT $2 OFFSET $3
-    `, [req.session.userId, limit, offset]);
-    
-    const totalPages = Math.ceil(totalBookings / limit);
+      WHERE ${whereClause}
+      ${orderBy}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `, queryParams);
     
     res.render('bookings', { 
       user,
       bookings: result.rows,
+      filter: filter,
+      searchTerm: searchTerm,
       pagination: {
         currentPage: page,
         totalPages,

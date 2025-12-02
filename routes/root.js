@@ -108,52 +108,77 @@ router.get('/bookings', requireLogin, async (req, res) => {
     
     const user = userResult.rows[0];
     
-    // Get pagination and search parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = 10;
-    const offset = (page - 1) * limit;
+    // Get filter parameter (upcoming, past, or all) - default to upcoming
+    const filter = req.query.filter || 'upcoming';
     const searchTerm = req.query.search || '';
     
-    // Build search conditions - default to showing current and future dates only using Manila timezone
+    // Get pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20;
+    const offset = (page - 1) * limit;
+    
+    // Calculate today's date using Manila timezone
     const now = new Date();
     const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-    const today = manilaTime.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const today = manilaTime.toISOString().split('T')[0];
     
-    let searchConditions = 'WHERE user_id = $1 AND date >= $2::date';
-    let queryParams = [req.session.userId, today];
-    let paramIndex = 3;
+    // Build WHERE conditions
+    let whereConditions = ['user_id = $1'];
+    let queryParams = [req.session.userId];
+    let paramIndex = 2;
     
+    // Add date filter based on selected filter
+    if (filter === 'upcoming') {
+      whereConditions.push(`date >= $${paramIndex}::date`);
+      queryParams.push(today);
+      paramIndex++;
+    } else if (filter === 'past') {
+      whereConditions.push(`date < $${paramIndex}::date`);
+      queryParams.push(today);
+      paramIndex++;
+    }
+    // 'all' doesn't add any date filter
+    
+    // Add search conditions if provided
     if (searchTerm.trim()) {
-      searchConditions += ` AND (
+      whereConditions.push(`(
         LOWER(client_name) LIKE LOWER($${paramIndex}) OR
         LOWER(client_email) LIKE LOWER($${paramIndex}) OR
         client_phone LIKE $${paramIndex} OR
         LOWER(notes) LIKE LOWER($${paramIndex})
-      )`;
+      )`);
       queryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
     
-    // Get total count for pagination (with search)
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Get total count for pagination
     const countResult = await db.query(
-      `SELECT COUNT(*) FROM bookings ${searchConditions}`,
+      `SELECT COUNT(*) FROM bookings WHERE ${whereClause}`,
       queryParams
     );
     const totalBookings = parseInt(countResult.rows[0].count);
     const totalPages = Math.ceil(totalBookings / limit);
+    
+    // Determine sort order based on filter
+    let orderBy = '';
+    if (filter === 'past') {
+      orderBy = 'ORDER BY date DESC, start_time DESC'; // Most recent past first
+    } else {
+      orderBy = 'ORDER BY date ASC, start_time ASC'; // Upcoming first
+    }
     
     // Get bookings with pagination and search
     queryParams.push(limit, offset);
     const finalQuery = `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, 
               notes, status, google_calendar_link, created_at
        FROM bookings 
-       ${searchConditions}
-       ORDER BY date ASC, start_time ASC
+       WHERE ${whereClause}
+       ${orderBy}
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     
-    
     const bookingsResult = await db.query(finalQuery, queryParams);
-    
     const bookings = bookingsResult.rows;
     
     // Pagination info
@@ -168,7 +193,7 @@ router.get('/bookings', requireLogin, async (req, res) => {
       searchTerm: searchTerm
     };
     
-    res.render('bookings', { user, bookings, pagination });
+    res.render('bookings', { user, bookings, pagination, filter, searchTerm });
   } catch (error) {
     res.status(500).render('error', { message: 'Failed to load bookings' });
   }
@@ -320,18 +345,13 @@ router.get('/settings', requireLogin, async (req, res) => {
 // API routes for root level
 router.get('/bookings/api', requireLogin, async (req, res) => {
   try {
-    
-        // Use Manila timezone for date filtering
-        const now = new Date();
-        const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-        const today = manilaTime.toISOString().split('T')[0]; // Get YYYY-MM-DD format
-        
+        // Get all bookings (including past) for the calendar
         const bookingsResult = await db.query(
           `SELECT id, client_name, client_email, client_phone, date, start_time, end_time, notes, status
            FROM bookings 
-           WHERE user_id = $1 AND date >= $2::date
+           WHERE user_id = $1
            ORDER BY date ASC, start_time ASC`,
-          [req.session.userId, today]
+          [req.session.userId]
         );
     
     
