@@ -174,12 +174,19 @@ router.get('/:username/:duration/slots', async (req, res) => {
         // Get day of week in UTC (0-6, where 0 is Sunday)
         const dayOfWeek = requestedDate.getUTCDay();
 
-        // Get availability for the day
-        const availabilityResult = await db.query(
-            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
-            [userId, dayOfWeek]
+        // Get availability for the day - check date-specific first, then fall back to day-of-week
+        let availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+            [userId, date]
         );
 
+        // If no date-specific availability, fall back to day-of-week
+        if (availabilityResult.rows.length === 0) {
+            availabilityResult = await db.query(
+                'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+                [userId, dayOfWeek]
+            );
+        }
 
         if (availabilityResult.rows.length === 0) {
             return res.json({ slots: [] });
@@ -738,12 +745,19 @@ router.get('/:username/availability', async (req, res) => {
         const dayOfWeek = utcDate.getUTCDay();
         
         
-        // Get user's availability for this day
-        const availabilityResult = await db.query(
-            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
-            [userId, dayOfWeek]
+        // Get user's availability for this day - check date-specific first, then fall back to day-of-week
+        let availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+            [userId, date]
         );
 
+        // If no date-specific availability, fall back to day-of-week
+        if (availabilityResult.rows.length === 0) {
+            availabilityResult = await db.query(
+                'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+                [userId, dayOfWeek]
+            );
+        }
 
         // If no availability set for this day
         if (!availabilityResult.rows || availabilityResult.rows.length === 0) {
@@ -808,10 +822,19 @@ router.post('/:username', async (req, res) => {
 
 
     // Verify this time slot is actually available (check all blocks for the day)
-    const availabilityResult = await db.query(
-        'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
-        [userId, dayOfWeek]
+    // Check date-specific first, then fall back to day-of-week
+    let availabilityResult = await db.query(
+        'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+        [userId, date]
     );
+
+    // If no date-specific availability, fall back to day-of-week
+    if (availabilityResult.rows.length === 0) {
+        availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+            [userId, dayOfWeek]
+        );
+    }
 
     if (availabilityResult.rows.length === 0) {
         return res.status(400).json({ error: 'This time slot is not available' });
@@ -1102,12 +1125,19 @@ router.get('/:username/slots', async (req, res) => {
         // Get day of week in UTC (0-6, where 0 is Sunday)
         const dayOfWeek = requestedDate.getUTCDay();
 
-        // Get availability for the day
-        const availabilityResult = await db.query(
-            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2',
-            [userId, dayOfWeek]
+        // Get availability for the day - check date-specific first, then fall back to day-of-week
+        let availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+            [userId, date]
         );
 
+        // If no date-specific availability, fall back to day-of-week
+        if (availabilityResult.rows.length === 0) {
+            availabilityResult = await db.query(
+                'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+                [userId, dayOfWeek]
+            );
+        }
 
         if (availabilityResult.rows.length === 0) {
             return res.json({ slots: [] });

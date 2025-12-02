@@ -51,14 +51,15 @@ const toast = {
             toastElement.style.opacity = '1';
         });
 
-        // Auto remove after 5 seconds
+        // Auto remove after duration (longer for errors)
+        const duration = type === 'error' ? 10000 : 5000; // 10 seconds for errors, 5 for success
         setTimeout(() => {
             if (toastElement.parentElement) {
                 toastElement.style.opacity = '0';
                 toastElement.style.transform = 'translateX(100%)';
                 setTimeout(() => toastElement.remove(), 300);
             }
-        }, 5000);
+        }, duration);
     }
 };
 

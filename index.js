@@ -129,7 +129,8 @@ app.use((err, req, res, next) => {
 });
 
 // Start background jobs
-reminderJob.start();
+// Reminder job disabled for now
+// reminderJob.start();
 
 // Export for Railway
 module.exports = app;

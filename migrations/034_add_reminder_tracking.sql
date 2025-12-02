@@ -7,3 +7,5 @@ ADD COLUMN IF NOT EXISTS host_reminder_30_sent BOOLEAN DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_bookings_reminder_status ON bookings(client_reminder_30_sent, host_reminder_30_sent) 
 WHERE client_reminder_30_sent = FALSE OR host_reminder_30_sent = FALSE;
 
+
+

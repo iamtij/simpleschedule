@@ -16,3 +16,5 @@ CREATE TABLE IF NOT EXISTS meeting_durations (
 CREATE INDEX IF NOT EXISTS idx_meeting_durations_user_id ON meeting_durations(user_id);
 CREATE INDEX IF NOT EXISTS idx_meeting_durations_active ON meeting_durations(user_id, is_active) WHERE is_active = TRUE;
 
+
+

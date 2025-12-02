@@ -256,6 +256,12 @@ router.get('/settings', requireLogin, async (req, res) => {
       [req.session.userId]
     );
 
+    // Get date-specific availability
+    const dateAvailabilityResult = await db.query(
+      'SELECT id, date, start_time, end_time FROM date_availability WHERE user_id = $1 ORDER BY date, start_time',
+      [req.session.userId]
+    );
+
     // Format the availability data - group by day
     const workingDays = [...new Set(availabilityResult.rows.map(row => row.day_of_week))];
     const availabilityData = {};
@@ -273,6 +279,26 @@ router.get('/settings', requireLogin, async (req, res) => {
       }
     });
 
+    // Format date availability data
+    // Use string formatting to avoid timezone conversion issues
+    const dateAvailabilityBlocks = dateAvailabilityResult.rows.map(row => {
+      // Format date as YYYY-MM-DD without timezone conversion
+      const dateObj = row.date instanceof Date ? row.date : new Date(row.date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      return {
+        id: row.id,
+        date: dateStr,
+        start_time: row.start_time,
+        end_time: row.end_time
+      };
+    });
+    
+    console.log('Loaded date availability blocks for user:', req.session.userId, 'Count:', dateAvailabilityBlocks.length);
+
     const availabilitySettings = {
       working_days: workingDays,
       availability_blocks: availabilityBlocks,
@@ -281,6 +307,7 @@ router.get('/settings', requireLogin, async (req, res) => {
       break_start: breaksResult.rows[0]?.start_time || '12:00',
       break_end: breaksResult.rows[0]?.end_time || '13:00',
       meeting_durations: durationsResult.rows,
+      date_availability_blocks: dateAvailabilityBlocks,
       ...availabilityData
     };
 
@@ -695,8 +722,8 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
 
       await db.query('COMMIT');
       
-      // Redirect back to settings page with success message
-      res.redirect('/settings?success=availability_saved');
+      // Redirect back to settings page with success message and hash to keep availability section open
+      res.redirect('/settings?success=availability_saved#availability');
       
     } catch (error) {
       await db.query('ROLLBACK');
@@ -709,6 +736,233 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
       success: false, 
       error: 'Failed to update availability' 
     });
+  }
+});
+
+// GET /settings/date-availability - Load date-specific availability settings
+// IMPORTANT: This route must be defined BEFORE any catch-all /settings routes
+router.get('/settings/date-availability', requireLogin, async (req, res) => {
+  console.log('=== DATE AVAILABILITY GET ROUTE HIT ===');
+  console.log('Request URL:', req.url);
+  console.log('User ID:', req.session.userId);
+  
+  try {
+    const userId = req.session.userId;
+    
+    if (!userId) {
+      console.error('No user ID in session');
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    // Get all date-specific availability
+    const dateAvailabilityResult = await db.query(
+      'SELECT id, date, start_time, end_time FROM date_availability WHERE user_id = $1 ORDER BY date, start_time',
+      [userId]
+    );
+
+    // Group by date for easier frontend consumption
+    // Format dates without timezone conversion to avoid day shift
+    const formatDate = (dateValue) => {
+      const dateObj = dateValue instanceof Date ? dateValue : new Date(dateValue);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const dateAvailability = {};
+    dateAvailabilityResult.rows.forEach(row => {
+      const dateStr = formatDate(row.date);
+      if (!dateAvailability[dateStr]) {
+        dateAvailability[dateStr] = [];
+      }
+      dateAvailability[dateStr].push({
+        id: row.id,
+        start_time: row.start_time,
+        end_time: row.end_time
+      });
+    });
+
+    const response = {
+      success: true,
+      date_availability: dateAvailability,
+      date_availability_blocks: dateAvailabilityResult.rows.map(row => ({
+        id: row.id,
+        date: formatDate(row.date),
+        start_time: row.start_time,
+        end_time: row.end_time
+      }))
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error loading date availability settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to load date availability settings' });
+  }
+});
+
+// POST /settings/date-availability - Save date-specific availability settings
+// IMPORTANT: This route must be defined BEFORE any catch-all /settings routes
+router.post('/settings/date-availability', requireLogin, async (req, res) => {
+  console.log('=== DATE AVAILABILITY POST ROUTE HIT ===');
+  console.log('Request URL:', req.url);
+  console.log('Request method:', req.method);
+  console.log('User ID:', req.session.userId);
+  
+  try {
+    const userId = req.session.userId;
+    
+    if (!userId) {
+      console.error('No user ID in session');
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
+    console.log('Date availability request body:', JSON.stringify(req.body, null, 2));
+    
+    // Start a transaction
+    await db.query('BEGIN');
+
+    try {
+      // Parse date availability blocks
+      // Expected format: date_blocks = { "2024-01-15": [{ start: "09:00", end: "12:00" }, ...], ... }
+      // Or flat format: date_blocks[2024-01-15][0][start], date_blocks[2024-01-15][0][end], etc.
+      
+      const blocksToInsert = [];
+      const dateBlocks = req.body.date_blocks || {};
+      
+      // Handle object format (grouped by date)
+      if (typeof dateBlocks === 'object' && !Array.isArray(dateBlocks)) {
+        Object.keys(dateBlocks).forEach(dateStr => {
+          const blocks = dateBlocks[dateStr];
+          if (Array.isArray(blocks)) {
+            blocks.forEach(block => {
+              if (block && block.start && block.end) {
+                blocksToInsert.push({
+                  date: dateStr,
+                  start: block.start,
+                  end: block.end
+                });
+              }
+            });
+          } else if (typeof blocks === 'object') {
+            Object.keys(blocks).forEach(blockIndex => {
+              const block = blocks[blockIndex];
+              if (block && block.start && block.end) {
+                blocksToInsert.push({
+                  date: dateStr,
+                  start: block.start,
+                  end: block.end
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      // Handle flat format: date_blocks[2024-01-15][0][start], etc.
+      Object.keys(req.body).forEach(key => {
+        if (key.startsWith('date_blocks[') && key.includes('][') && key.includes('][start]')) {
+          // Extract date and block index from key like "date_blocks[2024-01-15][0][start]"
+          const match = key.match(/date_blocks\[([^\]]+)\]\[(\d+)\]\[start\]/);
+          if (match) {
+            const dateStr = match[1];
+            const blockIndex = match[2];
+            const endKey = `date_blocks[${dateStr}][${blockIndex}][end]`;
+            
+            if (req.body[endKey]) {
+              blocksToInsert.push({
+                date: dateStr,
+                start: req.body[key],
+                end: req.body[endKey]
+              });
+            }
+          }
+        }
+      });
+
+      // If specific dates to delete are provided, delete them first
+      if (req.body.delete_dates && Array.isArray(req.body.delete_dates)) {
+        for (const dateStr of req.body.delete_dates) {
+          await db.query(
+            'DELETE FROM date_availability WHERE user_id = $1 AND date = $2',
+            [userId, dateStr]
+          );
+        }
+      }
+
+      // If specific IDs to delete are provided, delete them first
+      if (req.body.delete_ids && Array.isArray(req.body.delete_ids)) {
+        for (const id of req.body.delete_ids) {
+          await db.query(
+            'DELETE FROM date_availability WHERE user_id = $1 AND id = $2',
+            [userId, id]
+          );
+        }
+      }
+
+      // If replace_all is true, clear all existing date availability for this user
+      // Check for both boolean true and string 'true'
+      const replaceAll = req.body.replace_all === true || req.body.replace_all === 'true';
+      console.log('replace_all value:', req.body.replace_all, 'type:', typeof req.body.replace_all, 'evaluated to:', replaceAll);
+      
+      if (replaceAll) {
+        console.log('=== DELETING ALL EXISTING DATE AVAILABILITY (replace_all=true) ===');
+        const deleteResult = await db.query('DELETE FROM date_availability WHERE user_id = $1', [userId]);
+        console.log(`✅ Deleted ${deleteResult.rowCount} existing date availability entries`);
+        
+        // Verify deletion
+        const verifyResult = await db.query('SELECT COUNT(*) as count FROM date_availability WHERE user_id = $1', [userId]);
+        console.log(`✅ Verification: ${verifyResult.rows[0].count} entries remaining for user ${userId}`);
+      } else {
+        console.log('⚠️ replace_all is NOT true, skipping deletion of existing entries');
+      }
+
+      // Insert new blocks
+      console.log('=== INSERTING NEW DATE AVAILABILITY BLOCKS ===');
+      console.log('Number of blocks to insert:', blocksToInsert.length);
+      console.log('Dates to insert:', [...new Set(blocksToInsert.map(b => b.date))]);
+      
+      if (blocksToInsert.length === 0) {
+        console.log('No blocks to insert, but replace_all was true, so all existing entries were deleted');
+      }
+      
+      for (const block of blocksToInsert) {
+        console.log('Inserting block:', block);
+        const result = await db.query(
+          'INSERT INTO date_availability (user_id, date, start_time, end_time) VALUES ($1, $2, $3, $4) RETURNING id, date, start_time, end_time',
+          [userId, block.date, block.start, block.end]
+        );
+        console.log('Inserted block:', result.rows[0]);
+      }
+      
+      console.log(`=== SAVE COMPLETE: Inserted ${blocksToInsert.length} blocks ===`);
+
+      await db.query('COMMIT');
+      
+      console.log('✅ Date availability saved successfully for user:', userId);
+      console.log('✅ Total blocks inserted:', blocksToInsert.length);
+      console.log('✅ Transaction COMMITTED');
+
+      // Verify final state
+      const finalCheck = await db.query('SELECT date, start_time, end_time FROM date_availability WHERE user_id = $1 ORDER BY date', [userId]);
+      console.log('✅ Final state - Date availability entries in database:', finalCheck.rows.length);
+      finalCheck.rows.forEach(row => {
+        console.log(`  - ${row.date}: ${row.start_time} - ${row.end_time}`);
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Date availability saved successfully',
+        blocks_inserted: blocksToInsert.length,
+        entries_deleted: replaceAll ? 'all' : 0
+      });
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error saving date availability settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to save date availability settings' });
   }
 });
 
