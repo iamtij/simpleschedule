@@ -51,7 +51,6 @@ router.get('/email/:email', async (req, res) => {
             result
         });
     } catch (error) {
-        console.error('Test email failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to send test email',
@@ -72,7 +71,6 @@ router.get('/reminder/client/:email', async (req, res) => {
             result
         });
     } catch (error) {
-        console.error('Client reminder failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to send client reminder',
@@ -93,7 +91,6 @@ router.get('/reminder/host/:email', async (req, res) => {
             result
         });
     } catch (error) {
-        console.error('Host reminder failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to send host reminder',

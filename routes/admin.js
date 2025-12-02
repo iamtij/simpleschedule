@@ -50,7 +50,6 @@ router.get('/', requireAdmin, async (req, res) => {
             path: '/admin'
         });
     } catch (error) {
-        console.error('Admin dashboard error:', error);
         res.status(500).send('Server error');
     }
 });
@@ -105,7 +104,6 @@ router.get('/users/data', requireAdmin, async (req, res) => {
         );
         res.json({ users: users.rows, total: parseInt(total.rows[0].count, 10) });
     } catch (error) {
-        console.error('Error fetching users:', error);
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
@@ -130,7 +128,6 @@ router.get('/users/:userId', requireAdmin, async (req, res) => {
 
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Error fetching user details:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -143,7 +140,6 @@ router.patch('/users/:userId/status', requireAdmin, async (req, res) => {
         await db.query('UPDATE users SET status = $1 WHERE id = $2', [status, userId]);
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating user status:', error);
         res.status(500).json({ error: 'Failed to update user status' });
     }
 });
@@ -156,7 +152,6 @@ router.patch('/users/:userId/admin', requireAdmin, async (req, res) => {
         await db.query('UPDATE users SET is_admin = $1 WHERE id = $2', [is_admin, userId]);
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating admin status:', error);
         res.status(500).json({ error: 'Failed to update admin status' });
     }
 });
@@ -187,7 +182,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
             users: userStats.rows
         });
     } catch (error) {
-        console.error('Error fetching stats:', error);
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
@@ -205,7 +199,6 @@ router.get('/users/:userId/bookings', requireAdmin, async (req, res) => {
 
         res.json(result.rows);
     } catch (error) {
-        console.error('Error fetching user bookings:', error);
         res.status(500).json({ error: 'Failed to fetch user bookings' });
     }
 });
@@ -238,7 +231,6 @@ router.get('/coupons', async (req, res) => {
             path: '/admin/coupons'
         });
     } catch (error) {
-        console.error('Error fetching coupons:', error);
         res.status(500).json({ error: 'Failed to fetch coupons' });
     }
 });
@@ -255,7 +247,6 @@ router.post('/coupons', async (req, res) => {
         });
         res.json(coupon);
     } catch (error) {
-        console.error('Error creating coupon:', error);
         res.status(500).json({ error: 'Failed to create coupon' });
     }
 });
@@ -273,7 +264,6 @@ router.put('/coupons/:id', async (req, res) => {
         const coupon = await Coupon.update(id, updates);
         res.json(coupon);
     } catch (error) {
-        console.error('Error updating coupon:', error);
         res.status(500).json({ error: 'Failed to update coupon' });
     }
 });
@@ -284,7 +274,6 @@ router.delete('/coupons/:id', async (req, res) => {
         await Coupon.delete(id);
         res.json({ success: true });
     } catch (error) {
-        console.error('Error deleting coupon:', error);
         res.status(500).json({ error: 'Failed to delete coupon' });
     }
 });
@@ -326,7 +315,6 @@ router.get('/coupons/:id/usage', async (req, res) => {
             path: '/admin/coupons'
         });
     } catch (error) {
-        console.error('Error fetching coupon usage:', error);
         res.status(500).send('Server error');
     }
 });
@@ -359,7 +347,6 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
             status: result.rows[0].status ? 'active' : 'inactive'
         });
     } catch (error) {
-        console.error('Error updating user:', error);
         res.status(500).json({ error: 'Failed to update user' });
     }
 });
@@ -397,7 +384,6 @@ router.delete('/users/:userId', requireAdmin, async (req, res) => {
     } catch (error) {
         // Rollback in case of error
         await db.query('ROLLBACK');
-        console.error('Error deleting user:', error);
         res.status(500).json({ error: 'Failed to delete user' });
     }
 });

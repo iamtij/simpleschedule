@@ -38,7 +38,6 @@ class GoogleSheetsService {
 
             return google.sheets({ version: 'v4', auth: oauth2Client });
         } catch (error) {
-            console.error('Error getting sheets service:', error);
             throw new Error('Failed to connect to Google Sheets');
         }
     }
@@ -117,7 +116,6 @@ class GoogleSheetsService {
                 spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`
             };
         } catch (error) {
-            console.error('Error creating Google Sheet:', error);
             throw new Error('Failed to create Google Sheet');
         }
     }
@@ -146,7 +144,6 @@ class GoogleSheetsService {
                     };
                 } catch (error) {
                     // Sheet doesn't exist or user lost access, create a new one
-                    console.log('Existing sheet not accessible, creating new one');
                     return await this.createSheetForUser(userId);
                 }
             }
@@ -154,7 +151,6 @@ class GoogleSheetsService {
             // No sheet exists, create a new one
             return await this.createSheetForUser(userId);
         } catch (error) {
-            console.error('Error getting or creating sheet:', error);
             throw error;
         }
     }
@@ -370,7 +366,6 @@ class GoogleSheetsService {
                 spreadsheetUrl: sheetInfo.spreadsheetUrl
             };
         } catch (error) {
-            console.error('Error exporting contacts:', error);
             throw new Error('Failed to export contacts to Google Sheets');
         }
     }
@@ -437,7 +432,6 @@ class GoogleSheetsService {
                 spreadsheetUrl: sheetInfo.spreadsheetUrl
             };
         } catch (error) {
-            console.error('Error exporting interactions:', error);
             throw new Error('Failed to export interactions to Google Sheets');
         }
     }
@@ -457,7 +451,6 @@ class GoogleSheetsService {
                 spreadsheetUrl: contactsResult.spreadsheetUrl
             };
         } catch (error) {
-            console.error('Error exporting all CRM data:', error);
             throw error;
         }
     }
@@ -497,19 +490,11 @@ class GoogleSheetsService {
                             spreadsheetId: 'test_scope_check_12345'
                         });
                         hasSheetsAccess = true; // Shouldn't reach here, but if we do, scope is good
-                        console.log('Sheets API test: Got unexpected success');
                     } catch (apiError) {
-                        console.log('Sheets API test error:', {
-                            code: apiError.code,
-                            message: apiError.message,
-                            errors: apiError.errors
-                        });
-                        
                         // Check the error type
                         if (apiError.code === 404) {
                             // 404 means API is accessible, just sheet doesn't exist - scope is good!
                             hasSheetsAccess = true;
-                            console.log('Sheets API test: Got 404 - API is accessible');
                         } else if (apiError.code === 403) {
                             // Check if it's a scope error
                             const errorMessage = apiError.message || '';
@@ -521,29 +506,24 @@ class GoogleSheetsService {
                                 fullError.includes('insufficient authentication')) {
                                 hasSheetsAccess = false;
                                 sheetsAccessError = 'Sheets API scope not granted';
-                                console.log('Sheets API test: Scope not granted');
                             } else if (fullError.includes('api has not been used') || 
                                       fullError.includes('api not enabled') ||
                                       fullError.includes('service is not enabled') ||
                                       fullError.includes('sheets api has not been used')) {
                                 hasSheetsAccess = false;
                                 sheetsAccessError = 'Google Sheets API not enabled in Google Cloud Console';
-                                console.log('Sheets API test: API not enabled');
                             } else {
                                 // Other 403 errors might be permission issues, but scope is there
                                 hasSheetsAccess = true;
-                                console.log('Sheets API test: Got 403 but assuming scope is available');
                             }
                         } else {
                             // Other errors - assume scope is available
                             hasSheetsAccess = true;
-                            console.log('Sheets API test: Got other error, assuming scope available');
                         }
                     }
                 } catch (serviceError) {
                     // If we can't even create the service, check the error
                     const errorMessage = serviceError.message || '';
-                    console.log('Sheets service creation error:', errorMessage);
                     if (errorMessage.includes('scope') || errorMessage.includes('permission')) {
                         hasSheetsAccess = false;
                         sheetsAccessError = 'Sheets API scope not granted';
@@ -565,7 +545,6 @@ class GoogleSheetsService {
                     spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${user.google_sheet_id}`;
                 } catch (error) {
                     // Sheet not accessible
-                    console.log('Sheet not accessible:', error);
                 }
             }
 
@@ -578,7 +557,6 @@ class GoogleSheetsService {
                 sheetsAccessError
             };
         } catch (error) {
-            console.error('Error getting Google Sheets status:', error);
             return {
                 enabled: false,
                 hasSheetId: false,
@@ -601,7 +579,6 @@ class GoogleSheetsService {
             );
             return true;
         } catch (error) {
-            console.error('Error disconnecting Google Sheets:', error);
             throw new Error('Failed to disconnect Google Sheets integration');
         }
     }

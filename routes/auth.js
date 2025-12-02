@@ -178,9 +178,6 @@ router.post('/login', async (req, res) => {
 // Logout route
 router.get('/logout', (req, res) => {
   req.session.destroy((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-    }
     res.redirect('/');
   });
 });
@@ -225,7 +222,6 @@ router.post('/forgot-password', async (req, res) => {
         try {
             await mailService.sendPasswordResetEmail(email, resetToken);
         } catch (emailError) {
-            console.error('Failed to send password reset email:', emailError);
             // Continue anyway - token is saved, user can still reset if they have the link
         }
 
@@ -234,7 +230,6 @@ router.post('/forgot-password', async (req, res) => {
             success: 'Password reset instructions have been sent to your email'
         });
     } catch (error) {
-        console.error('Forgot password error:', error);
         res.render('forgot-password', { 
             error: 'An error occurred. Please try again.', 
             success: null 

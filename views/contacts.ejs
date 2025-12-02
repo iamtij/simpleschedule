@@ -392,10 +392,10 @@
                     renderContacts();
                     renderPagination();
                 } else {
-                    console.error('Failed to load contacts:', data.error);
+
                 }
             } catch (error) {
-                console.error('Error loading contacts:', error);
+
             }
         }
 
@@ -423,7 +423,7 @@
                     document.getElementById('follow-ups').textContent = data.stats.followUpsDue;
                 }
             } catch (error) {
-                console.error('Error loading stats:', error);
+
             }
         }
 
@@ -562,8 +562,6 @@
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             const dateStr = followUpDate.toLocaleDateString();
-            
-
 
             if (diffDays < 0) {
                 // Overdue
@@ -695,7 +693,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error adding contact:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -782,7 +780,6 @@
 
                     const diffTime = followUpDate.getTime() - today.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
 
                     switch (followUpFilter) {
                         case 'overdue':
@@ -884,7 +881,7 @@
         function deleteContact(id) {
             const contact = contacts.find(c => c.id === id);
             if (!contact) {
-                console.error('Contact not found');
+
                 return;
             }
             
@@ -927,7 +924,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error deleting contact:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',

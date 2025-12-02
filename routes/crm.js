@@ -123,7 +123,6 @@ router.get('/', requireLogin, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching contacts:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to fetch contacts'
@@ -171,7 +170,6 @@ router.post('/referrals', requireLogin, async (req, res) => {
             referral: result.rows[0]
         });
     } catch (error) {
-        console.error('Error adding referral:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to add referral'
@@ -213,7 +211,6 @@ router.put('/referrals/:referralId', requireLogin, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Error editing referral:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to edit referral'
@@ -250,7 +247,6 @@ router.delete('/referrals/:referralId', requireLogin, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Error deleting referral:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to delete referral'
@@ -310,7 +306,6 @@ router.get('/stats/dashboard', requireLogin, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching CRM stats:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to fetch CRM stats'
@@ -378,7 +373,6 @@ router.get('/:id', requireLogin, async (req, res) => {
             referralsReceived: referralsReceivedResult.rows
         });
     } catch (error) {
-        console.error('Error fetching contact:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to fetch contact'
@@ -443,7 +437,6 @@ router.post('/', requireLogin, async (req, res) => {
                     lastContactDate = bookingResult.rows[0].date;
                 }
             } catch (error) {
-                console.error('Error fetching booking date:', error);
                 // Continue without setting last_contact_date if there's an error
             }
         }
@@ -482,7 +475,6 @@ router.post('/', requireLogin, async (req, res) => {
                     ]
                 );
             } catch (interactionError) {
-                console.error('Error creating interaction:', interactionError);
                 // Don't fail the contact creation if interaction fails
             }
         } else {
@@ -509,7 +501,6 @@ router.post('/', requireLogin, async (req, res) => {
             }
         }
     } catch (error) {
-        console.error('Error creating contact:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to create contact'
@@ -567,7 +558,6 @@ router.put('/:id', requireLogin, async (req, res) => {
             contact: result.rows[0]
         });
     } catch (error) {
-        console.error('Error updating contact:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to update contact'
@@ -597,7 +587,6 @@ router.delete('/:id', requireLogin, async (req, res) => {
             message: 'Contact deleted successfully'
         });
     } catch (error) {
-        console.error('Error deleting contact:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to delete contact'
@@ -668,7 +657,6 @@ router.post('/:id/interactions', requireLogin, async (req, res) => {
             interaction: result.rows[0]
         });
     } catch (error) {
-        console.error('Error adding interaction:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to add interaction'
@@ -727,7 +715,6 @@ router.put('/:contactId/interactions/:interactionId/mark-done', requireLogin, as
         });
         
     } catch (error) {
-        console.error('Error marking interaction as done:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to mark interaction as done'
@@ -808,7 +795,6 @@ router.put('/:contactId/interactions/:interactionId', requireLogin, async (req, 
         });
         
     } catch (error) {
-        console.error('Error editing interaction:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to edit interaction'
@@ -853,7 +839,6 @@ router.delete('/:contactId/interactions/:interactionId', requireLogin, async (re
         });
         
     } catch (error) {
-        console.error('Error deleting interaction:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to delete interaction'

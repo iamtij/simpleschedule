@@ -620,7 +620,6 @@
             loadDashboardData();
         });
 
-
         // Removed addTodayIndicator function - using standard FullCalendar highlighting
 
         function initializeCalendar() {
@@ -758,24 +757,21 @@
         function showBookingDetails(event) {
             currentBookingId = event.id;
             const details = event.extendedProps;
-            console.log('Event extended props:', details);
-            
+
             // Format date
             const date = new Date(event.start);
-            console.log('Event start date:', date);
+
             const formattedDate = date.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
-            console.log('Formatted date:', formattedDate);
 
             // Use the original time strings from extendedProps (already in correct timezone)
             const startTime = formatTimeShort(event.extendedProps.start_time);
             const endTime = formatTimeShort(event.extendedProps.end_time);
-            console.log('Formatted times:', { startTime, endTime });
-            
+
             try {
                 // Update modal content with new structure
                 document.getElementById('booking-details-id').value = event.id;
@@ -800,10 +796,13 @@
 
                 // Focus on notes textarea
                 setTimeout(() => {
-                    notesTextarea.focus();
+                    const notesTextarea = document.getElementById('booking-notes');
+                    if (notesTextarea) {
+                        notesTextarea.focus();
+                    }
                 }, 300);
             } catch (error) {
-                console.error('Error updating modal content:', error);
+
             }
         }
 
@@ -867,7 +866,7 @@
                 }
             })
             .catch(error => {
-                // console.error('Error updating booking:', error);
+                // ;
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -882,7 +881,6 @@
             document.body.style.overflow = ''; // Restore background scrolling
             currentBookingId = null;
         }
-
 
         function closeDeleteConfirmation() {
             const modal = document.getElementById('delete-confirmation-modal');
@@ -920,7 +918,7 @@
                 }
             })
             .catch(error => {
-                // console.error('Error deleting booking:', error);
+                // ;
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -990,7 +988,7 @@
                 }
             })
             .catch(error => {
-                // console.error('Error dismissing checklist:', error);
+                // ;
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -998,7 +996,6 @@
                 });
             });
         }
-
 
         // Function to show edit notes modal
         function showEditNotesModal(bookingId, notes) {
@@ -1017,42 +1014,45 @@
         }
 
         // Handle edit notes form submission
-        document.getElementById('edit-notes-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const bookingId = document.getElementById('edit-booking-id').value;
-            const notes = document.getElementById('edit-notes').value;
+        const editNotesForm = document.getElementById('edit-notes-form');
+        if (editNotesForm) {
+            editNotesForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const bookingId = document.getElementById('edit-booking-id').value;
+                const notes = document.getElementById('edit-notes').value;
 
-            fetch(`/bookings/${bookingId}/notes`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ notes })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    closeEditNotesModal();
-                    if (calendarInstance) {
-                        calendarInstance.refetchEvents();
+                fetch(`/bookings/${bookingId}/notes`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        closeEditNotesModal();
+                        if (calendarInstance) {
+                            calendarInstance.refetchEvents();
+                        }
+                        toast.show({
+                            type: 'success',
+                            title: 'Success',
+                            message: 'Notes updated successfully'
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to update notes');
                     }
+                })
+                .catch(error => {
                     toast.show({
-                        type: 'success',
-                        title: 'Success',
-                        message: 'Notes updated successfully'
+                        type: 'error',
+                        title: 'Error',
+                        message: error.message || 'Failed to update notes'
                     });
-                } else {
-                    throw new Error(data.error || 'Failed to update notes');
-                }
-            })
-            .catch(error => {
-                toast.show({
-                    type: 'error',
-                    title: 'Error',
-                    message: error.message || 'Failed to update notes'
                 });
             });
-        });
+        }
 
         // Add keyboard event listener to close modal with Escape key
         document.addEventListener('keydown', function(e) {
@@ -1073,8 +1073,6 @@
                 });
             }
         }
-
-
 
         // Update checklist item status
         function updateChecklistItem(itemType, completed) {
@@ -1135,10 +1133,10 @@
                     loadTodaysAppointments(result.data.todaysAppointments);
                     loadFollowUps(result.data.followUps);
                 } else {
-                    console.error('Failed to load dashboard data:', result.error);
+
                 }
             } catch (error) {
-                console.error('Error loading dashboard data:', error);
+
             }
         }
 
@@ -1224,8 +1222,7 @@
         function loadFollowUps(followUps) {
             const container = document.getElementById('follow-ups');
             const countElement = document.getElementById('followups-count');
-            
-            console.log('Follow-ups data:', followUps);
+
             countElement.textContent = followUps.length;
             
             if (followUps.length === 0) {
@@ -1241,7 +1238,7 @@
             }
 
             const followUpsHTML = followUps.map(contact => {
-                console.log('Processing contact:', contact.name, 'Interaction Notes:', contact.interaction_notes);
+
                 const followUpDate = new Date(contact.next_follow_up);
                 const today = new Date();
                 const diffTime = followUpDate.getTime() - today.getTime();

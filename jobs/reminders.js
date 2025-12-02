@@ -46,7 +46,6 @@ function getTimezoneOffsetMinutes(timezoneId, referenceDate) {
     try {
         return timezone.getTimezoneOffset(timezoneId, referenceDate);
     } catch (error) {
-        console.error('[Booking Reminders] Failed to determine timezone offset:', error);
         return timezone.getTimezoneOffset(undefined, referenceDate); // fallback to default
     }
 }
@@ -105,7 +104,6 @@ async function checkReminderColumnsExist() {
         };
         return reminderColumnsCache;
     } catch (error) {
-        console.error('[Booking Reminders] Failed to check reminder columns:', error);
         reminderColumnsCache = { client_reminder_30_sent: false, host_reminder_30_sent: false };
         return reminderColumnsCache;
     }
@@ -250,7 +248,7 @@ async function processBooking(row) {
             }
         }
     } catch (error) {
-        console.error('[Booking Reminders] Failed to send reminder for booking', row.id, error);
+        // Failed to send reminder
     }
 }
 
@@ -265,7 +263,7 @@ async function runReminderSweep() {
         const candidates = await fetchCandidateBookings();
         await Promise.all(candidates.map((booking) => processBooking(booking)));
     } catch (error) {
-        console.error('[Booking Reminders] Reminder sweep failed:', error);
+        // Reminder sweep failed
     } finally {
         isRunning = false;
     }
@@ -273,7 +271,6 @@ async function runReminderSweep() {
 
 function start() {
     if (process.env.DISABLE_REMINDER_JOBS === 'true') {
-        console.log('[Booking Reminders] Reminder job disabled via environment variable.');
         return;
     }
 
@@ -282,12 +279,12 @@ function start() {
     }
 
     runReminderSweep().catch((error) => {
-        console.error('[Booking Reminders] Initial sweep failed:', error);
+        // Initial sweep failed
     });
 
     intervalRef = setInterval(() => {
         runReminderSweep().catch((error) => {
-            console.error('[Booking Reminders] Scheduled sweep failed:', error);
+            // Scheduled sweep failed
         });
     }, CHECK_INTERVAL_MS);
 }

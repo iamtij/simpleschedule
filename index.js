@@ -69,7 +69,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // Add error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
     res.status(500).json({
         error: config.env === 'production' ? 'Internal server error' : err.message
     });
@@ -120,7 +119,6 @@ app.use((req, res) => {
 
 // Handle errors
 app.use((err, req, res, next) => {
-    console.error(err.stack);
     res.status(500).render('error', { 
         message: config.env === 'production' 
             ? 'Something went wrong!' 
@@ -138,4 +136,3 @@ module.exports = app;
 // Start server
 const port = process.env.PORT || config.port;
 app.listen(port, '0.0.0.0');
-    // console.log(`Server is running in ${config.env} mode on port ${port}`); 

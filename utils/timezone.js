@@ -89,7 +89,6 @@ function formatDateForDisplay(date, timezone = DEFAULT_TIMEZONE) {
             day: '2-digit'
         });
     } catch (error) {
-        console.error('Error formatting date:', error);
         // Fallback to simple date extraction
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -116,7 +115,6 @@ function formatTimeForDisplay(date, timezone = DEFAULT_TIMEZONE) {
             minute: '2-digit'
         });
     } catch (error) {
-        console.error('Error formatting time:', error);
         // Fallback
         const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
@@ -144,7 +142,6 @@ function createDateFromDateTime(dateStr, timeStr, timezone = DEFAULT_TIMEZONE) {
         
         return new Date(isoString);
     } catch (error) {
-        console.error('Error creating date from date/time:', error);
         return null;
     }
 }
@@ -158,7 +155,6 @@ function getCurrentTime(timezone = DEFAULT_TIMEZONE) {
     try {
         return new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
     } catch (error) {
-        console.error('Error getting current time:', error);
         return new Date();
     }
 }
@@ -182,7 +178,6 @@ function isDateInPast(dateStr, timezone = DEFAULT_TIMEZONE) {
         
         return targetDate < today;
     } catch (error) {
-        console.error('Error checking if date is in past:', error);
         return true;
     }
 }
@@ -201,7 +196,6 @@ function getDayOfWeek(dateStr, timezone = DEFAULT_TIMEZONE) {
         const date = new Date(Date.UTC(year, month - 1, day));
         return date.getUTCDay();
     } catch (error) {
-        console.error('Error getting day of week:', error);
         return 0;
     }
 }
@@ -218,7 +212,6 @@ function timeToMinutes(timeStr) {
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     } catch (error) {
-        console.error('Error converting time to minutes:', error);
         return 0;
     }
 }
@@ -260,8 +253,6 @@ function getTimezoneOffset(timezone = DEFAULT_TIMEZONE, referenceDate = new Date
 
         return (tzDate.getTime() - utcDate.getTime()) / (1000 * 60);
     } catch (error) {
-        console.error('Error getting timezone offset:', error);
-
         if (resolvedTimezone !== DEFAULT_TIMEZONE) {
             return getTimezoneOffset(DEFAULT_TIMEZONE, referenceDate);
         }

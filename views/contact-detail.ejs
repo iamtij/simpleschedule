@@ -733,7 +733,7 @@
                     showErrorState();
                 }
             } catch (error) {
-                console.error('Error loading contact:', error);
+
                 showErrorState();
             }
         }
@@ -1256,7 +1256,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error updating contact:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1299,7 +1299,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error adding interaction:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1352,7 +1352,7 @@
                     showContactDropdown(contacts);
                 }
             } catch (error) {
-                console.error('Error searching contacts:', error);
+
                 hideContactDropdown();
             }
         }
@@ -1418,7 +1418,6 @@
                 document.getElementById('giver-contact-search').required = true;
             }
         }
-
 
         // Handle add referral form submission
         async function handleAddReferral(e) {
@@ -1499,7 +1498,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error adding referral:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1536,7 +1535,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error marking interaction as done:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1640,7 +1639,7 @@
                 document.getElementById('edit-interaction-modal').classList.remove('hidden');
                 
             } catch (error) {
-                console.error('Error loading interaction for edit:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1691,7 +1690,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error deleting interaction:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1740,7 +1739,7 @@
                 document.getElementById('edit-referral-modal').classList.remove('hidden');
                 
             } catch (error) {
-                console.error('Error loading referral:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1770,7 +1769,7 @@
                 const data = await response.json();
                 return data.interactions || [];
             } catch (error) {
-                console.error('Error fetching interactions:', error);
+
                 return [];
             }
         }
@@ -1833,7 +1832,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error updating interaction:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1893,7 +1892,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error updating referral:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -1935,7 +1934,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error deleting referral:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',

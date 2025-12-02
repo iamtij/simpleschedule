@@ -23,7 +23,7 @@ async function resetPassword() {
         );
 
     } catch (err) {
-        console.error('Error resetting password:', err);
+        // Error resetting password
     } finally {
         await pool.end();
     }

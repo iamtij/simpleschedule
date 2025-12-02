@@ -21,7 +21,6 @@ const pool = new Pool({
 
 // Add error handler
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
     process.exit(-1);  // Exit on pool error in production
 });
 
@@ -34,14 +33,8 @@ const db = {
             const res = await client.query(text, params);
             const duration = Date.now() - start;
             
-            // Log slow queries in production
-            if (duration > 1000) { // Log queries taking more than 1 second
-                console.warn('Slow query:', { text, duration, rows: res.rowCount });
-            }
-            
             return res;
         } catch (err) {
-            console.error('Database query error:', err.message, { text, params });
             throw err;
         } finally {
             client.release();
@@ -51,6 +44,5 @@ const db = {
     pool: pool  // Export the pool instance
 };
 
-// console.log(`PostgreSQL pool initialized for ${config.env} environment with max ${pool.options.max} connections`);
 
 module.exports = db; 

@@ -37,7 +37,6 @@ router.get('/auth/google', requireLogin, async (req, res) => {
         
         res.redirect(finalAuthUrl);
     } catch (error) {
-        console.error('Error initiating Google auth:', error);
         res.redirect('/dashboard/settings?error=auth_init_failed');
     }
 });
@@ -51,18 +50,11 @@ router.get('/auth/google/callback', async (req, res) => {
         const { code, state } = req.query;
         const db = require('../db');
         
-        console.log('Google OAuth callback received:', { 
-            hasCode: !!code, 
-            hasState: !!state
-        });
-        
         if (!code) {
-            console.error('Authorization was denied or failed');
             return res.redirect('/dashboard/settings?error=auth_denied');
         }
         
         if (!state) {
-            console.error('No state parameter received');
             return res.redirect('/dashboard/settings?error=invalid_state');
         }
         
@@ -73,7 +65,6 @@ router.get('/auth/google/callback', async (req, res) => {
         );
         
         if (stateResult.rows.length === 0) {
-            console.error('Invalid or expired state token:', state);
             return res.redirect('/dashboard/settings?error=invalid_state');
         }
         
@@ -81,13 +72,11 @@ router.get('/auth/google/callback', async (req, res) => {
         
         // Check if state is expired
         if (new Date() > new Date(stateData.expires_at)) {
-            console.error('State token expired:', state);
             return res.redirect('/dashboard/settings?error=state_expired');
         }
         
         // Check if state was already used
         if (stateData.used) {
-            console.error('State token already used:', state);
             return res.redirect('/dashboard/settings?error=state_used');
         }
         
@@ -109,7 +98,6 @@ router.get('/auth/google/callback', async (req, res) => {
         res.redirect('/dashboard/settings?success=google_connected');
         
     } catch (error) {
-        console.error('Error in Google callback:', error);
         res.redirect('/dashboard/settings?error=connection_failed');
     }
 });
@@ -138,7 +126,6 @@ router.post('/dashboard/google-calendar/connect', requireLogin, async (req, res)
             authUrl: authUrl + `&state=${stateToken}`
         });
     } catch (error) {
-        console.error('Error getting auth URL:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to initiate Google Calendar connection'
@@ -159,7 +146,6 @@ router.post('/dashboard/google-calendar/disconnect', requireLogin, async (req, r
             message: 'Google Calendar disconnected successfully'
         });
     } catch (error) {
-        console.error('Error disconnecting Google Calendar:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to disconnect Google Calendar'
@@ -180,7 +166,6 @@ router.get('/dashboard/google-calendar/status', requireLogin, async (req, res) =
             hasValidToken: !!tokens && !!tokens.google_access_token
         });
     } catch (error) {
-        console.error('Error getting Google Calendar status:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get Google Calendar status'
@@ -220,7 +205,6 @@ router.get('/dashboard/google-calendar/events', requireLogin, async (req, res) =
             }))
         });
     } catch (error) {
-        console.error('Error fetching calendar events:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to fetch calendar events'
@@ -254,7 +238,6 @@ router.post('/dashboard/google-calendar/check-availability', requireLogin, async
             available: isAvailable
         });
     } catch (error) {
-        console.error('Error checking availability:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to check calendar availability'
@@ -318,7 +301,6 @@ router.post('/booking/:username/check-conflicts', async (req, res) => {
             googleSyncEnabled: true
         });
     } catch (error) {
-        console.error('Error checking booking conflicts:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to check calendar conflicts'
@@ -354,7 +336,6 @@ router.post('/booking/:username/check-conflicts', async (req, res) => {
 
             res.json({ success: true, calendars: availableCalendars });
         } catch (error) {
-            console.error('Error fetching Google Calendar list:', error);
             res.status(500).json({ success: false, error: error.message });
         }
     });
@@ -378,7 +359,6 @@ router.post('/dashboard/google-calendar/select', requireLogin, async (req, res) 
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating Google Calendar selection:', error);
         res.status(500).json({ success: false, error: 'Failed to update calendar selection' });
     }
 });
@@ -398,7 +378,6 @@ router.get('/dashboard/google-calendar/selected', requireLogin, async (req, res)
         const selectedCalendarId = result.rows[0]?.google_calendar_id || 'primary';
         res.json({ success: true, calendarId: selectedCalendarId });
     } catch (error) {
-        console.error('Error fetching selected Google Calendar:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch selected calendar' });
     }
 });
@@ -418,7 +397,6 @@ router.get('/dashboard/google-calendar/blocking-setting', requireLogin, async (r
         const blockingEnabled = result.rows[0]?.google_calendar_blocking_enabled ?? true;
         res.json({ success: true, blockingEnabled });
     } catch (error) {
-        console.error('Error fetching Google Calendar blocking setting:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch blocking setting' });
     }
 });
@@ -442,7 +420,6 @@ router.post('/dashboard/google-calendar/update-blocking', requireLogin, async (r
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating Google Calendar blocking setting:', error);
         res.status(500).json({ success: false, error: 'Failed to update blocking setting' });
     }
 });
@@ -471,7 +448,6 @@ router.post('/dashboard/google-sheets/create', requireLogin, async (req, res) =>
             message: 'Google Sheet created successfully'
         });
     } catch (error) {
-        console.error('Error creating Google Sheet:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to create Google Sheet'
@@ -504,7 +480,6 @@ router.post('/dashboard/google-sheets/export', requireLogin, async (req, res) =>
             message: `Exported ${result.contacts} contacts and ${result.interactions} interactions to Google Sheets`
         });
     } catch (error) {
-        console.error('Error exporting to Google Sheets:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to export CRM data to Google Sheets'
@@ -520,19 +495,11 @@ router.get('/dashboard/google-sheets/status', requireLogin, async (req, res) => 
     try {
         const status = await googleSheetsService.getStatus(req.session.userId);
         
-        console.log('Google Sheets status check result:', {
-            hasGoogleConnection: status.hasGoogleConnection,
-            hasSheetsAccess: status.hasSheetsAccess,
-            hasSheetId: status.hasSheetId,
-            error: status.sheetsAccessError
-        });
-        
         res.json({
             success: true,
             ...status
         });
     } catch (error) {
-        console.error('Error getting Google Sheets status:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get Google Sheets status',
@@ -554,7 +521,6 @@ router.post('/dashboard/google-sheets/disconnect', requireLogin, async (req, res
             message: 'Google Sheets integration disconnected successfully'
         });
     } catch (error) {
-        console.error('Error disconnecting Google Sheets:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to disconnect Google Sheets integration'
@@ -630,7 +596,6 @@ router.get('/dashboard/google-sheets/test', requireLogin, async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error testing Google Sheets:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to test Google Sheets',

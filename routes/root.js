@@ -35,7 +35,6 @@ router.get('/dashboard', requireLogin, async (req, res) => {
       bookings: bookingsResult.rows || [] 
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
     return res.redirect('/');
   }
 });
@@ -87,7 +86,6 @@ router.get('/dashboard/data', requireLogin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch dashboard data'
@@ -172,7 +170,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
     
     res.render('bookings', { user, bookings, pagination });
   } catch (error) {
-    console.error('Bookings page error:', error);
     res.status(500).render('error', { message: 'Failed to load bookings' });
   }
 });
@@ -192,7 +189,6 @@ router.get('/contacts', requireLogin, async (req, res) => {
 
     res.render('contacts', { user });
   } catch (error) {
-    console.error('Contacts page error:', error);
     res.status(500).render('error', { message: 'Failed to load contacts' });
   }
 });
@@ -214,7 +210,6 @@ router.get('/contacts/:id', requireLogin, async (req, res) => {
 
     res.render('contact-detail', { user, contactId: id });
   } catch (error) {
-    console.error('Contact detail page error:', error);
     return res.redirect('/contacts');
   }
 });
@@ -296,8 +291,6 @@ router.get('/settings', requireLogin, async (req, res) => {
         end_time: row.end_time
       };
     });
-    
-    console.log('Loaded date availability blocks for user:', req.session.userId, 'Count:', dateAvailabilityBlocks.length);
 
     const availabilitySettings = {
       working_days: workingDays,
@@ -317,7 +310,6 @@ router.get('/settings', requireLogin, async (req, res) => {
       title: 'Account Settings'
     });
   } catch (error) {
-    console.error('Error fetching user details:', error);
     res.status(500).render('error', { 
       message: 'Failed to load account settings',
       error: { status: 500 }
@@ -378,7 +370,6 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
     
     res.json(events);
   } catch (error) {
-    console.error('Error fetching bookings:', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });
   }
 });
@@ -435,7 +426,6 @@ router.get('/settings/availability', requireLogin, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error fetching availability settings:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch availability settings' 
@@ -448,9 +438,6 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
   try {
     
     const userId = req.session.userId;
-    
-    // Log the entire request body for debugging
-    console.log('Full request body:', JSON.stringify(req.body, null, 2));
     
     const {
       working_days = [],
@@ -566,8 +553,6 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
           }
         }
       }
-      
-      console.log('Inserting time blocks:', blocksToInsert);
       
       // Validate for overlapping blocks per day
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -731,7 +716,6 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Error updating availability:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update availability' 
@@ -742,15 +726,10 @@ router.post('/settings/availability', requireLogin, async (req, res) => {
 // GET /settings/date-availability - Load date-specific availability settings
 // IMPORTANT: This route must be defined BEFORE any catch-all /settings routes
 router.get('/settings/date-availability', requireLogin, async (req, res) => {
-  console.log('=== DATE AVAILABILITY GET ROUTE HIT ===');
-  console.log('Request URL:', req.url);
-  console.log('User ID:', req.session.userId);
-  
   try {
     const userId = req.session.userId;
     
     if (!userId) {
-      console.error('No user ID in session');
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
 
@@ -796,7 +775,6 @@ router.get('/settings/date-availability', requireLogin, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error loading date availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to load date availability settings' });
   }
 });
@@ -804,20 +782,12 @@ router.get('/settings/date-availability', requireLogin, async (req, res) => {
 // POST /settings/date-availability - Save date-specific availability settings
 // IMPORTANT: This route must be defined BEFORE any catch-all /settings routes
 router.post('/settings/date-availability', requireLogin, async (req, res) => {
-  console.log('=== DATE AVAILABILITY POST ROUTE HIT ===');
-  console.log('Request URL:', req.url);
-  console.log('Request method:', req.method);
-  console.log('User ID:', req.session.userId);
-  
   try {
     const userId = req.session.userId;
     
     if (!userId) {
-      console.error('No user ID in session');
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
-    console.log('Date availability request body:', JSON.stringify(req.body, null, 2));
     
     // Start a transaction
     await db.query('BEGIN');
@@ -903,52 +873,20 @@ router.post('/settings/date-availability', requireLogin, async (req, res) => {
       // If replace_all is true, clear all existing date availability for this user
       // Check for both boolean true and string 'true'
       const replaceAll = req.body.replace_all === true || req.body.replace_all === 'true';
-      console.log('replace_all value:', req.body.replace_all, 'type:', typeof req.body.replace_all, 'evaluated to:', replaceAll);
       
       if (replaceAll) {
-        console.log('=== DELETING ALL EXISTING DATE AVAILABILITY (replace_all=true) ===');
-        const deleteResult = await db.query('DELETE FROM date_availability WHERE user_id = $1', [userId]);
-        console.log(`✅ Deleted ${deleteResult.rowCount} existing date availability entries`);
-        
-        // Verify deletion
-        const verifyResult = await db.query('SELECT COUNT(*) as count FROM date_availability WHERE user_id = $1', [userId]);
-        console.log(`✅ Verification: ${verifyResult.rows[0].count} entries remaining for user ${userId}`);
-      } else {
-        console.log('⚠️ replace_all is NOT true, skipping deletion of existing entries');
+        await db.query('DELETE FROM date_availability WHERE user_id = $1', [userId]);
       }
 
       // Insert new blocks
-      console.log('=== INSERTING NEW DATE AVAILABILITY BLOCKS ===');
-      console.log('Number of blocks to insert:', blocksToInsert.length);
-      console.log('Dates to insert:', [...new Set(blocksToInsert.map(b => b.date))]);
-      
-      if (blocksToInsert.length === 0) {
-        console.log('No blocks to insert, but replace_all was true, so all existing entries were deleted');
-      }
-      
       for (const block of blocksToInsert) {
-        console.log('Inserting block:', block);
-        const result = await db.query(
+        await db.query(
           'INSERT INTO date_availability (user_id, date, start_time, end_time) VALUES ($1, $2, $3, $4) RETURNING id, date, start_time, end_time',
           [userId, block.date, block.start, block.end]
         );
-        console.log('Inserted block:', result.rows[0]);
       }
-      
-      console.log(`=== SAVE COMPLETE: Inserted ${blocksToInsert.length} blocks ===`);
 
       await db.query('COMMIT');
-      
-      console.log('✅ Date availability saved successfully for user:', userId);
-      console.log('✅ Total blocks inserted:', blocksToInsert.length);
-      console.log('✅ Transaction COMMITTED');
-
-      // Verify final state
-      const finalCheck = await db.query('SELECT date, start_time, end_time FROM date_availability WHERE user_id = $1 ORDER BY date', [userId]);
-      console.log('✅ Final state - Date availability entries in database:', finalCheck.rows.length);
-      finalCheck.rows.forEach(row => {
-        console.log(`  - ${row.date}: ${row.start_time} - ${row.end_time}`);
-      });
 
       res.json({ 
         success: true, 
@@ -961,7 +899,6 @@ router.post('/settings/date-availability', requireLogin, async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error saving date availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to save date availability settings' });
   }
 });
@@ -1014,7 +951,6 @@ router.patch('/bookings/:id', requireLogin, async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating booking:', error);
     res.status(500).json({ success: false, error: 'Failed to update booking' });
   }
 });
@@ -1038,7 +974,6 @@ router.delete('/bookings/:id', requireLogin, async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting booking:', error);
     res.status(500).json({ success: false, error: 'Failed to delete booking' });
   }
 });
@@ -1067,7 +1002,6 @@ router.delete('/bookings/:id', requireLogin, async (req, res) => {
         
         res.json({ success: true, message: 'Notes updated successfully' });
       } catch (error) {
-        console.error('Error updating booking notes:', error);
         res.status(500).json({ success: false, error: 'Failed to update notes' });
       }
     });

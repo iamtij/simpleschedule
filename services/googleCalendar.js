@@ -46,7 +46,6 @@ class GoogleCalendarService {
             
             return data;
         } catch (error) {
-            console.error('Error fetching calendar list:', error);
             throw error;
         }
     }
@@ -72,7 +71,6 @@ class GoogleCalendarService {
             const { tokens } = await this.oauth2Client.getToken(code);
             return tokens;
         } catch (error) {
-            console.error('Error getting Google tokens:', error);
             throw new Error('Failed to authenticate with Google');
         }
     }
@@ -96,7 +94,6 @@ class GoogleCalendarService {
             
             return true;
         } catch (error) {
-            console.error('Error setting user tokens:', error);
             throw new Error('Failed to save Google Calendar connection');
         }
     }
@@ -118,7 +115,6 @@ class GoogleCalendarService {
             
             return result.rows[0];
         } catch (error) {
-            console.error('Error getting user tokens:', error);
             return null;
         }
     }
@@ -154,7 +150,6 @@ class GoogleCalendarService {
             
             return true;
         } catch (error) {
-            console.error('Error refreshing token:', error);
             return false;
         }
     }
@@ -181,7 +176,6 @@ class GoogleCalendarService {
 
             return google.calendar({ version: 'v3', auth: this.oauth2Client });
         } catch (error) {
-            console.error('Error getting calendar service:', error);
             throw new Error('Failed to connect to Google Calendar');
         }
     }
@@ -222,8 +216,6 @@ class GoogleCalendarService {
 
             return data;
         } catch (error) {
-            console.error('Error fetching calendar events:', error);
-            
             // If there's an error with the selected calendar, try with primary calendar
             if (calendarId !== 'primary') {
                 try {
@@ -251,7 +243,6 @@ class GoogleCalendarService {
                     
                     return data;
                 } catch (retryError) {
-                    console.error('Error fetching calendar events from primary calendar:', retryError);
                     throw new Error('Failed to fetch calendar events from both selected and primary calendars');
                 }
             }
@@ -287,7 +278,6 @@ class GoogleCalendarService {
             
             return conflictingEvents.length === 0;
         } catch (error) {
-            console.error('Error checking time slot availability:', error);
             // If we can't check, assume it's available to not block legitimate bookings
             return true;
         }
@@ -363,7 +353,6 @@ class GoogleCalendarService {
                 calendarId: calendarId
             };
         } catch (error) {
-            console.error('Error getting time slot conflicts:', error);
             // If we can't check, return no conflicts to not block legitimate bookings
             return {
                 hasConflicts: false,
@@ -431,7 +420,6 @@ class GoogleCalendarService {
 
             return response.data;
         } catch (error) {
-            console.error('Error creating calendar event:', error);
             throw new Error('Failed to create calendar event');
         }
     }
@@ -471,7 +459,6 @@ class GoogleCalendarService {
             
             return true;
         } catch (error) {
-            console.error('Error disconnecting user:', error);
             throw new Error('Failed to disconnect Google Calendar');
         }
     }

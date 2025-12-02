@@ -94,7 +94,6 @@ router.get('/:username/:duration', async (req, res) => {
     
     res.render('booking-page', { user });
   } catch (error) {
-    console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });
   }
 });
@@ -287,8 +286,6 @@ router.get('/:username/:duration/slots', async (req, res) => {
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime;
         
-        // Log for debugging
-        console.log(`Generating slots for duration: ${meetingLength} minutes, buffer: ${bufferTime} minutes, interval: ${totalInterval} minutes`);
 
         // Current time in minutes since midnight in client's timezone
         const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
@@ -384,9 +381,6 @@ router.get('/:username/:duration/slots', async (req, res) => {
             
             // Verify slot duration matches requested duration
             const calculatedDuration = timeToMinutes(slotEndTime) - timeToMinutes(slotStartTime);
-            if (calculatedDuration !== meetingLength) {
-                console.error(`[Duration Route] Duration mismatch: Expected ${meetingLength} minutes, got ${calculatedDuration} minutes for slot ${slotStartTime}-${slotEndTime}`);
-            }
             
             if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
                 slots.push({
@@ -397,17 +391,10 @@ router.get('/:username/:duration/slots', async (req, res) => {
             }
         });
 
-        console.log(`[${req.params.username}] Generated ${slots.length} slots for date: ${date}, meetingLength: ${meetingLength} minutes`);
         res.json({ slots });
     } catch (error) {
-        console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
-        console.error('Error message:', error.message);
-        if (error.stack) {
-            console.error('Error stack:', error.stack);
-        }
         // Return empty slots array instead of error to allow frontend to show "no available times"
         // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
-        console.error('Returning empty slots array due to error - this allows the page to continue working');
         res.json({ slots: [] });
     }
 });
@@ -648,7 +635,7 @@ router.post('/:username/:duration', async (req, res) => {
         try {
             await telegramService.sendBookingNotification(booking, host, host.telegram_chat_id);
         } catch (telegramError) {
-            console.error('Telegram notification error:', telegramError);
+            // Telegram notification failed, continue without it
         }
     }
 
@@ -700,8 +687,7 @@ router.get('/:username', async (req, res) => {
         meetingLink = durationResult.rows[0].meeting_link || meetingLink;
       }
     } catch (error) {
-      // If query fails, log error but continue with null duration (will use default route)
-      console.error('Error fetching meeting duration, using default route:', error);
+      // If query fails, continue with null duration (will use default route)
     }
     // If no active durations, duration stays null - frontend will use /booking/:username/slots which defaults to 60 minutes
     
@@ -713,7 +699,6 @@ router.get('/:username', async (req, res) => {
     
     res.render('booking-page', { user });
   } catch (error) {
-    console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });
   }
 });
@@ -786,7 +771,6 @@ router.get('/:username/availability', async (req, res) => {
             bookings: bookingsResult.rows
         });
     } catch (error) {
-        console.error('Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -1011,7 +995,7 @@ router.post('/:username', async (req, res) => {
         try {
             await telegramService.sendBookingNotification(booking, host, host.telegram_chat_id);
         } catch (telegramError) {
-            console.error('Telegram notification error:', telegramError);
+            // Telegram notification failed, continue without it
         }
     }
 
@@ -1059,13 +1043,11 @@ router.get('/:username/slots', async (req, res) => {
                 meetingLength = parseInt(durationResult.rows[0].duration_minutes);
             }
         } catch (error) {
-            // If query fails, log error but continue with default 60 minutes
-            console.error('Error fetching meeting duration, using default 60 minutes:', error);
+            // If query fails, continue with default 60 minutes
         }
         
         // Ensure meetingLength is valid
         if (isNaN(meetingLength) || meetingLength <= 0) {
-            console.error('Invalid meetingLength, defaulting to 60:', meetingLength);
             meetingLength = 60;
         }
         
@@ -1083,7 +1065,6 @@ router.get('/:username/slots', async (req, res) => {
         
         // Validate date components
         if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
-            console.error('Invalid date format for /:username/slots:', date, 'username:', req.params.username);
             return res.status(400).json({ error: 'Invalid date format' });
         }
         
@@ -1091,7 +1072,6 @@ router.get('/:username/slots', async (req, res) => {
         
         // Validate the date is valid
         if (isNaN(requestedDate.getTime())) {
-            console.error('Invalid date after parsing for /:username/slots:', date, 'username:', req.params.username);
             return res.status(400).json({ error: 'Invalid date' });
         }
         
@@ -1236,9 +1216,6 @@ router.get('/:username/slots', async (req, res) => {
         const slots = [];
         const bufferTime = bufferMinutes || 15; // Default to 15 if not set
         const totalInterval = meetingLength + bufferTime;
-        
-        // Log for debugging
-        console.log(`[${req.params.username}] Generating slots - meetingLength: ${meetingLength}, bufferTime: ${bufferTime}, totalInterval: ${totalInterval}, date: ${date}`);
 
         // Current time in minutes since midnight in client's timezone
         const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
@@ -1341,17 +1318,10 @@ router.get('/:username/slots', async (req, res) => {
             }
         });
 
-        console.log(`[${req.params.username}] Generated ${slots.length} slots for date: ${date}, meetingLength: ${meetingLength} minutes`);
         res.json({ slots });
     } catch (error) {
-        console.error('Error getting available slots for user:', req.params.username, 'date:', req.query.date);
-        console.error('Error message:', error.message);
-        if (error.stack) {
-            console.error('Error stack:', error.stack);
-        }
         // Return empty slots array instead of error to allow frontend to show "no available times"
         // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
-        console.error('Returning empty slots array due to error - this allows the page to continue working');
         res.json({ slots: [] });
     }
 });
@@ -1369,7 +1339,6 @@ router.get('/playground/:username', async (req, res) => {
     }
     res.render('booking-playground', { user: result.rows[0] });
   } catch (error) {
-    console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });
   }
 });
@@ -1421,7 +1390,6 @@ router.get('/:username/confirmation/:confirmationUuid', async (req, res) => {
     
     res.render('booking-confirmation', { booking, host });
   } catch (error) {
-    console.error('Error:', error);
     res.status(500).render('error', { message: 'Server error' });
   }
 });

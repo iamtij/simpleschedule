@@ -27,7 +27,6 @@ router.get('/contacts/:id', requireLogin, async (req, res) => {
 
     res.render('contact-detail', { user, contactId: id });
   } catch (error) {
-    console.error('Contact detail page error:', error);
     return res.redirect('/dashboard/contacts');
   }
 });
@@ -47,7 +46,6 @@ router.get('/contacts', requireLogin, async (req, res) => {
 
     res.render('contacts', { user });
   } catch (error) {
-    console.error('Contacts page error:', error);
     return res.redirect('/');
   }
 });
@@ -72,7 +70,6 @@ router.get('/checklist-status', requireLogin, async (req, res) => {
       has_dismissed_checklist: user.has_dismissed_checklist || false
     });
   } catch (error) {
-    console.error('Error fetching checklist status:', error);
     res.status(500).json({ error: 'Failed to fetch checklist status' });
   }
 });
@@ -101,7 +98,6 @@ router.get('/', requireLogin, async (req, res) => {
       bookings: bookingsResult.rows || [] 
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
     return res.redirect('/');
   }
 });
@@ -136,7 +132,6 @@ router.get('/availability', requireLogin, async (req, res) => {
       buffer_minutes: bufferMinutes
     });
   } catch (error) {
-    console.error('Error fetching availability:', error);
     res.status(500).json({ error: 'Failed to fetch availability' });
   }
 });
@@ -193,7 +188,6 @@ router.get('/bookings/api', requireLogin, async (req, res) => {
 
     res.json(events);
   } catch (error) {
-    console.error('Error fetching bookings:', error);
     res.status(500).json({ error: 'Failed to fetch bookings' });
   }
 });
@@ -262,7 +256,6 @@ router.get('/bookings', requireLogin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Bookings page error:', error);
     return res.redirect('/dashboard');
   }
 });
@@ -290,7 +283,6 @@ router.delete('/bookings/:id', requireLogin, async (req, res) => {
     await db.query('DELETE FROM bookings WHERE id = $1', [bookingId]);
     res.json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
-    console.error('Error deleting booking:', error);
     res.status(500).json({ error: 'Failed to delete booking' });
   }
 });
@@ -331,7 +323,6 @@ router.post('/username', requireLogin, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating username:', error);
     res.status(500).json({ error: 'Failed to update username' });
   }
 });
@@ -349,7 +340,6 @@ router.get('/bookings/upcoming', requireLogin, async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching upcoming bookings:', error);
     res.status(500).json({ error: 'Failed to fetch upcoming bookings' });
   }
 });
@@ -378,7 +368,6 @@ router.patch('/bookings/:id/notes', requireLogin, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating booking notes:', error);
     res.status(500).json({ error: 'Failed to update booking notes' });
   }
 });
@@ -432,7 +421,6 @@ router.patch('/bookings/:id', requireLogin, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating booking:', error);
     res.status(500).json({ error: 'Failed to update booking' });
   }
 });
@@ -451,7 +439,6 @@ router.get('/account', requireLogin, async (req, res) => {
     
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error fetching account details:', error);
     res.status(500).json({ error: 'Failed to fetch account details' });
   }
 });
@@ -513,7 +500,6 @@ router.post('/account', requireLogin, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating account:', error);
         res.status(500).json({ error: 'Failed to update account settings' });
     }
 });
@@ -527,7 +513,6 @@ router.post('/update-share-status', requireLogin, async (req, res) => {
         );
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating share status:', error);
         res.status(500).json({ error: 'Failed to update share status' });
     }
 });
@@ -541,7 +526,6 @@ router.post('/dismiss-checklist', requireLogin, async (req, res) => {
         );
         res.json({ success: true });
     } catch (error) {
-        console.error('Error dismissing checklist:', error);
         res.status(500).json({ error: 'Failed to dismiss checklist' });
     }
 });
@@ -632,7 +616,6 @@ router.get('/settings', requireLogin, async (req, res) => {
             title: 'Account Settings'
         });
     } catch (error) {
-        console.error('Error fetching user details:', error);
         res.status(500).render('error', { 
             message: 'Failed to load account settings',
             error: { status: 500 }
@@ -693,7 +676,6 @@ router.get('/availability', requireLogin, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error loading availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to load availability settings' });
   }
 });
@@ -702,9 +684,6 @@ router.get('/availability', requireLogin, async (req, res) => {
 router.post('/availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    
-    // Log the entire request body for debugging
-    console.log('Full request body:', JSON.stringify(req.body, null, 2));
     
     const {
       working_days = [],
@@ -981,7 +960,6 @@ router.post('/availability', requireLogin, async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error saving availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to save availability settings' });
   }
 });
@@ -1033,7 +1011,6 @@ router.get('/date-availability', requireLogin, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error loading date availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to load date availability settings' });
   }
 });
@@ -1042,8 +1019,6 @@ router.get('/date-availability', requireLogin, async (req, res) => {
 router.post('/date-availability', requireLogin, async (req, res) => {
   try {
     const userId = req.session.userId;
-    
-    console.log('Date availability request body:', JSON.stringify(req.body, null, 2));
     
     // Start a transaction
     await db.query('BEGIN');
@@ -1147,7 +1122,6 @@ router.post('/date-availability', requireLogin, async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error saving date availability settings:', error);
     res.status(500).json({ success: false, error: 'Failed to save date availability settings' });
   }
 });
@@ -1169,7 +1143,6 @@ router.delete('/date-availability/:id', requireLogin, async (req, res) => {
 
     res.json({ success: true, message: 'Date availability entry deleted successfully' });
   } catch (error) {
-    console.error('Error deleting date availability entry:', error);
     res.status(500).json({ success: false, error: 'Failed to delete date availability entry' });
   }
 });

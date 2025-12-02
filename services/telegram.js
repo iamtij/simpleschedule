@@ -7,9 +7,6 @@ const N8N_WEBHOOK_URL = process.env.N8N_TELEGRAM_WEBHOOK_URL;
 class TelegramService {
     constructor() {
         this.enabled = !!(TELEGRAM_BOT_TOKEN && N8N_WEBHOOK_URL);
-        if (!this.enabled) {
-            console.warn('Telegram integration disabled: missing configuration');
-        }
     }
 
     async sendMessage(chatId, text, options = {}) {
@@ -24,7 +21,6 @@ class TelegramService {
             });
             return response.data;
         } catch (error) {
-            console.error('Telegram send message error:', error.response?.data || error.message);
             return null;
         }
     }

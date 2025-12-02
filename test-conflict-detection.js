@@ -35,8 +35,7 @@ const colors = {
     cyan: '\x1b[36m'
 };
 
-function log(message, color = 'reset') {
-    console.log(`${colors[color]}${message}${colors.reset}`);
+function log(message, color = 'reset') {}${message}${colors.reset}`);
 }
 
 function makeRequest(options, postData = null) {

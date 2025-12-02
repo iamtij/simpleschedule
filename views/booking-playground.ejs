@@ -385,8 +385,7 @@
             justify-content: center !important;
             width: 100% !important;
         }
-        
-        
+
         /* Time Slots Section */
         .time-slots-section {
             padding: 24px;
@@ -426,8 +425,7 @@
             border-color: #3b82f6;
             transform: translateY(-1px);
         }
-        
-        
+
         /* Loading States */
         .loading-spinner {
             display: inline-block;
@@ -580,8 +578,7 @@
             }
             
         }
-        
-        
+
         /* Debug Info - Hidden by default */
         .debug-info {
             display: none;
@@ -633,7 +630,6 @@
                     </div>
                 </div>
             </div>
-
 
         </div>
         
@@ -737,7 +733,6 @@
             </div>
         </div>
 
-
     </div>
 
     <script>
@@ -757,9 +752,8 @@
                     initializeCalendar();
                 }, 100);
             }).catch(error => {
-                console.error('❌ Error loading initial month availability:', error);
+
             });
-            
 
             // Handle Back to Calendar button
             document.getElementById('back-to-calendar-btn').addEventListener('click', function() {
@@ -821,8 +815,7 @@
                     client_phone: document.getElementById('client-phone').value,
                     notes: document.getElementById('client-notes').value
                 };
-                
-                
+
                 try {
                     const response = await fetch(`/booking/<%= user.username %>`, {
                         method: 'POST',
@@ -901,7 +894,7 @@
                     }
                     
                 } catch (error) {
-                    console.error('Booking submission error:', error);
+
                     toast.show({
                         type: 'error',
                         title: 'Network Error',
@@ -961,7 +954,7 @@
                                 initializeCalendar();
                             }, 100);
                         }).catch(error => {
-                            console.error('❌ Error loading month availability:', error);
+
                         });
                     },
                     onYearChange: function(selectedDates, dateStr, instance) {
@@ -976,7 +969,7 @@
                                 initializeCalendar();
                             }, 100);
                         }).catch(error => {
-                            console.error('❌ Error loading year availability:', error);
+
                         });
                     }
                 });
@@ -994,10 +987,9 @@
                 selectedTime = null;
                 updateDebugInfo();
                 loadTimeSlots();
-                
-                
+
             } catch (error) {
-                console.error('Error initializing calendar:', error);
+
                 document.getElementById('calendar-container').innerHTML = 
                     '<div class="text-center py-8 text-gray-500">Error loading calendar</div>';
             }
@@ -1057,7 +1049,7 @@
                             availabilityCache.set(dateStr, hasSlots);
                         })
                         .catch(error => {
-                            console.error(`Error fetching availability for ${dateStr}:`, error);
+
                             availabilityCache.set(dateStr, false);
                         });
                     
@@ -1072,7 +1064,7 @@
                 updateDebugInfo();
                 
             } catch (error) {
-                console.error('Error loading month availability:', error);
+
             } finally {
                 // Hide loading indicators
                 if (loadingOverlay) {
@@ -1095,8 +1087,7 @@
                 const currentYear = calendarInstance.currentYear;
                 const firstDay = new Date(currentYear, currentMonth, 1);
                 const lastDay = new Date(currentYear, currentMonth + 1, 0);
-                
-                
+
                 // Check dates in the current calendar view
                 for (let day = firstDay.getDate(); day <= lastDay.getDate(); day++) {
                     const date = new Date(currentYear, currentMonth, day);
@@ -1106,14 +1097,12 @@
                     // Disable if no availability or if it's a past date
                     const isPastDate = date.getTime() < today.getTime();
                     const shouldDisable = !hasAvailability || isPastDate;
-                    
-                    
+
                     if (shouldDisable) {
                         datesToDisable.push(new Date(date));
                     }
                 }
-                
-                
+
                 // Use a more robust approach to disable dates
                 // First, clear any existing disable configuration
                 calendarInstance.set('disable', []);
@@ -1148,10 +1137,9 @@
                         }
                     });
                 }, 100);
-                
-                
+
             } catch (error) {
-                console.error('❌ Error initializing calendar with availability:', error);
+
             }
         }
         
@@ -1181,7 +1169,7 @@
                 }
                 
             } catch (error) {
-                console.error('Error loading time slots:', error);
+
                 timeSlotsContainer.innerHTML = '<div class="text-center text-red-500 py-8">Error loading time slots</div>';
             }
         }
@@ -1208,8 +1196,7 @@
                 updateFormWithSelectedAppointment();
             }, 300); // Small delay for visual feedback
         }
-        
-        
+
         function formatTime(timeStr) {
             if (typeof timeStr === 'string') {
                 const times = timeStr.split('-');
@@ -1243,8 +1230,7 @@
             }
             return timeStr;
         }
-        
-        
+
         function updateDebugInfo() {
             document.getElementById('debug-date').textContent = selectedDate || 'None';
             document.getElementById('debug-time').textContent = selectedTime || 'None';
@@ -1283,8 +1269,7 @@
                 document.getElementById('selected-time-display').textContent = formattedTimeSlot;
             }
         }
-        
-        
+
     </script>
 </body>
 </html>

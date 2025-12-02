@@ -35,7 +35,6 @@ router.post('/link', async (req, res) => {
 
         res.json({ success: true, linked: true });
     } catch (error) {
-        console.error('Telegram link error:', error);
         res.status(500).json({ error: 'Failed to link Telegram account' });
     }
 });
@@ -56,7 +55,6 @@ router.post('/unlink', async (req, res) => {
 
         res.json({ success: true, unlinked: true });
     } catch (error) {
-        console.error('Telegram unlink error:', error);
         res.status(500).json({ error: 'Failed to unlink Telegram account' });
     }
 });
@@ -85,7 +83,6 @@ router.post('/webhook', verifyN8nWebhook, async (req, res) => {
                 res.json({ success: true });
         }
     } catch (error) {
-        console.error('Telegram webhook error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

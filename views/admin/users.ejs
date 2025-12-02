@@ -238,7 +238,7 @@
                 document.getElementById('next-page').disabled = currentPage === totalPages;
             })
             .catch(error => {
-                console.error('Error loading users:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',
@@ -308,7 +308,7 @@
                 });
             }
         } catch (error) {
-            console.error('Error:', error);
+
             toast.show({
                 type: 'error',
                 title: 'Error',
@@ -342,7 +342,7 @@
                     throw new Error(data.error || 'Failed to delete user');
                 }
             } catch (error) {
-                console.error('Error:', error);
+
                 toast.show({
                     type: 'error',
                     title: 'Error',

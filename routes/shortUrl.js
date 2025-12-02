@@ -33,7 +33,6 @@ router.get('/s/:code', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('URL resolution error:', error);
         res.status(500).render('error', { 
             message: 'Server error while resolving link',
             title: 'Server Error',
