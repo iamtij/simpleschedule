@@ -184,6 +184,7 @@ router.get('/users/data', requireAdmin, async (req, res) => {
                     trialDaysLeft = 0; // Trial expired
                 }
             }
+            // If user is Pro or has no trial_started_at, trialDaysLeft remains null (will show "-")
             
             return {
                 ...user,
