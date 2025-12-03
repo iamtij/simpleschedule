@@ -159,7 +159,8 @@ router.get('/users/data', requireAdmin, async (req, res) => {
                 is_admin,
                 is_pro,
                 pro_expires_at,
-                pro_started_at
+                pro_started_at,
+                trial_started_at
              FROM users ${whereClause} 
              ORDER BY full_name ASC 
              LIMIT $${params.length + 1} 
@@ -167,11 +168,29 @@ router.get('/users/data', requireAdmin, async (req, res) => {
             [...params, limit, offset]
         );
         
-        // Transform boolean status to string
-        users.rows = users.rows.map(user => ({
-            ...user,
-            status: user.status ? 'active' : 'inactive'
-        }));
+        // Transform boolean status to string and calculate trial days left
+        users.rows = users.rows.map(user => {
+            let trialDaysLeft = null;
+            
+            // Calculate trial days left if user has trial_started_at and is not Pro
+            if (user.trial_started_at && !user.is_pro) {
+                const trialStart = new Date(user.trial_started_at);
+                const now = new Date();
+                const daysSinceTrial = (now - trialStart) / (1000 * 60 * 60 * 24);
+                
+                if (daysSinceTrial <= 5) {
+                    trialDaysLeft = Math.ceil(5 - daysSinceTrial);
+                } else {
+                    trialDaysLeft = 0; // Trial expired
+                }
+            }
+            
+            return {
+                ...user,
+                status: user.status ? 'active' : 'inactive',
+                trial_days_left: trialDaysLeft
+            };
+        });
 
         const total = await db.query(
             `SELECT COUNT(*) FROM users ${whereClause}`,
