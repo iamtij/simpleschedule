@@ -139,7 +139,7 @@
     </nav>
 
     <!-- Hero Section with gradient background -->
-    <section class="hero-section relative pt-32 pb-24 px-6">
+    <section class="hero-section relative pt-32 pb-16 px-6">
         <div class="content-wrapper">
             <div class="max-w-7xl mx-auto text-center">
                 <h1 class="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
@@ -165,15 +165,14 @@
         </div>
     </section>
 
-    <!-- Features Section with subtle background -->
-    <section class="features-section py-24 px-6 text-center bg-gradient-to-b from-white via-indigo-50/20 to-white overflow-hidden">
+    <!-- Features Section -->
+    <section class="features-section py-16 px-6 text-center bg-gradient-to-b from-white via-indigo-50/20 to-white overflow-hidden">
         <h2 class="text-3xl font-bold mb-6 text-gray-900">Your Schedule, Streamlined</h2>
         <p class="text-gray-600 mb-16 text-lg">A calmer, smarter way to book your time — on your terms.</p>
-        <div class="grid md:grid-cols-3 gap-12 max-w-6xl mx-auto text-left">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto text-left">
             <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <span class="highlight-number">1</span>
-                <div class="feature-content flex items-start gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
                         <i data-feather="clock" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
                     </div>
                     <div>
@@ -183,9 +182,8 @@
                 </div>
             </div>
             <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <span class="highlight-number">2</span>
-                <div class="feature-content flex items-start gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
                         <i data-feather="link" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
                     </div>
                     <div>
@@ -195,9 +193,8 @@
                 </div>
             </div>
             <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <span class="highlight-number">3</span>
-                <div class="feature-content flex items-start gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
                         <i data-feather="shield" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
                     </div>
                     <div>
@@ -206,11 +203,55 @@
                     </div>
                 </div>
             </div>
+            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
+                        <i data-feather="layers" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-900">Multiple Time Blocks</h3>
+                        <p class="text-gray-600 leading-relaxed">Set multiple availability windows per day. Perfect for split schedules like morning and afternoon sessions.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
+                        <i data-feather="calendar" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-900">Date-Specific Availability</h3>
+                        <p class="text-gray-600 leading-relaxed">Override your regular schedule for specific dates. Perfect for holidays, special events, or one-off availability changes.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
+                        <i data-feather="file-text" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-900">Google Sheets Export</h3>
+                        <p class="text-gray-600 leading-relaxed">Automatically export your CRM data to Google Sheets. Keep all your contacts and interactions organized in one place.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
+                <div class="feature-content flex flex-col gap-5 group">
+                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
+                        <i data-feather="link-2" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-900">Multiple Duration Links</h3>
+                        <p class="text-gray-600 leading-relaxed">Create separate booking links for different meeting durations. Offer 15, 30, or 60-minute sessions with dedicated URLs.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Use Cases Section with cards -->
-    <section class="py-24 px-6 text-center bg-white">
+    <section class="py-16 px-6 text-center bg-white">
         <div class="max-w-4xl mx-auto">
             <h2 class="text-3xl font-bold mb-6 text-gray-900">More Than Just a Link</h2>
             <p class="text-gray-600 mb-16 max-w-2xl mx-auto text-lg">isked is more than a scheduling tool — it's your assistant, buffer, and time-saver rolled into one.</p>
@@ -231,12 +272,6 @@
                             <div class="feature-icon bg-indigo-50 p-2 rounded-lg">
                                 <i data-feather="check-circle" class="w-6 h-6 text-indigo-600 group-hover:text-indigo-500"></i>
                             </div>
-                            <p class="text-gray-600">Automatic timezone conversion for international clients</p>
-                        </div>
-                        <div class="flex items-start gap-4 group">
-                            <div class="feature-icon bg-indigo-50 p-2 rounded-lg">
-                                <i data-feather="check-circle" class="w-6 h-6 text-indigo-600 group-hover:text-indigo-500"></i>
-                            </div>
                             <p class="text-gray-600">Custom buffer times between meetings to stay prepared</p>
                         </div>
                         <div class="flex items-start gap-4 group">
@@ -251,8 +286,182 @@
         </div>
     </section>
 
+    <!-- Testimonials Section -->
+    <section class="py-16 px-6 text-center bg-gradient-to-b from-white via-indigo-50/20 to-white">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold mb-6 text-gray-900">What Our Users Say</h2>
+            <p class="text-gray-600 mb-16 text-lg">See how isked is helping professionals manage their schedules better.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                <!-- Testimonial 1 - Robert Arellano -->
+                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
+                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
+                        "Na para bang may dumating na superhero sa gitna ng gulong-gulo kong schedule! Salamat Isked.app. Dati, sabog-sabog ang mga appointments ko, nagkakapatong-patong at minsan halos di ko na alam kung saan ako lulugar. Pero simula nung dumating si Isked, life saver talaga! Ngayon wala ng stress, walang sapawan, walang agawan ng oras sa bawat meeting. Salamat Boss Timothy Salamat Isked.app!!!!"
+                    </p>
+                    <div class="border-t border-gray-200 pt-4 text-left">
+                        <p class="font-semibold text-gray-900">Robert Arellano</p>
+                        <p class="text-sm text-gray-600">AMA Tax Consultant</p>
+                    </div>
+                </div>
+
+                <!-- Testimonial 2 - Sam Lara -->
+                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
+                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
+                        "Easy to understand, user-friendly, and most of all, it does its job. It's very efficient. So bawas sakit ng ulo. So 'yan ang maganda sa ISKED by Small Simple Steps. Ang laking bagay na meron talaga tayong ganitong scheduling platform that allows us to track all our commitments, and it will make sure na hindi siya babangga or hindi siya tatama, or it's not gonna coincide and overlap with all your other commitments na initially plotted na. So that makes making appointments better and stress-free. So again, make the most out of your every day with ISKED"
+                    </p>
+                    <div class="border-t border-gray-200 pt-4 text-left">
+                        <p class="font-semibold text-gray-900">Sam Lara</p>
+                        <p class="text-sm text-gray-600">USANA Brand Partner</p>
+                    </div>
+                </div>
+
+                <!-- Testimonial 3 - Joannah Rivera -->
+                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
+                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
+                        "Tj's isked app is very helpful for businesses like us. It is easy to use and there's a built in mini crm there where you can check your past clients. He provides additional tips on how to maximize isked."
+                    </p>
+                    <div class="border-t border-gray-200 pt-4 text-left">
+                        <p class="font-semibold text-gray-900">Joannah Rivera</p>
+                        <p class="text-sm text-gray-600">Accounting Firm</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Table Section -->
+    <section class="py-16 px-6 text-center bg-white">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-3xl font-bold mb-6 text-gray-900">See How isked Compares</h2>
+            <p class="text-gray-600 mb-12 text-lg">Why choose isked over other scheduling platforms?</p>
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gradient-to-r from-indigo-600 to-purple-600">
+                            <tr>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Feature</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">isked</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Calendly</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Google Appointment</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Booking Link</td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Client Data</td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Meeting History</td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Follow-up Commitments</td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Built-in CRM</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                        Yes
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Export to Google Sheet</td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Final CTA with gradient background -->
-    <section class="py-24 px-6 text-center bg-gradient-to-b from-gray-50 to-white">
+    <section class="py-16 px-6 text-center bg-gradient-to-b from-gray-50 to-white">
         <h2 class="text-3xl font-bold mb-8 text-gray-900">Let Others Book You — Without the Hassle</h2>
         <a href="/auth/register" class="mt-6 bg-indigo-600 text-white px-8 py-4 rounded-lg font-medium hover:bg-indigo-700 inline-block shadow-lg hover:shadow-xl transition-all hover:scale-105">
             Get Started for Free
