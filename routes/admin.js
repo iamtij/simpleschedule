@@ -98,7 +98,7 @@ router.get('/', requireAdmin, async (req, res) => {
 
 // List users with search, filter, and pagination
 router.get('/users/data', requireAdmin, async (req, res) => {
-    const { page = 1, search = '', status = 'all' } = req.query;
+    const { page = 1, search = '', status = 'all', subscription = 'all' } = req.query;
     const limit = 10;
     const offset = (page - 1) * limit;
     let where = [];
@@ -113,6 +113,38 @@ router.get('/users/data', requireAdmin, async (req, res) => {
     } else if (status === 'inactive') {
         where.push('status = FALSE');
     }
+    
+    // Add subscription filter
+    if (subscription === 'pro') {
+        // Pro users: active Pro (lifetime or not expired) OR active RevenueCat
+        where.push(`(
+            (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+            OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+        )`);
+    } else if (subscription === 'free') {
+        // Free trial users: trial started within last 5 days AND NOT Pro
+        where.push(`(
+            trial_started_at IS NOT NULL
+            AND trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
+            AND NOT (
+                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+                OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+            )
+        )`);
+    } else if (subscription === 'expired') {
+        // Expired users: NOT Pro AND NOT Free Trial
+        where.push(`(
+            NOT (
+                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+                OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+            )
+            AND NOT (
+                trial_started_at IS NOT NULL
+                AND trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
+            )
+        )`);
+    }
+    
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     try {
@@ -280,7 +312,8 @@ router.get('/users/:userId/bookings', requireAdmin, async (req, res) => {
 router.get('/users', requireAdmin, (req, res) => {
     const filters = {
         search: req.query.search || '',
-        status: req.query.status || ''
+        status: req.query.status || '',
+        subscription: req.query.subscription || ''
     };
     
     res.render('admin/users', {
