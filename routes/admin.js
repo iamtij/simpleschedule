@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const db = require('../db');
 const Coupon = require('../models/Coupon');
 const { isAdmin } = require('../middleware/auth');
@@ -98,51 +99,70 @@ router.get('/', requireAdmin, async (req, res) => {
 
 // List users with search, filter, and pagination
 router.get('/users/data', requireAdmin, async (req, res) => {
-    const { page = 1, search = '', status = 'all', subscription = 'all' } = req.query;
+    const { page = 1, search = '', status = 'all', subscription = 'all', planType = 'all' } = req.query;
     const limit = 10;
     const offset = (page - 1) * limit;
     let where = [];
     let params = [];
 
     if (search) {
-        where.push('(full_name ILIKE $' + (params.length + 1) + ' OR email ILIKE $' + (params.length + 1) + ')');
+        where.push('(u.full_name ILIKE $' + (params.length + 1) + ' OR u.email ILIKE $' + (params.length + 1) + ')');
         params.push(`%${search}%`);
     }
     if (status === 'active') {
-        where.push('status = TRUE');
+        where.push('u.status = TRUE');
     } else if (status === 'inactive') {
-        where.push('status = FALSE');
+        where.push('u.status = FALSE');
     }
     
     // Add subscription filter
     if (subscription === 'pro') {
         // Pro users: active Pro (lifetime or not expired) OR active RevenueCat
         where.push(`(
-            (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
-            OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+            (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+            OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
         )`);
     } else if (subscription === 'free') {
         // Free trial users: trial started within last 5 days AND NOT Pro
         where.push(`(
-            trial_started_at IS NOT NULL
-            AND trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
+            u.trial_started_at IS NOT NULL
+            AND u.trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
             AND NOT (
-                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
-                OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+                (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+                OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
             )
         )`);
     } else if (subscription === 'expired') {
         // Expired users: NOT Pro AND NOT Free Trial
         where.push(`(
             NOT (
-                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
-                OR COALESCE(revenuecat_entitlement_status, '') = 'active'
+                (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+                OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
             )
             AND NOT (
-                trial_started_at IS NOT NULL
-                AND trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
+                u.trial_started_at IS NOT NULL
+                AND u.trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
             )
         )`);
+    }
+    
+    // Add plan type filter using subquery to check both users.plan_type and payment_proofs
+    if (planType === 'monthly' || planType === 'yearly') {
+        where.push(`(
+            u.plan_type = $${params.length + 1}
+            OR (
+                u.plan_type IS NULL 
+                AND EXISTS (
+                    SELECT 1 FROM payment_proofs 
+                    WHERE user_id = u.id 
+                      AND status = 'approved' 
+                      AND plan_type = $${params.length + 1}
+                    ORDER BY reviewed_at DESC NULLS LAST, submitted_at DESC
+                    LIMIT 1
+                )
+            )
+        )`);
+        params.push(planType);
     }
     
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
@@ -150,19 +170,29 @@ router.get('/users/data', requireAdmin, async (req, res) => {
     try {
         const users = await db.query(
             `SELECT 
-                id, 
-                full_name as name,
-                email, 
-                status,
-                created_at,
-                last_login,
-                is_admin,
-                is_pro,
-                pro_expires_at,
-                pro_started_at,
-                trial_started_at
-             FROM users ${whereClause} 
-             ORDER BY full_name ASC 
+                u.id, 
+                u.full_name as name,
+                u.email, 
+                u.status,
+                u.created_at,
+                u.last_login,
+                u.is_admin,
+                u.is_pro,
+                u.pro_expires_at,
+                u.pro_started_at,
+                u.trial_started_at,
+                COALESCE(u.plan_type, latest_proof.plan_type) as plan_type
+             FROM users u
+             LEFT JOIN LATERAL (
+                 SELECT plan_type
+                 FROM payment_proofs
+                 WHERE user_id = u.id 
+                   AND status = 'approved'
+                 ORDER BY reviewed_at DESC NULLS LAST, submitted_at DESC
+                 LIMIT 1
+             ) latest_proof ON true
+             ${whereClause} 
+             ORDER BY u.full_name ASC 
              LIMIT $${params.length + 1} 
              OFFSET $${params.length + 2}`,
             [...params, limit, offset]
@@ -194,12 +224,59 @@ router.get('/users/data', requireAdmin, async (req, res) => {
         });
 
         const total = await db.query(
-            `SELECT COUNT(*) FROM users ${whereClause}`,
+            `SELECT COUNT(*) 
+             FROM users u
+             LEFT JOIN LATERAL (
+                 SELECT plan_type
+                 FROM payment_proofs
+                 WHERE user_id = u.id 
+                   AND status = 'approved'
+                 ORDER BY reviewed_at DESC NULLS LAST, submitted_at DESC
+                 LIMIT 1
+             ) latest_proof ON true
+             ${whereClause}`,
             params
         );
         res.json({ users: users.rows, total: parseInt(total.rows[0].count, 10) });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch users' });
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users: ' + error.message });
+    }
+});
+
+// Configure multer for file uploads (must be before routes that use it)
+const uploadDir = path.join(__dirname, '../uploads/payment-proofs');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'payment-proof-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        // Accept images and PDFs
+        const allowedTypes = /jpeg|jpg|png|gif|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files (jpeg, jpg, png, gif) and PDF files are allowed'));
+        }
     }
 });
 
@@ -233,6 +310,82 @@ router.get('/users/:userId/payment-proofs', requireAdmin, async (req, res) => {
     }
 });
 
+// Manually add payment proof for a user (must come before /users/:userId route)
+router.post('/users/:userId/payment-proofs', requireAdmin, upload.single('proof'), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { planType } = req.body;
+        
+        // Validate plan type
+        if (!planType || (planType !== 'monthly' && planType !== 'yearly')) {
+            // Delete uploaded file if validation fails
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid plan type. Must be "monthly" or "yearly"' 
+            });
+        }
+        
+        // Validate file was uploaded
+        if (!req.file) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'No file uploaded' 
+            });
+        }
+        
+        // Verify user exists
+        const userResult = await db.query('SELECT id FROM users WHERE id = $1', [userId]);
+        if (userResult.rows.length === 0) {
+            // Delete uploaded file if user not found
+            fs.unlinkSync(req.file.path);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'User not found' 
+            });
+        }
+        
+        // Save payment proof to database
+        const proofResult = await db.query(
+            `INSERT INTO payment_proofs (user_id, plan_type, file_path, original_filename, file_size, status, reviewed_by)
+             VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+             RETURNING id, plan_type, original_filename, file_size, status, submitted_at`,
+            [
+                userId,
+                planType,
+                req.file.path,
+                req.file.originalname,
+                req.file.size,
+                req.session.userId
+            ]
+        );
+        
+        res.json({ 
+            success: true, 
+            message: 'Payment proof added successfully',
+            proof: proofResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Error adding payment proof:', error);
+        
+        // Delete uploaded file if database save fails
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (fileError) {
+                console.error('Error deleting file after error:', fileError);
+            }
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to add payment proof: ' + error.message 
+        });
+    }
+});
+
 // Get user details
 router.get('/users/:userId', requireAdmin, async (req, res) => {
     try {
@@ -251,7 +404,12 @@ router.get('/users/:userId', requireAdmin, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        res.json(result.rows[0]);
+        // Include plan_type in response (from users.plan_type column)
+        const user = result.rows[0];
+        res.json({
+            ...user,
+            plan_type: user.plan_type || null
+        });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -333,7 +491,8 @@ router.get('/users', requireAdmin, (req, res) => {
     const filters = {
         search: req.query.search || '',
         status: req.query.status || '',
-        subscription: req.query.subscription || ''
+        subscription: req.query.subscription || '',
+        planType: req.query.planType || ''
     };
     
     res.render('admin/users', {
@@ -448,7 +607,7 @@ router.get('/coupons/:id/usage', async (req, res) => {
 // Update user
 router.put('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
-    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type } = req.body;
+    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type, manual_plan_type } = req.body;
     
     try {
         // Get current user state to check if is_pro is changing from false to true
@@ -471,8 +630,8 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
                 proStartedAt = pro_started_at;
                 
                 // Auto-calculate expiration based on plan_type
-                // Get plan_type from latest approved payment proof if not provided
-                let planTypeToUse = plan_type;
+                // Priority: manual_plan_type > plan_type from body > latest payment proof
+                let planTypeToUse = manual_plan_type || plan_type;
                 if (!planTypeToUse) {
                     const latestProof = await db.query(
                         `SELECT plan_type FROM payment_proofs 
@@ -502,16 +661,22 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
                 // User is becoming Pro for the first time, set start date to now
                 proStartedAt = new Date();
                 
-                // Try to get plan_type from latest payment proof to auto-calculate expiration
-                const latestProof = await db.query(
-                    `SELECT plan_type FROM payment_proofs 
-                     WHERE user_id = $1 AND status = 'approved' 
-                     ORDER BY reviewed_at DESC LIMIT 1`,
-                    [userId]
-                );
+                // Try to get plan_type from manual_plan_type or latest payment proof to auto-calculate expiration
+                let planTypeToUse = manual_plan_type;
+                if (!planTypeToUse) {
+                    const latestProof = await db.query(
+                        `SELECT plan_type FROM payment_proofs 
+                         WHERE user_id = $1 AND status = 'approved' 
+                         ORDER BY reviewed_at DESC LIMIT 1`,
+                        [userId]
+                    );
+                    
+                    if (latestProof.rows.length > 0) {
+                        planTypeToUse = latestProof.rows[0].plan_type;
+                    }
+                }
                 
-                if (latestProof.rows.length > 0) {
-                    const planTypeToUse = latestProof.rows[0].plan_type;
+                if (planTypeToUse) {
                     const startDate = new Date();
                     const expirationDate = new Date(startDate);
                     
@@ -530,6 +695,10 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
             calculatedExpiration = null;
         }
 
+        // Handle manual_plan_type: if provided, save it to users.plan_type
+        // If set to empty string or null, clear the manual override
+        const planTypeToSave = manual_plan_type === '' || manual_plan_type === null ? null : manual_plan_type;
+
         const result = await db.query(
             `UPDATE users 
              SET full_name = $1, 
@@ -538,10 +707,11 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
                  is_pro = $4,
                  pro_expires_at = $5,
                  pro_started_at = $6,
+                 plan_type = $7,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $7
+             WHERE id = $8
              RETURNING *`,
-            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, userId]
+            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, planTypeToSave, userId]
         );
 
         if (result.rows.length === 0) {
@@ -592,6 +762,303 @@ router.delete('/users/:userId', requireAdmin, async (req, res) => {
         // Rollback in case of error
         await db.query('ROLLBACK');
         res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+// Serve payment proof file (must come before /payment-proofs/:id)
+router.get('/payment-proofs/:id/file', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const proofResult = await db.query(
+            'SELECT file_path, original_filename FROM payment_proofs WHERE id = $1',
+            [id]
+        );
+        
+        if (proofResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Payment proof not found' });
+        }
+        
+        const proof = proofResult.rows[0];
+        
+        // Handle both absolute and relative paths
+        let filePath;
+        if (path.isAbsolute(proof.file_path)) {
+            // If it's already an absolute path, use it directly
+            filePath = proof.file_path;
+        } else {
+            // If it's relative, join with project root
+            filePath = path.join(__dirname, '..', proof.file_path);
+        }
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            console.error('File not found at path:', filePath);
+            return res.status(404).json({ error: 'File not found at path: ' + filePath });
+        }
+        
+        // Determine content type based on file extension
+        const ext = path.extname(proof.original_filename).toLowerCase();
+        const contentTypeMap = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.pdf': 'application/pdf'
+        };
+        const contentType = contentTypeMap[ext] || 'application/octet-stream';
+        
+        // Send file with proper content type
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${proof.original_filename}"`);
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('Error serving payment proof file:', error);
+        res.status(500).json({ error: 'Failed to serve payment proof file' });
+    }
+});
+
+// Get single payment proof details
+router.get('/payment-proofs/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const proofResult = await db.query(
+            `SELECT 
+                id,
+                user_id,
+                plan_type,
+                original_filename,
+                file_size,
+                status,
+                submitted_at,
+                reviewed_at,
+                notes
+             FROM payment_proofs
+             WHERE id = $1`,
+            [id]
+        );
+        
+        if (proofResult.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Payment proof not found' 
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            proof: proofResult.rows[0] 
+        });
+    } catch (error) {
+        console.error('Error fetching payment proof:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to fetch payment proof' 
+        });
+    }
+});
+
+// Update payment proof (plan_type, notes, and optionally file)
+router.put('/payment-proofs/:id', requireAdmin, upload.single('proof'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { plan_type, status, notes } = req.body;
+        
+        // Validate plan_type if provided
+        if (plan_type && plan_type !== 'monthly' && plan_type !== 'yearly') {
+            // Delete uploaded file if validation fails
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid plan type. Must be "monthly" or "yearly"' 
+            });
+        }
+        
+        // Validate status if provided
+        if (status && !['pending', 'approved', 'rejected'].includes(status)) {
+            // Delete uploaded file if validation fails
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid status. Must be "pending", "approved", or "rejected"' 
+            });
+        }
+        
+        // Check if payment proof exists and get current file path and status
+        const proofResult = await db.query(
+            'SELECT id, user_id, plan_type, file_path, status as current_status FROM payment_proofs WHERE id = $1',
+            [id]
+        );
+        
+        if (proofResult.rows.length === 0) {
+            // Delete uploaded file if payment proof not found
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Payment proof not found' 
+            });
+        }
+        
+        const currentProof = proofResult.rows[0];
+        const oldFilePath = currentProof.file_path;
+        const wasApproved = currentProof.current_status === 'approved';
+        const isBecomingApproved = status === 'approved' && !wasApproved;
+        const isBecomingRejected = status === 'rejected' && wasApproved;
+        
+        // Build update query dynamically based on what's provided
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+        
+        if (plan_type !== undefined) {
+            updates.push(`plan_type = $${paramCount++}`);
+            values.push(plan_type);
+        }
+        
+        if (status !== undefined) {
+            updates.push(`status = $${paramCount++}`);
+            values.push(status);
+        }
+        
+        if (notes !== undefined) {
+            updates.push(`notes = $${paramCount++}`);
+            values.push(notes || null); // Allow null for notes
+        }
+        
+        // Handle file upload if provided
+        if (req.file) {
+            updates.push(`file_path = $${paramCount++}`);
+            updates.push(`original_filename = $${paramCount++}`);
+            updates.push(`file_size = $${paramCount++}`);
+            values.push(req.file.path);
+            values.push(req.file.originalname);
+            values.push(req.file.size);
+            
+            // Delete old file if it exists and is different from new file
+            if (oldFilePath && oldFilePath !== req.file.path) {
+                let oldFileFullPath;
+                if (path.isAbsolute(oldFilePath)) {
+                    oldFileFullPath = oldFilePath;
+                } else {
+                    oldFileFullPath = path.join(__dirname, '..', oldFilePath);
+                }
+                
+                if (fs.existsSync(oldFileFullPath)) {
+                    try {
+                        fs.unlinkSync(oldFileFullPath);
+                    } catch (fileError) {
+                        console.error('Error deleting old file:', fileError);
+                        // Continue even if old file deletion fails
+                    }
+                }
+            }
+        }
+        
+        if (updates.length === 0) {
+            // Delete uploaded file if no updates
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'No fields to update' 
+            });
+        }
+        
+        // Add updated timestamp (only if status is being changed)
+        if (status !== undefined) {
+            updates.push(`reviewed_at = CURRENT_TIMESTAMP`);
+            updates.push(`reviewed_by = $${paramCount++}`);
+            values.push(req.session.userId);
+        }
+        
+        // Add id for WHERE clause
+        values.push(id);
+        
+        const updateQuery = `
+            UPDATE payment_proofs 
+            SET ${updates.join(', ')}
+            WHERE id = $${paramCount}
+            RETURNING id, plan_type, status, notes, reviewed_at, original_filename
+        `;
+        
+        const result = await db.query(updateQuery, values);
+        
+        // Handle Pro subscription activation/deactivation if status changed
+        if (status !== undefined) {
+            const userId = currentProof.user_id;
+            const planTypeToUse = plan_type || currentProof.plan_type;
+            
+            if (isBecomingApproved) {
+                // Activate Pro subscription
+                const startDate = new Date();
+                const expirationDate = new Date(startDate);
+                
+                if (planTypeToUse === 'yearly') {
+                    expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+                } else if (planTypeToUse === 'monthly') {
+                    expirationDate.setMonth(expirationDate.getMonth() + 1);
+                }
+                
+                await db.query(
+                    `UPDATE users 
+                     SET is_pro = true,
+                         pro_started_at = COALESCE(pro_started_at, CURRENT_TIMESTAMP),
+                         pro_expires_at = $1,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $2`,
+                    [expirationDate, userId]
+                );
+            } else if (isBecomingRejected) {
+                // Check if this was the only approved payment proof
+                const approvedCount = await db.query(
+                    `SELECT COUNT(*) as count 
+                     FROM payment_proofs 
+                     WHERE user_id = $1 AND status = 'approved' AND id != $2`,
+                    [userId, id]
+                );
+                
+                if (parseInt(approvedCount.rows[0].count) === 0) {
+                    // No other approved payment proofs, deactivate Pro
+                    await db.query(
+                        `UPDATE users 
+                         SET is_pro = false,
+                         updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $1`,
+                        [userId]
+                    );
+                }
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Payment proof updated successfully',
+            proof: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error updating payment proof:', error);
+        
+        // Delete uploaded file if database save fails
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (fileError) {
+                console.error('Error deleting file after error:', fileError);
+            }
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to update payment proof: ' + error.message 
+        });
     }
 });
 
@@ -697,56 +1164,58 @@ router.put('/payment-proofs/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
-// Serve payment proof file
-router.get('/payment-proofs/:id/file', requireAdmin, async (req, res) => {
+// Delete payment proof
+router.delete('/payment-proofs/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         
+        // Get payment proof details
         const proofResult = await db.query(
-            'SELECT file_path, original_filename FROM payment_proofs WHERE id = $1',
+            'SELECT user_id, file_path FROM payment_proofs WHERE id = $1',
             [id]
         );
         
         if (proofResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Payment proof not found' });
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Payment proof not found' 
+            });
         }
         
         const proof = proofResult.rows[0];
         
-        // Handle both absolute and relative paths
-        let filePath;
-        if (path.isAbsolute(proof.file_path)) {
-            // If it's already an absolute path, use it directly
-            filePath = proof.file_path;
-        } else {
-            // If it's relative, join with project root
-            filePath = path.join(__dirname, '..', proof.file_path);
+        // Delete the file if it exists
+        if (proof.file_path) {
+            let filePath;
+            if (path.isAbsolute(proof.file_path)) {
+                filePath = proof.file_path;
+            } else {
+                filePath = path.join(__dirname, '..', proof.file_path);
+            }
+            
+            if (fs.existsSync(filePath)) {
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (fileError) {
+                    console.error('Error deleting file:', fileError);
+                    // Continue with database deletion even if file deletion fails
+                }
+            }
         }
         
-        // Check if file exists
-        if (!fs.existsSync(filePath)) {
-            console.error('File not found at path:', filePath);
-            return res.status(404).json({ error: 'File not found at path: ' + filePath });
-        }
+        // Delete from database
+        await db.query('DELETE FROM payment_proofs WHERE id = $1', [id]);
         
-        // Determine content type based on file extension
-        const ext = path.extname(proof.original_filename).toLowerCase();
-        const contentTypeMap = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.pdf': 'application/pdf'
-        };
-        const contentType = contentTypeMap[ext] || 'application/octet-stream';
-        
-        // Send file with proper content type
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `inline; filename="${proof.original_filename}"`);
-        res.sendFile(filePath);
+        res.json({ 
+            success: true, 
+            message: 'Payment proof deleted successfully' 
+        });
     } catch (error) {
-        console.error('Error serving payment proof file:', error);
-        res.status(500).json({ error: 'Failed to serve payment proof file' });
+        console.error('Error deleting payment proof:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to delete payment proof' 
+        });
     }
 });
 
@@ -754,6 +1223,20 @@ router.get('/payment-proofs/:id/file', requireAdmin, async (req, res) => {
 router.get('/settings/:key', requireAdmin, async (req, res) => {
     try {
         const { key } = req.params;
+        
+        // Check if system_settings table exists
+        const tableCheck = await db.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'system_settings'
+            );
+        `);
+        
+        if (!tableCheck.rows[0].exists) {
+            return res.status(404).json({ error: 'System settings table not found. Please run migrations.' });
+        }
+        
         const result = await db.query(
             'SELECT setting_key, setting_value, description, updated_at FROM system_settings WHERE setting_key = $1',
             [key]
@@ -771,7 +1254,7 @@ router.get('/settings/:key', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching system setting:', error);
-        res.status(500).json({ error: 'Failed to fetch system setting' });
+        res.status(500).json({ error: 'Failed to fetch system setting: ' + error.message });
     }
 });
 

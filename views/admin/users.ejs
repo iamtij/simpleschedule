@@ -41,6 +41,14 @@
                         <option value="expired" <%= filters.subscription === 'expired' ? 'selected' : '' %>>Expired</option>
                     </select>
                 </div>
+                <div class="w-48">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
+                    <select name="planType" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">All</option>
+                        <option value="monthly" <%= filters.planType === 'monthly' ? 'selected' : '' %>>Monthly</option>
+                        <option value="yearly" <%= filters.planType === 'yearly' ? 'selected' : '' %>>Yearly</option>
+                    </select>
+                </div>
                 <div class="flex items-end">
                     <button type="submit" class="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200">
                         Apply Filters
@@ -50,7 +58,7 @@
         </div>
 
         <!-- Users Table -->
-        <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <div class="bg-white rounded-lg shadow overflow-x-auto" style="position: relative; z-index: 1;">
             <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
                 <thead class="bg-gray-50">
                     <tr>
@@ -58,11 +66,12 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 200px;">Email</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 90px;">Status</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 90px;">Pro</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 100px;">Plan Type</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 120px;">Trial Days Left</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 110px;">Pro Started</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 110px;">Pro Expires</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 100px;">Joined</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky right-0" style="min-width: 100px;">Actions</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky right-0" style="min-width: 100px; z-index: 1;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="user-table-body" class="bg-white divide-y divide-gray-200">
@@ -80,8 +89,8 @@
     </div>
 
     <!-- Edit Modal -->
-    <div id="userModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border max-w-4xl w-full shadow-lg rounded-md bg-white">
+    <div id="userModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 9999;" onclick="if(event.target === this) closeUserModal()">
+        <div class="relative top-20 mx-auto p-5 border max-w-4xl w-full shadow-lg rounded-md bg-white" style="z-index: 10000; position: relative;" onclick="event.stopPropagation()">
             <div class="mt-3">
                 <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit User</h3>
                 <form id="userForm" class="space-y-4">
@@ -117,6 +126,15 @@
                                     placeholder="Expiration Date">
                             </div>
                         </div>
+                        <div class="mt-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Plan Type (Manual Override)</label>
+                            <select id="manual_plan_type" class="w-full px-3 py-2 border rounded-lg">
+                                <option value="">Auto (from payment proof)</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Set this to manually override the plan type. Leave as "Auto" to use the latest payment proof.</p>
+                        </div>
                         <div id="pro_started_at_display" class="mt-2 text-sm text-gray-600 hidden">
                             <span class="font-medium">Pro Started:</span> <span id="pro_started_at_value"></span>
                         </div>
@@ -124,7 +142,49 @@
                     
                     <!-- Payment Proofs Section -->
                     <div id="payment-proofs-section" class="border-t pt-4 mt-4 hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-3">Payment Proofs</label>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="block text-sm font-medium text-gray-700">Payment Proofs</label>
+                            <button type="button" id="add-payment-proof-btn" onclick="toggleAddPaymentProofForm()" 
+                                class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-plus mr-1"></i> Add Payment Proof
+                            </button>
+                        </div>
+                        
+                        <!-- Payment Proof Message Area -->
+                        <div id="payment-proof-message" class="hidden mb-3 p-3 rounded-lg text-sm"></div>
+                        
+                        <!-- Add Payment Proof Form -->
+                        <div id="add-payment-proof-form" class="hidden mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Add New Payment Proof</h4>
+                            <div id="addPaymentProofForm" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Plan Type</label>
+                                    <select name="planType" id="add-proof-plan-type"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        <option value="">Select plan type</option>
+                                        <option value="monthly">Monthly (PHP 499)</option>
+                                        <option value="yearly">Yearly (PHP 3,999)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Payment Proof File</label>
+                                    <input type="file" name="proof" id="add-proof-file" accept="image/*,.pdf"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm">
+                                    <p class="mt-1 text-xs text-gray-500">Accepted: JPEG, PNG, GIF, PDF (max 10MB)</p>
+                                </div>
+                                <div class="flex justify-end space-x-2">
+                                    <button type="button" onclick="toggleAddPaymentProofForm()"
+                                        class="text-sm bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-300">
+                                        Cancel
+                                    </button>
+                                    <button type="button" id="upload-payment-proof-btn"
+                                        class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
+                                        Upload
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div id="payment-proofs-list" class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
@@ -133,11 +193,12 @@
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="payment-proofs-tbody" class="bg-white divide-y divide-gray-200">
                                     <tr>
-                                        <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading payment proofs...</td>
+                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading payment proofs...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -160,7 +221,7 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div id="deleteConfirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div id="deleteConfirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 9999;">
         <div class="relative top-20 mx-auto p-5 border w-[480px] shadow-lg rounded-2xl bg-white">
             <div class="mt-3">
                 <div class="flex items-center justify-center">
@@ -192,6 +253,91 @@
         </div>
     </div>
 
+    <!-- Payment Proof Delete Confirmation Modal -->
+    <div id="paymentProofDeleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 10001;">
+        <div class="relative top-20 mx-auto p-5 border w-[480px] shadow-lg rounded-2xl bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-center">
+                    <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <h3 class="text-xl font-semibold text-gray-900">Delete Payment Proof</h3>
+                    <div class="mt-3">
+                        <p class="text-base text-gray-600">
+                            Are you sure you want to delete this payment proof? This action cannot be undone.
+                        </p>
+                    </div>
+                    <div class="mt-6 flex justify-center space-x-3">
+                        <button onclick="closePaymentProofDeleteModal()" 
+                            class="w-32 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg text-base font-medium hover:bg-gray-200">
+                            Cancel
+                        </button>
+                        <button id="confirmPaymentProofDeleteButton"
+                            class="w-32 bg-red-600 text-white px-4 py-3 rounded-lg text-base font-medium hover:bg-red-700">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Payment Proof Modal -->
+    <div id="editPaymentProofModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 10001;" onclick="if(event.target === this) closeEditPaymentProofModal()">
+        <div class="relative top-20 mx-auto p-5 border max-w-2xl w-full shadow-lg rounded-md bg-white" style="z-index: 10002; position: relative;" onclick="event.stopPropagation()">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Payment Proof</h3>
+                <form id="editPaymentProofForm" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" id="edit-proof-id">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
+                        <select id="edit-proof-plan-type" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="monthly">Monthly (PHP 499)</option>
+                            <option value="yearly">Yearly (PHP 3,999)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="edit-proof-status" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="pending">Pending</option>
+                            <option value="approved">Paid</option>
+                            <option value="rejected">Failed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Payment Proof File</label>
+                        <div class="mb-2">
+                            <div id="edit-proof-current-file" class="text-sm text-gray-600 mb-2"></div>
+                            <input type="file" id="edit-proof-file" name="proof" accept="image/*,.pdf"
+                                class="w-full px-3 py-2 border rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">Leave empty to keep current file. Accepted: JPEG, PNG, GIF, PDF (max 10MB)</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="edit-proof-notes" rows="4" 
+                            class="w-full px-3 py-2 border rounded-lg"
+                            placeholder="Add notes about this payment proof..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeEditPaymentProofModal()"
+                            class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/toast.js"></script>
     <script>
     let currentPage = 1;
@@ -204,8 +350,9 @@
         const search = searchParams.get('search') || '';
         const status = searchParams.get('status') || '';
         const subscription = searchParams.get('subscription') || '';
+        const planType = searchParams.get('planType') || '';
         
-        const url = `/admin/users/data?page=${currentPage}&search=${encodeURIComponent(search)}&status=${status}&subscription=${subscription}`;
+        const url = `/admin/users/data?page=${currentPage}&search=${encodeURIComponent(search)}&status=${status}&subscription=${subscription}&planType=${planType}`;
         
         fetch(url)
             .then(response => response.json())
@@ -252,6 +399,17 @@
                         </td>
                         <td class="px-3 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">
+                                ${user.plan_type ? 
+                                    (user.plan_type === 'monthly' ? 
+                                        '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Monthly</span>' : 
+                                        '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Yearly</span>'
+                                    ) : 
+                                    '-'
+                                }
+                            </div>
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
                                 ${user.trial_days_left !== null ? 
                                     (user.trial_days_left > 0 ? 
                                         `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${user.trial_days_left} day${user.trial_days_left !== 1 ? 's' : ''}</span>` : 
@@ -276,7 +434,7 @@
                                 ${new Date(user.created_at).toLocaleDateString()}
                             </div>
                         </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-left text-sm font-medium bg-white sticky right-0 z-10">
+                        <td class="px-4 py-4 whitespace-nowrap text-left text-sm font-medium bg-white sticky right-0" style="z-index: 1;">
                             <div class="flex items-center space-x-3">
                                 <button onclick='openEditModal(${JSON.stringify(JSON.stringify(user))})' 
                                     class="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50 transition-colors"
@@ -320,6 +478,28 @@
         document.getElementById('pro_expires_at').value = user.pro_expires_at ? 
             new Date(user.pro_expires_at).toISOString().split('T')[0] : '';
         
+        // Set manual plan type - we need to fetch the user's actual plan_type from the database
+        // For now, we'll use the plan_type from the displayed data (which is COALESCE of manual and payment proof)
+        // We'll need to fetch the actual user data to get the manual override separately
+        // For simplicity, we'll fetch it when opening the modal
+        fetch(`/admin/users/${user.id}`)
+            .then(response => response.json())
+            .then(userData => {
+                // Set manual plan type if it exists in the database
+                const manualPlanTypeSelect = document.getElementById('manual_plan_type');
+                if (userData.plan_type) {
+                    manualPlanTypeSelect.value = userData.plan_type;
+                } else {
+                    manualPlanTypeSelect.value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user details:', error);
+                // Fallback: use the plan_type from the displayed data
+                const manualPlanTypeSelect = document.getElementById('manual_plan_type');
+                manualPlanTypeSelect.value = user.plan_type || '';
+            });
+        
         // Show pro_started_at if it exists
         const proStartedAtDisplay = document.getElementById('pro_started_at_display');
         const proStartedAtValue = document.getElementById('pro_started_at_value');
@@ -332,6 +512,9 @@
         
         // Load payment proofs
         loadPaymentProofs(user.id);
+        
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
         
         document.getElementById('userModal').classList.remove('hidden');
     }
@@ -400,11 +583,25 @@
                                         <option value="rejected" ${proof.status === 'rejected' ? 'selected' : ''}>Failed</option>
                                     </select>
                                 </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button" onclick="editPaymentProof(${proof.id}, event)" 
+                                            class="text-blue-600 hover:text-blue-900 p-1.5 rounded hover:bg-blue-50 transition-colors"
+                                            title="Edit payment proof">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button type="button" onclick="deletePaymentProof(${proof.id}, event)" 
+                                            class="text-red-600 hover:text-red-900 p-1.5 rounded hover:bg-red-50 transition-colors"
+                                            title="Delete payment proof">
+                                            <i class="fas fa-trash-alt text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">No payment proofs submitted yet.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No payment proofs submitted yet.</td></tr>';
                 }
             })
             .catch(error => {
@@ -412,7 +609,7 @@
                 // Show empty state instead of error message
                 const tbody = document.getElementById('payment-proofs-tbody');
                 if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">No payment proofs submitted yet.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No payment proofs submitted yet.</td></tr>';
                 }
             });
     }
@@ -462,9 +659,111 @@
             }
         });
     }
+    
+    let paymentProofToDelete = null;
+
+    function editPaymentProof(proofId, e) {
+        // Prevent any default behavior and event propagation
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Load payment proof data
+        fetch(`/admin/payment-proofs/${proofId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.proof) {
+                    const proof = data.proof;
+                    
+                    // Populate form fields
+                    document.getElementById('edit-proof-id').value = proof.id;
+                    document.getElementById('edit-proof-plan-type').value = proof.plan_type || 'monthly';
+                    document.getElementById('edit-proof-status').value = proof.status || 'pending';
+                    document.getElementById('edit-proof-notes').value = proof.notes || '';
+                    
+                    // Show current file name
+                    const currentFileDiv = document.getElementById('edit-proof-current-file');
+                    if (currentFileDiv && proof.original_filename) {
+                        currentFileDiv.innerHTML = `<span class="font-medium">Current file:</span> ${proof.original_filename}`;
+                    } else if (currentFileDiv) {
+                        currentFileDiv.innerHTML = '';
+                    }
+                    
+                    // Reset file input
+                    document.getElementById('edit-proof-file').value = '';
+                    
+                    // Show modal
+                    document.getElementById('editPaymentProofModal').classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    throw new Error(data.error || 'Failed to load payment proof');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading payment proof:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: error.message || 'Failed to load payment proof'
+                });
+            });
+        
+        return false;
+    }
+    
+    function closeEditPaymentProofModal() {
+        document.getElementById('editPaymentProofModal').classList.add('hidden');
+        document.body.style.overflow = '';
+        
+        // Reset form
+        document.getElementById('editPaymentProofForm').reset();
+        const currentFileDiv = document.getElementById('edit-proof-current-file');
+        if (currentFileDiv) {
+            currentFileDiv.innerHTML = '';
+        }
+    }
+    
+    function deletePaymentProof(proofId, e) {
+        // Prevent any default behavior and event propagation
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Show custom confirmation modal instead of browser confirm
+        paymentProofToDelete = proofId;
+        const modal = document.getElementById('paymentProofDeleteModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        } else {
+            console.error('Payment proof delete modal not found');
+            toast.show({
+                type: 'error',
+                title: 'Error',
+                message: 'Could not show delete confirmation'
+            });
+        }
+        return false;
+    }
+
+    function closePaymentProofDeleteModal() {
+        document.getElementById('paymentProofDeleteModal').classList.add('hidden');
+        paymentProofToDelete = null;
+    }
 
     function closeUserModal() {
         document.getElementById('userModal').classList.add('hidden');
+        
+        // Hide and reset add payment proof form if it's visible
+        const addForm = document.getElementById('add-payment-proof-form');
+        if (addForm && !addForm.classList.contains('hidden')) {
+            resetPaymentProofForm();
+            addForm.classList.add('hidden');
+        }
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
     }
 
     function showDeleteConfirmation(id) {
@@ -487,7 +786,8 @@
             email: document.getElementById('email').value,
             status: document.getElementById('status').value,
             is_pro: document.getElementById('is_pro').value === 'true',
-            pro_expires_at: document.getElementById('pro_expires_at').value || null
+            pro_expires_at: document.getElementById('pro_expires_at').value || null,
+            manual_plan_type: document.getElementById('manual_plan_type').value || null
         };
 
         const userId = document.getElementById('userId').value;
@@ -555,6 +855,263 @@
             }
         }
     });
+
+    // Payment proof delete confirmation handler
+    document.getElementById('confirmPaymentProofDeleteButton').addEventListener('click', async () => {
+        if (paymentProofToDelete) {
+            try {
+                const response = await fetch(`/admin/payment-proofs/${paymentProofToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    closePaymentProofDeleteModal();
+                    
+                    toast.show({
+                        type: 'success',
+                        title: 'Success',
+                        message: 'Payment proof deleted successfully'
+                    });
+                    
+                    // Reload payment proofs - modal stays open
+                    const userId = document.getElementById('userId').value;
+                    if (userId) {
+                        loadPaymentProofs(userId);
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to delete payment proof');
+                }
+            } catch (error) {
+                console.error('Error deleting payment proof:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: error.message || 'Failed to delete payment proof'
+                });
+            }
+        }
+    });
+
+    // Reset payment proof form fields
+    function resetPaymentProofForm() {
+        const planTypeSelect = document.getElementById('add-proof-plan-type');
+        const fileInput = document.getElementById('add-proof-file');
+        if (planTypeSelect) planTypeSelect.value = '';
+        if (fileInput) fileInput.value = '';
+    }
+    
+    // Show payment proof message
+    function showPaymentProofMessage(message, type = 'error') {
+        const messageDiv = document.getElementById('payment-proof-message');
+        if (messageDiv) {
+            messageDiv.className = `mb-3 p-3 rounded-lg text-sm ${
+                type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 
+                type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 
+                'bg-blue-100 text-blue-800 border border-blue-200'
+            }`;
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    hidePaymentProofMessage();
+                }, 3000);
+            }
+        }
+    }
+    
+    // Hide payment proof message
+    function hidePaymentProofMessage() {
+        const messageDiv = document.getElementById('payment-proof-message');
+        if (messageDiv) {
+            messageDiv.classList.add('hidden');
+            messageDiv.textContent = '';
+        }
+    }
+    
+    // Toggle add payment proof form
+    function toggleAddPaymentProofForm() {
+        const form = document.getElementById('add-payment-proof-form');
+        const button = document.getElementById('add-payment-proof-btn');
+        if (form) {
+            const isHidden = form.classList.contains('hidden');
+            form.classList.toggle('hidden');
+            
+            // Show/hide button based on form visibility
+            if (button) {
+                if (isHidden) {
+                    // Form is being shown, hide button and clear any messages
+                    button.classList.add('hidden');
+                    hidePaymentProofMessage();
+                } else {
+                    // Form is being hidden, show button
+                    button.classList.remove('hidden');
+                }
+            }
+            
+            // Reset form when hiding
+            if (!isHidden) {
+                resetPaymentProofForm();
+                hidePaymentProofMessage();
+            }
+        }
+    }
+    
+    // Handle add payment proof form submission
+    const uploadPaymentProofBtn = document.getElementById('upload-payment-proof-btn');
+    if (uploadPaymentProofBtn) {
+        uploadPaymentProofBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event from bubbling to parent form
+            
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                showPaymentProofMessage('User ID not found', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            const planType = document.getElementById('add-proof-plan-type').value;
+            const fileInput = document.getElementById('add-proof-file');
+            
+            if (!planType) {
+                showPaymentProofMessage('Please select a plan type', 'error');
+                return;
+            }
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showPaymentProofMessage('Please select a file', 'error');
+                return;
+            }
+            
+            formData.append('planType', planType);
+            formData.append('proof', fileInput.files[0]);
+            
+            // Disable submit button to prevent double submission
+            const originalButtonText = uploadPaymentProofBtn.textContent;
+            uploadPaymentProofBtn.disabled = true;
+            uploadPaymentProofBtn.textContent = 'Uploading...';
+            
+            try {
+                const response = await fetch(`/admin/users/${userId}/payment-proofs`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showPaymentProofMessage('Payment proof added successfully', 'success');
+                    
+                    // Reset form and hide it
+                    resetPaymentProofForm();
+                    toggleAddPaymentProofForm();
+                    
+                    // Reload payment proofs (modal stays open)
+                    loadPaymentProofs(userId);
+                } else {
+                    throw new Error(data.error || 'Failed to add payment proof');
+                }
+            } catch (error) {
+                console.error('Error adding payment proof:', error);
+                showPaymentProofMessage(error.message || 'Failed to add payment proof', 'error');
+            } finally {
+                // Re-enable submit button
+                uploadPaymentProofBtn.disabled = false;
+                uploadPaymentProofBtn.textContent = originalButtonText;
+            }
+        });
+    }
+
+    // Handle edit payment proof form submission
+    const editPaymentProofForm = document.getElementById('editPaymentProofForm');
+    if (editPaymentProofForm) {
+        editPaymentProofForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const proofId = document.getElementById('edit-proof-id').value;
+            const planType = document.getElementById('edit-proof-plan-type').value;
+            const status = document.getElementById('edit-proof-status').value;
+            const notes = document.getElementById('edit-proof-notes').value;
+            const fileInput = document.getElementById('edit-proof-file');
+            
+            if (!proofId) {
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Payment proof ID not found'
+                });
+                return;
+            }
+            
+            // Use FormData if file is selected, otherwise use JSON
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+            let body;
+            let headers = {};
+            
+            if (hasFile) {
+                // Use FormData for file upload
+                const formData = new FormData();
+                formData.append('plan_type', planType);
+                formData.append('status', status);
+                formData.append('notes', notes);
+                formData.append('proof', fileInput.files[0]);
+                body = formData;
+                // Don't set Content-Type header - browser will set it with boundary for FormData
+            } else {
+                // Use JSON if no file
+                headers['Content-Type'] = 'application/json';
+                body = JSON.stringify({
+                    plan_type: planType,
+                    status: status,
+                    notes: notes
+                });
+            }
+            
+            try {
+                const response = await fetch(`/admin/payment-proofs/${proofId}`, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: body
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    toast.show({
+                        type: 'success',
+                        title: 'Success',
+                        message: 'Payment proof updated successfully'
+                    });
+                    
+                    // Close modal
+                    closeEditPaymentProofModal();
+                    
+                    // Reload payment proofs
+                    const userId = document.getElementById('userId').value;
+                    if (userId) {
+                        loadPaymentProofs(userId);
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to update payment proof');
+                }
+            } catch (error) {
+                console.error('Error updating payment proof:', error);
+                toast.show({
+                    type: 'error',
+                    title: 'Error',
+                    message: error.message || 'Failed to update payment proof'
+                });
+            }
+        });
+    }
 
     // Load initial data
     loadUsers();
