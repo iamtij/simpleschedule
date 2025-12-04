@@ -44,11 +44,14 @@ router.get('/', requireAdmin, async (req, res) => {
         `);
 
         // Get Pro users (active Pro subscription - takes precedence)
-        // Users with active Pro (lifetime or not expired) OR active RevenueCat
+        // Users with active Pro (lifetime or not expired, with 1-day grace period) OR active RevenueCat
         const proUsers = await db.query(`
             SELECT COUNT(*) FROM users
             WHERE (
-                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+                (is_pro = TRUE AND (
+                    pro_expires_at IS NULL 
+                    OR pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+                ))
                 OR COALESCE(revenuecat_entitlement_status, '') = 'active'
             )
         `);
@@ -60,17 +63,23 @@ router.get('/', requireAdmin, async (req, res) => {
             WHERE trial_started_at IS NOT NULL
             AND trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
             AND NOT (
-                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+                (is_pro = TRUE AND (
+                    pro_expires_at IS NULL 
+                    OR pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+                ))
                 OR COALESCE(revenuecat_entitlement_status, '') = 'active'
             )
         `);
 
         // Get Expired users (not Pro and not Free Trial)
-        // Users who don't have active Pro AND don't have active trial
+        // Users who don't have active Pro (accounting for 1-day grace period) AND don't have active trial
         const expiredUsers = await db.query(`
             SELECT COUNT(*) FROM users
             WHERE NOT (
-                (is_pro = TRUE AND (pro_expires_at IS NULL OR pro_expires_at > CURRENT_TIMESTAMP))
+                (is_pro = TRUE AND (
+                    pro_expires_at IS NULL 
+                    OR pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+                ))
                 OR COALESCE(revenuecat_entitlement_status, '') = 'active'
             )
             AND NOT (
@@ -117,9 +126,12 @@ router.get('/users/data', requireAdmin, async (req, res) => {
     
     // Add subscription filter
     if (subscription === 'pro') {
-        // Pro users: active Pro (lifetime or not expired) OR active RevenueCat
+        // Pro users: active Pro (lifetime or not expired, with 1-day grace period) OR active RevenueCat
         where.push(`(
-            (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+            (u.is_pro = TRUE AND (
+                u.pro_expires_at IS NULL 
+                OR u.pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+            ))
             OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
         )`);
     } else if (subscription === 'free') {
@@ -128,15 +140,21 @@ router.get('/users/data', requireAdmin, async (req, res) => {
             u.trial_started_at IS NOT NULL
             AND u.trial_started_at >= CURRENT_TIMESTAMP - INTERVAL '5 days'
             AND NOT (
-                (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+                (u.is_pro = TRUE AND (
+                    u.pro_expires_at IS NULL 
+                    OR u.pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+                ))
                 OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
             )
         )`);
     } else if (subscription === 'expired') {
-        // Expired users: NOT Pro AND NOT Free Trial
+        // Expired users: NOT Pro (accounting for 1-day grace period) AND NOT Free Trial
         where.push(`(
             NOT (
-                (u.is_pro = TRUE AND (u.pro_expires_at IS NULL OR u.pro_expires_at > CURRENT_TIMESTAMP))
+                (u.is_pro = TRUE AND (
+                    u.pro_expires_at IS NULL 
+                    OR u.pro_expires_at + INTERVAL '1 day' > CURRENT_TIMESTAMP
+                ))
                 OR COALESCE(u.revenuecat_entitlement_status, '') = 'active'
             )
             AND NOT (
