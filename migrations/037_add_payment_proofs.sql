@@ -20,3 +20,5 @@ CREATE INDEX IF NOT EXISTS idx_payment_proofs_user_id ON payment_proofs(user_id)
 CREATE INDEX IF NOT EXISTS idx_payment_proofs_status ON payment_proofs(status);
 CREATE INDEX IF NOT EXISTS idx_payment_proofs_submitted_at ON payment_proofs(submitted_at DESC);
 
+
+

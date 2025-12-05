@@ -7,3 +7,5 @@ UPDATE users
 SET pro_started_at = COALESCE(pro_started_at, created_at)
 WHERE is_pro = TRUE AND pro_started_at IS NULL;
 
+
+

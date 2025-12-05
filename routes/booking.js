@@ -422,7 +422,7 @@ router.post('/:username/:duration', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone FROM users WHERE username = $1',
         [username]
     );
 
@@ -651,6 +651,17 @@ router.post('/:username/:duration', async (req, res) => {
         // Don't fail the booking if notifications fail
     }
 
+    // Schedule 1-hour reminder emails using Mailgun's built-in scheduling
+    try {
+        const userTimezone = host.timezone || timezone.getDefaultTimezone();
+        await Promise.all([
+            mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
+        ]);
+    } catch (scheduledReminderError) {
+        // Don't fail the booking if scheduled reminders fail
+    }
+
     // Send Telegram notification if enabled
     if (host.telegram_notifications_enabled && host.telegram_chat_id) {
         try {
@@ -814,7 +825,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone FROM users WHERE username = $1',
         [username]
     );
 
@@ -1029,6 +1040,17 @@ router.post('/:username', async (req, res) => {
         await Promise.all(notifications);
     } catch (notificationError) {
         // Don't fail the booking if notifications fail
+    }
+
+    // Schedule 1-hour reminder emails using Mailgun's built-in scheduling
+    try {
+        const userTimezone = host.timezone || timezone.getDefaultTimezone();
+        await Promise.all([
+            mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
+        ]);
+    } catch (scheduledReminderError) {
+        // Don't fail the booking if scheduled reminders fail
     }
 
     // Send Telegram notification if enabled

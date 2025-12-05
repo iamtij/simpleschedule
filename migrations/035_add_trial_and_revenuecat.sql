@@ -10,3 +10,5 @@ UPDATE users
 SET trial_started_at = created_at 
 WHERE trial_started_at IS NULL;
 
+
+
