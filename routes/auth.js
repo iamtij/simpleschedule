@@ -101,6 +101,55 @@ router.post('/register', async (req, res) => {
         is_admin: false
       };
 
+      // Schedule trial expiration emails
+      try {
+        // Generate upgrade token
+        const upgradeToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+        // Save token to database
+        await db.query(
+          'UPDATE users SET upgrade_token = $1, upgrade_token_expiry = $2 WHERE id = $3',
+          [upgradeToken, tokenExpiry, result.rows[0].id]
+        );
+
+        // Get trial_started_at to calculate delivery times
+        const userResult = await db.query(
+          'SELECT trial_started_at FROM users WHERE id = $1',
+          [result.rows[0].id]
+        );
+
+        if (userResult.rows.length > 0 && userResult.rows[0].trial_started_at) {
+          const trialStart = new Date(userResult.rows[0].trial_started_at);
+          
+          // Calculate delivery times
+          const deliveryTime1 = new Date(trialStart);
+          deliveryTime1.setDate(deliveryTime1.getDate() + 4); // 1 day before expiration (4 days after trial start)
+          deliveryTime1.setHours(9, 0, 0, 0); // 9 AM
+
+          const deliveryTime2 = new Date(trialStart);
+          deliveryTime2.setDate(deliveryTime2.getDate() + 5); // On expiration day (5 days after trial start)
+          deliveryTime2.setHours(9, 0, 0, 0); // 9 AM
+
+          // Schedule both emails
+          const userForEmail = {
+            id: result.rows[0].id,
+            email: email,
+            name: full_name,
+            full_name: full_name,
+            username: username
+          };
+
+          await Promise.all([
+            mailService.scheduleTrialExpirationEmail(userForEmail, 1, deliveryTime1, upgradeToken),
+            mailService.scheduleTrialExpirationEmail(userForEmail, 0, deliveryTime2, upgradeToken)
+          ]);
+        }
+      } catch (trialEmailError) {
+        // Don't fail registration if trial email scheduling fails
+        console.error('Error scheduling trial expiration emails:', trialEmailError);
+      }
+
       // Send welcome email
       try {
         await mailService.sendWelcomeEmail({

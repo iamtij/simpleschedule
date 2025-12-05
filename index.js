@@ -78,6 +78,7 @@ app.use((err, req, res, next) => {
 const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/booking');
 const dashboardRoutes = require('./routes/dashboard');
+const upgradeRoutes = require('./routes/upgrade');
 const testRoutes = require('./routes/test');
 const adminRoutes = require('./routes/admin');
 const googleAuthRoutes = require('./routes/googleAuth');
@@ -91,6 +92,7 @@ const reminderJob = require('./jobs/reminders');
 app.use('/auth', authRoutes);
 app.use('/booking', bookingRoutes);
 app.use('/dashboard', dashboardRoutes); // Mount dashboard routes
+app.use('/upgrade', upgradeRoutes);
 app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);

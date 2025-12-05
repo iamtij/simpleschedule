@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upgrade to ISKED Pro - isked</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-8 px-4">
+    <div class="max-w-2xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Upgrade to ISKED Pro</h1>
+            <p class="text-gray-600">Hello <%= user.display_name || user.full_name || user.username %> (<%= user.email %>)</p>
+        </div>
+
+        <!-- Main Content Card -->
+        <div class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+            <!-- Features List -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Pro Features</h2>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Unlimited bookings
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Unlimited contacts
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Advanced CRM features
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Priority support
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Pricing Options -->
+            <form id="payment-proof-form" class="space-y-4 mb-6">
+                <!-- Plan Selection -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Plan</label>
+                    
+                    <!-- Monthly Plan -->
+                    <% if (typeof monthlySubscriptionEnabled !== 'undefined' && monthlySubscriptionEnabled) { %>
+                    <div class="plan-option p-4 border-2 rounded-lg cursor-pointer transition-all border-gray-300 hover:border-gray-400" data-plan="monthly">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Monthly</h4>
+                                <p class="text-sm text-gray-600">PHP 499/month</p>
+                            </div>
+                            <input type="radio" name="planType" value="monthly" class="plan-radio" required>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <!-- Yearly Plan -->
+                    <div class="plan-option p-4 border-2 rounded-lg cursor-pointer transition-all border-blue-500 bg-blue-50" data-plan="yearly">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-blue-600">BEST VALUE</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Yearly</h4>
+                                <p class="text-sm text-gray-600">PHP 3,999/year</p>
+                                <p class="text-xs text-gray-500 mt-1">Save PHP 1,989 (33% off)</p>
+                            </div>
+                            <input type="radio" name="planType" value="yearly" class="plan-radio" checked required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Display -->
+                <div id="qr-code-section" class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Scan to Pay</label>
+                    
+                    <!-- Monthly QR Code -->
+                    <div id="qr-monthly" class="qr-code-container hidden">
+                        <div class="bg-white border-2 border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                            <img id="qr-img-monthly" 
+                                 src="/qr-codes/gcash-monthly-499.jpg" 
+                                 alt="GCash QR Code for PHP 499 Monthly Plan" 
+                                 class="max-w-full h-auto rounded-lg mb-3" 
+                                 style="max-height: 300px;"
+                                 onerror="this.style.display='none'; this.parentElement.querySelector('.qr-error-message').classList.remove('hidden');">
+                            <div class="qr-error-message hidden text-center py-8 w-full">
+                                <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <p class="text-sm text-gray-600">QR code image not found</p>
+                                <p class="text-xs text-gray-500 mt-1">Please upload: gcash-monthly-499.jpg</p>
+                            </div>
+                            <p class="text-sm font-medium text-gray-900">PHP 499.00</p>
+                            <p class="text-xs text-gray-600 mt-1">Monthly Plan</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Yearly QR Code -->
+                    <div id="qr-yearly" class="qr-code-container hidden">
+                        <div class="bg-white border-2 border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                            <img id="qr-img-yearly" 
+                                 src="/qr-codes/gcash-yearly-3999.jpg" 
+                                 alt="GCash QR Code for PHP 3,999 Yearly Plan" 
+                                 class="max-w-full h-auto rounded-lg mb-3" 
+                                 style="max-height: 300px;"
+                                 onerror="this.style.display='none'; this.parentElement.querySelector('.qr-error-message').classList.remove('hidden');">
+                            <div class="qr-error-message hidden text-center py-8 w-full">
+                                <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <p class="text-sm text-gray-600">QR code image not found</p>
+                                <p class="text-xs text-gray-500 mt-1">Please upload: gcash-yearly-3999.jpg</p>
+                            </div>
+                            <p class="text-sm font-medium text-gray-900">PHP 3,999.00</p>
+                            <p class="text-xs text-gray-600 mt-1">Yearly Plan</p>
+                        </div>
+                    </div>
+                    
+                    <!-- No Plan Selected Message -->
+                    <div id="qr-placeholder" class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p class="text-sm text-gray-500">Please select a plan above to see the payment QR code</p>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Upload Proof of Payment</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                <label for="proof-file" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                    <span>Upload a file</span>
+                                    <input id="proof-file" name="proof" type="file" class="sr-only" accept="image/*,.pdf" required>
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, GIF, PDF up to 10MB</p>
+                            <p id="file-name" class="text-sm text-gray-700 mt-2 hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submit-payment-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Send Payment
+                </button>
+            </form>
+
+            <!-- Loading State -->
+            <div id="paywall-loading" class="hidden text-center py-4">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <p class="mt-2 text-sm text-gray-600">Submitting payment proof...</p>
+            </div>
+
+            <!-- Success Message -->
+            <div id="paywall-success" class="hidden text-sm text-green-600 mb-4 p-3 bg-green-50 rounded-lg">
+                Payment proof submitted successfully! We will review it and activate your Pro subscription shortly.
+            </div>
+
+            <!-- Error Message -->
+            <div id="paywall-error" class="hidden text-sm text-red-600 mb-4 p-3 bg-red-50 rounded-lg"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-sm text-gray-500">
+                Questions? Contact us at <a href="mailto:team@smallsimplesteps.co" class="text-blue-600 hover:text-blue-700">team@smallsimplesteps.co</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const token = '<%= token %>';
+
+        // Plan selection handler
+        document.querySelectorAll('.plan-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const plan = this.dataset.plan;
+                const radio = this.querySelector('.plan-radio');
+                radio.checked = true;
+
+                // Update border styles
+                document.querySelectorAll('.plan-option').forEach(opt => {
+                    opt.classList.remove('border-blue-500', 'bg-blue-50');
+                    opt.classList.add('border-gray-300');
+                });
+                this.classList.remove('border-gray-300');
+                this.classList.add('border-blue-500', 'bg-blue-50');
+
+                // Show appropriate QR code
+                document.getElementById('qr-monthly').classList.add('hidden');
+                document.getElementById('qr-yearly').classList.add('hidden');
+                document.getElementById('qr-placeholder').classList.add('hidden');
+
+                if (plan === 'monthly') {
+                    document.getElementById('qr-monthly').classList.remove('hidden');
+                } else {
+                    document.getElementById('qr-yearly').classList.remove('hidden');
+                }
+            });
+        });
+
+        // File input handler
+        document.getElementById('proof-file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name;
+            const fileNameElement = document.getElementById('file-name');
+            if (fileName) {
+                fileNameElement.textContent = fileName;
+                fileNameElement.classList.remove('hidden');
+            } else {
+                fileNameElement.classList.add('hidden');
+            }
+        });
+
+        // Form submission handler
+        document.getElementById('payment-proof-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = document.getElementById('payment-proof-form');
+            const loadingElement = document.getElementById('paywall-loading');
+            const errorElement = document.getElementById('paywall-error');
+            const successElement = document.getElementById('paywall-success');
+            const submitBtn = document.getElementById('submit-payment-btn');
+            
+            // Hide previous messages
+            errorElement.classList.add('hidden');
+            successElement.classList.add('hidden');
+            form.classList.add('hidden');
+            loadingElement.classList.remove('hidden');
+            submitBtn.disabled = true;
+            
+            try {
+                const formData = new FormData(form);
+                const planType = formData.get('planType');
+                const proofFile = formData.get('proof');
+                
+                if (!planType) {
+                    throw new Error('Please select a plan');
+                }
+                
+                if (!proofFile || proofFile.size === 0) {
+                    throw new Error('Please upload a proof of payment file');
+                }
+                
+                const response = await fetch(`/upgrade/${token}/payment-proof`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('Invalid or expired upgrade link');
+                    }
+                    throw new Error('Server returned an unexpected response. Please try again.');
+                }
+                
+                loadingElement.classList.add('hidden');
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to submit payment proof');
+                }
+                
+                if (data.success) {
+                    successElement.classList.remove('hidden');
+                    form.reset();
+                    document.getElementById('file-name').classList.add('hidden');
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        window.location.href = '/auth/login';
+                    }, 3000);
+                } else {
+                    errorElement.textContent = data.error || 'Failed to submit payment proof';
+                    errorElement.classList.remove('hidden');
+                    form.classList.remove('hidden');
+                }
+            } catch (error) {
+                loadingElement.classList.add('hidden');
+                errorElement.textContent = error.message || 'Failed to submit payment proof';
+                errorElement.classList.remove('hidden');
+                form.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Initialize - show yearly QR code by default
+        document.getElementById('qr-yearly').classList.remove('hidden');
+        document.getElementById('qr-placeholder').classList.add('hidden');
+    </script>
+</body>
+</html>
+

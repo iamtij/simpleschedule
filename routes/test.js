@@ -59,6 +59,23 @@ router.get('/email/:email', async (req, res) => {
     }
 });
 
+router.get('/trial-expiration-emails', async (req, res) => {
+    try {
+        const result = await mailService.sendTestTrialExpirationEmail();
+        res.json({
+            success: true,
+            message: result.message || 'Test trial expiration emails scheduled successfully',
+            result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send test trial expiration emails',
+            error: error.message
+        });
+    }
+});
+
 router.get('/reminder/client/:email', async (req, res) => {
     const booking = buildSampleBooking({ clientEmail: req.params.email });
     const host = buildSampleHost({ email: 'host@example.com' });
