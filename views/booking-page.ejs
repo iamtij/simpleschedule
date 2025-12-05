@@ -1184,7 +1184,37 @@
                 if (data.slots && data.slots.length > 0) {
                     timeSlotsContainer.innerHTML = '';
                     
-                    data.slots.forEach(slot => {
+                    // Get current time to filter out past slots
+                    const now = new Date();
+                    const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+                    const isToday = selectedDateObj.toDateString() === now.toDateString();
+                    
+                    // Filter out past time slots
+                    const availableSlots = data.slots.filter(slot => {
+                        if (!isToday) {
+                            // For future dates, show all slots
+                            return true;
+                        }
+                        
+                        // For today, filter out past slots
+                        const timeStr = typeof slot === 'string' ? slot : `${slot.start_time}-${slot.end_time}`;
+                        const [startTime] = timeStr.split('-');
+                        const [hours, minutes] = startTime.trim().split(':').map(Number);
+                        
+                        // Create a date object for the slot start time
+                        const slotDateTime = new Date(selectedDateObj);
+                        slotDateTime.setHours(hours, minutes, 0, 0);
+                        
+                        // Only show slots that haven't started yet
+                        return slotDateTime > now;
+                    });
+                    
+                    if (availableSlots.length === 0) {
+                        timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
+                        return;
+                    }
+                    
+                    availableSlots.forEach(slot => {
                         const timeStr = typeof slot === 'string' ? slot : `${slot.start_time}-${slot.end_time}`;
                         const button = document.createElement('button');
                         button.className = 'time-slot-btn';
