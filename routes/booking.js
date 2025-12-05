@@ -659,12 +659,14 @@ router.post('/:username/:duration', async (req, res) => {
         // Don't fail the booking if notifications fail
     }
 
-    // Schedule 1-hour reminder emails using Mailgun's built-in scheduling
+    // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([
             mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone),
+            mailService.scheduleClientReminder30Min(booking, host, userTimezone),
+            mailService.scheduleHostReminder30Min(booking, host, userTimezone)
         ]);
     } catch (scheduledReminderError) {
         // Don't fail the booking if scheduled reminders fail
@@ -1050,12 +1052,14 @@ router.post('/:username', async (req, res) => {
         // Don't fail the booking if notifications fail
     }
 
-    // Schedule 1-hour reminder emails using Mailgun's built-in scheduling
+    // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([
             mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone),
+            mailService.scheduleClientReminder30Min(booking, host, userTimezone),
+            mailService.scheduleHostReminder30Min(booking, host, userTimezone)
         ]);
     } catch (scheduledReminderError) {
         // Don't fail the booking if scheduled reminders fail

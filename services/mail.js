@@ -301,7 +301,7 @@ Manage the booking at ${dashboardUrl}.
         }
 
         // Calculate delivery time (1 hour before appointment)
-        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone);
+        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone, 60);
         if (!deliveryTime) {
             // Appointment is less than 1 hour away or invalid
             return null;
@@ -370,7 +370,7 @@ See you soon!
         }
 
         // Calculate delivery time (1 hour before appointment)
-        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone);
+        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone, 60);
         if (!deliveryTime) {
             // Appointment is less than 1 hour away or invalid
             return null;
@@ -419,6 +419,157 @@ See you soon!
                 text: `Hi ${host.name || host.username},
 
 Heads up—your meeting with ${booking.client_name} starts in 1 hour.
+
+Client details:
+- Name: ${booking.client_name}
+- Email: ${booking.client_email}
+${booking.client_phone ? `- Phone: ${booking.client_phone}
+` : ''}
+Appointment details:
+- Date: ${formattedDate}
+- Time: ${formattedStartTime} - ${formattedEndTime}
+${host.meeting_link ? `- Meeting link: ${host.meeting_link}
+` : ''}${booking.notes ? `- Notes: ${booking.notes}
+` : ''}
+Manage the booking at ${dashboardUrl}.
+`,
+                html: this._generateEmailTemplate(content),
+                'o:deliverytime': rfc2822Time
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async scheduleClientReminder30Min(booking, host, userTimezone) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        if (!booking.date || !booking.start_time || !booking.client_email) {
+            return null;
+        }
+
+        // Calculate delivery time (30 minutes before appointment)
+        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone, 30);
+        if (!deliveryTime) {
+            // Appointment is less than 30 minutes away or invalid
+            return null;
+        }
+
+        // Format delivery time in RFC-2822 format
+        const rfc2822Time = this._formatRFC2822(deliveryTime);
+        if (!rfc2822Time) {
+            return null;
+        }
+
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
+
+        const content = `
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Hi ${booking.client_name},
+                            </p>
+                            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Just a quick reminder that your appointment with ${host.name || host.username} begins in 30 minutes.
+                            </p>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Date: ${formattedDate}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Time: ${formattedStartTime} - ${formattedEndTime}</p>
+                                ${host.meeting_link ? `<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">Join link: <a href="${host.meeting_link}" style="color: #3b82f6; text-decoration: none;">${host.meeting_link}</a></p>` : ''}
+                                ${booking.notes ? `<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">Notes: ${booking.notes}</p>` : ''}
+                            </div>
+                            <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                See you soon!
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [booking.client_email],
+                subject: `Reminder: Your appointment starts in 30 minutes`,
+                text: `Hi ${booking.client_name},
+
+Just a quick reminder that your appointment with ${host.name || host.username} begins in 30 minutes.
+
+Details:
+- Date: ${formattedDate}
+- Time: ${formattedStartTime} - ${formattedEndTime}
+${host.meeting_link ? `- Join link: ${host.meeting_link}
+` : ''}${booking.notes ? `- Notes: ${booking.notes}
+` : ''}
+See you soon!
+`,
+                html: this._generateEmailTemplate(content),
+                'o:deliverytime': rfc2822Time
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async scheduleHostReminder30Min(booking, host, userTimezone) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        if (!booking.date || !booking.start_time || !host.email) {
+            return null;
+        }
+
+        // Calculate delivery time (30 minutes before appointment)
+        const deliveryTime = this._calculateDeliveryTime(booking.date, booking.start_time, userTimezone, 30);
+        if (!deliveryTime) {
+            // Appointment is less than 30 minutes away or invalid
+            return null;
+        }
+
+        // Format delivery time in RFC-2822 format
+        const rfc2822Time = this._formatRFC2822(deliveryTime);
+        if (!rfc2822Time) {
+            return null;
+        }
+
+        const formattedDate = this._formatBookingDate(booking.date);
+        const formattedStartTime = booking.formatted_start_time || this._formatTime(booking.start_time);
+        const formattedEndTime = booking.formatted_end_time || this._formatTime(booking.end_time);
+        const dashboardUrl = `${process.env.APP_URL || 'https://isked.app'}/dashboard`;
+
+        const content = `
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Hi ${host.name || host.username},
+                            </p>
+                            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Heads up—your meeting with ${booking.client_name} starts in 30 minutes.
+                            </p>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Client details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${booking.client_name}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${booking.client_email}" style="color: #3b82f6; text-decoration: none;">${booking.client_email}</a></p>
+                                ${booking.client_phone ? `<p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Phone: ${booking.client_phone}</p>` : ''}
+                            </div>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Appointment details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Date: ${formattedDate}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Time: ${formattedStartTime} - ${formattedEndTime}</p>
+                                ${host.meeting_link ? `<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">Meeting link: <a href="${host.meeting_link}" style="color: #3b82f6; text-decoration: none;">${host.meeting_link}</a></p>` : ''}
+                                ${booking.notes ? `<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">Notes: ${booking.notes}</p>` : ''}
+                            </div>
+                            <p style="margin: 0; text-align: center;">
+                                <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">Manage Booking</a>
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [host.email],
+                subject: `Reminder: ${booking.client_name} meets you in 30 minutes`,
+                text: `Hi ${host.name || host.username},
+
+Heads up—your meeting with ${booking.client_name} starts in 30 minutes.
 
 Client details:
 - Name: ${booking.client_name}
@@ -725,13 +876,14 @@ The isked Team`,
     }
 
     /**
-     * Calculate delivery time (1 hour before appointment start) in UTC
+     * Calculate delivery time (X minutes before appointment start) in UTC
      * @param {string} dateStr - Date string in YYYY-MM-DD format
      * @param {string} startTimeStr - Time string in HH:MM format
      * @param {string} userTimezone - User's timezone (e.g., 'Asia/Manila')
-     * @returns {Date|null} Date object in UTC representing 1 hour before appointment, or null if invalid
+     * @param {number} minutesBefore - Number of minutes before appointment (default: 60, use 30 for 30-minute reminders)
+     * @returns {Date|null} Date object in UTC representing X minutes before appointment, or null if invalid
      */
-    _calculateDeliveryTime(dateStr, startTimeStr, userTimezone) {
+    _calculateDeliveryTime(dateStr, startTimeStr, userTimezone, minutesBefore = 60) {
         if (!dateStr || !startTimeStr) {
             return null;
         }
@@ -777,8 +929,8 @@ The isked Team`,
                 return null;
             }
 
-            // Subtract 1 hour (3600000 milliseconds) to get delivery time
-            const deliveryTime = new Date(appointmentStart.getTime() - 60 * 60 * 1000);
+            // Subtract X minutes to get delivery time
+            const deliveryTime = new Date(appointmentStart.getTime() - minutesBefore * 60 * 1000);
 
             // Check if delivery time is in the past
             if (deliveryTime < new Date()) {
@@ -788,6 +940,114 @@ The isked Team`,
             return deliveryTime;
         } catch (error) {
             return null;
+        }
+    }
+
+    async scheduleTrialExpirationEmail(user, daysRemaining, deliveryTime, token) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        if (!user || !deliveryTime || !token) {
+            return null;
+        }
+
+        // Format delivery time in RFC-2822 format
+        const rfc2822Time = this._formatRFC2822(deliveryTime);
+        if (!rfc2822Time) {
+            return null;
+        }
+
+        const upgradeLink = `${process.env.APP_URL || 'https://isked.app'}/upgrade/${token}`;
+        const subject = daysRemaining === 1 
+            ? 'Your ISKED Free Trial Expires Tomorrow - Upgrade Now'
+            : 'Your ISKED Free Trial Expires Today - Upgrade Now';
+        
+        const daysText = daysRemaining === 1 ? 'tomorrow' : 'today';
+        const urgencyText = daysRemaining === 1 ? 'Don\'t miss out!' : 'Act now to continue!';
+
+        const content = `
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Hello ${user.name || user.full_name || user.username},
+                            </p>
+                            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Your ISKED free trial expires ${daysText}! ${urgencyText}
+                            </p>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">What happens next:</p>
+                                <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
+                                    <li style="margin-bottom: 8px;">Your trial access will end ${daysText}</li>
+                                    <li style="margin-bottom: 8px;">Upgrade to Pro to keep all your features</li>
+                                    <li>Unlimited bookings, contacts, and more</li>
+                                </ul>
+                            </div>
+                            <p style="margin: 0 0 24px 0; text-align: center;">
+                                <a href="${upgradeLink}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">Upgrade to Pro Now</a>
+                            </p>
+                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6b7280; text-align: center;">
+                                This link will expire in 7 days. If you have any questions, feel free to reply to this email.
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [user.email],
+                'h:Reply-To': 'team@smallsimplesteps.co',
+                subject: subject,
+                text: `Hello ${user.name || user.full_name || user.username},
+
+Your ISKED free trial expires ${daysText}! ${urgencyText}
+
+What happens next:
+- Your trial access will end ${daysText}
+- Upgrade to Pro to keep all your features
+- Unlimited bookings, contacts, and more
+
+Upgrade now: ${upgradeLink}
+
+This link will expire in 7 days. If you have any questions, feel free to reply to this email.
+
+Best regards,
+The isked Team`,
+                html: this._generateEmailTemplate(content),
+                'o:deliverytime': rfc2822Time
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async sendTestTrialExpirationEmail() {
+        if (!this.enabled) {
+            return null;
+        }
+
+        const testUser = {
+            email: 'tjtalusan@gmail.com',
+            name: 'Test User',
+            full_name: 'Test User',
+            username: 'testuser'
+        };
+
+        const testToken = 'test-token-' + Date.now();
+
+        try {
+            // Send email for "1 day before" scenario - schedule for 1 minute from now for testing
+            const deliveryTime1 = new Date();
+            deliveryTime1.setMinutes(deliveryTime1.getMinutes() + 1);
+
+            await this.scheduleTrialExpirationEmail(testUser, 1, deliveryTime1, testToken + '-1day');
+
+            // Send email for "expiration day" scenario - schedule for 2 minutes from now for testing
+            const deliveryTime2 = new Date();
+            deliveryTime2.setMinutes(deliveryTime2.getMinutes() + 2);
+
+            await this.scheduleTrialExpirationEmail(testUser, 0, deliveryTime2, testToken + '-today');
+
+            return { success: true, message: 'Test emails scheduled (will arrive in 1-2 minutes)' };
+        } catch (error) {
+            throw error;
         }
     }
 
