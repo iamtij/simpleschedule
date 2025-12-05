@@ -476,11 +476,19 @@ router.post('/:username/:duration', async (req, res) => {
     const dayOfWeek = bookingDate.getUTCDay();
 
 
-    // Verify this time slot is actually available (check all blocks for the day)
-    const availabilityResult = await db.query(
-        'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
-        [userId, dayOfWeek]
+    // Verify this time slot is actually available - check date-specific first, then fall back to day-of-week
+    let availabilityResult = await db.query(
+        'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+        [userId, date]
     );
+
+    // If no date-specific availability, fall back to day-of-week
+    if (availabilityResult.rows.length === 0) {
+        availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+            [userId, dayOfWeek]
+        );
+    }
 
     if (availabilityResult.rows.length === 0) {
         return res.status(400).json({ error: 'This time slot is not available' });
