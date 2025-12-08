@@ -55,4 +55,5 @@ coverage
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db 
+ehthumbs.db email-send.log
+uploads/payment-proofs/*

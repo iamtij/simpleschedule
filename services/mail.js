@@ -13,9 +13,11 @@ class MailService {
     constructor() {
         if (!process.env.MAILGUN_DOMAIN || !process.env.MAILGUN_API_KEY) {
             this.enabled = false;
+            console.error('[MAIL SERVICE] Disabled - Missing MAILGUN_DOMAIN or MAILGUN_API_KEY');
         } else {
             this.enabled = true;
             this.domain = process.env.MAILGUN_DOMAIN;
+            console.error('[MAIL SERVICE] Enabled - Domain:', this.domain);
         }
     }
 
@@ -1128,6 +1130,111 @@ View user profile: ${adminUrl}
             const result = await mg.messages.create(this.domain, messageData);
             return result;
         } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Replace template variables in a string
+     * @param {string} template - Template string with {{variable}} placeholders
+     * @param {object} variables - Object with variable values
+     * @returns {string} Processed string with variables replaced
+     */
+    replaceTemplateVariables(template, variables = {}) {
+        if (!template || typeof template !== 'string') {
+            return template;
+        }
+
+        let result = template;
+        for (const [key, value] of Object.entries(variables)) {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            result = result.replace(regex, value || '');
+        }
+
+        return result;
+    }
+
+    /**
+     * Send a custom email with template variable support
+     * @param {string} to - Recipient email address
+     * @param {string} subject - Email subject (supports template variables)
+     * @param {string} body - Email body HTML (supports template variables)
+     * @param {object} variables - Variables to replace in subject and body
+     * @param {string} replyTo - Optional reply-to email address
+     * @returns {Promise} Mailgun API response
+     */
+    async sendCustomEmail(to, subject, body, variables = {}, replyTo = null) {
+        if (!this.enabled) {
+            console.warn('Mail service is disabled. Email not sent to:', to);
+            return null;
+        }
+
+        if (!to || !subject || !body) {
+            throw new Error('To, subject, and body are required');
+        }
+
+        // Validate email address format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(to)) {
+            throw new Error(`Invalid email address: ${to}`);
+        }
+
+        // Replace variables in subject and body
+        const processedSubject = this.replaceTemplateVariables(subject, variables);
+        const processedBody = this.replaceTemplateVariables(body, variables);
+
+        // Generate plain text version from HTML (simple strip)
+        const plainText = processedBody
+            .replace(/<[^>]*>/g, '') // Remove HTML tags
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .trim();
+
+        try {
+            const messageData = {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [to],
+                subject: processedSubject,
+                text: plainText,
+                html: this._generateEmailTemplate(processedBody)
+            };
+
+            // Add reply-to header if provided
+            if (replyTo && replyTo.trim()) {
+                messageData['h:Reply-To'] = replyTo.trim();
+            }
+
+            const result = await mg.messages.create(this.domain, messageData);
+            
+            // Log successful email send
+            const logMessage = `[EMAIL SENT] To: ${to} | Subject: ${processedSubject} | MessageID: ${result.id || 'N/A'} | Domain: ${this.domain}`;
+            console.error(logMessage);
+            
+            // Also log to file for easier tracking
+            try {
+                const path = require('path');
+                const logFile = path.join(__dirname, '..', 'email-send.log');
+                const logEntry = `[${new Date().toISOString()}] ${logMessage}\n`;
+                fs.appendFileSync(logFile, logEntry);
+            } catch (fileError) {
+                console.error('[EMAIL LOG ERROR] Failed to write to log file:', fileError.message);
+            }
+            
+            return result;
+        } catch (error) {
+            // Enhanced error logging
+            const errorLog = {
+                to: to,
+                subject: processedSubject,
+                domain: this.domain,
+                error: error.message,
+                errorDetails: error.response?.body || error.response?.data || error
+            };
+            console.error('[EMAIL ERROR]', JSON.stringify(errorLog, null, 2));
             throw error;
         }
     }

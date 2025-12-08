@@ -41,10 +41,14 @@ function formatTime(time) {
 async function sendBookingConfirmationSMS(booking, host) {
     // Check if host has pro subscription
     if (!host.is_pro || (host.pro_expires_at && new Date(host.pro_expires_at) < new Date())) {
+        console.log('SMS not sent: Host does not have an active pro subscription');
         return null;
     }
 
     if (!SEMAPHORE_API_KEY) {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('Semaphore API key missing. SMS functionality will be disabled.');
+        }
         return;
     }
 
@@ -55,19 +59,25 @@ async function sendBookingConfirmationSMS(booking, host) {
     // Create short URL for appointment page
     const baseUrl = process.env.BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://isked.app');
     const appointmentUrl = `${baseUrl}/booking/${host.username}/confirmation/${booking.confirmation_uuid}`;
+    console.log('Creating short URL for:', appointmentUrl);
     
     let shortUrl;
     try {
         shortUrl = await urlShortener.shortenUrl(appointmentUrl, null, host.id, 30);
+        console.log('Generated short URL:', shortUrl);
     } catch (error) {
+        console.error('Error creating short URL:', error);
         // Fallback to original appointment URL if short URL fails
         shortUrl = appointmentUrl;
+        console.log('Using fallback URL:', shortUrl);
     }
     
     const message = `Hi ${booking.client_name}, your meeting with ${host.full_name} is confirmed!\n` +
                    `Date: ${formatDate(booking.date)}\n` +
                    `Time: ${formatTime(booking.start_time)}\n` +
                    `Join: ${shortUrl}`;
+    
+    console.log('SMS message:', message);
 
     try {
         const response = await axios.post(SEMAPHORE_API_URL, {
@@ -77,8 +87,10 @@ async function sendBookingConfirmationSMS(booking, host) {
             sendername: SEMAPHORE_SENDER
         });
 
+        console.log('SMS sent successfully:', response.data);
         return response.data;
     } catch (error) {
+        console.error('Failed to send SMS:', error.response?.data || error.message);
         // Don't throw the error - we don't want to fail the booking if SMS fails
         return null;
     }

@@ -6,6 +6,7 @@ const multer = require('multer');
 const db = require('../db');
 const Coupon = require('../models/Coupon');
 const { isAdmin } = require('../middleware/auth');
+const mailService = require('../services/mail');
 
 // Admin access middleware
 function requireAdmin(req, res, next) {
@@ -630,6 +631,234 @@ router.get('/coupons/:id/usage', async (req, res) => {
         });
     } catch (error) {
         res.status(500).send('Server error');
+    }
+});
+
+// Email template routes
+router.get('/templates', requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT * FROM email_templates ORDER BY created_at DESC'
+        );
+        res.render('admin/templates', {
+            templates: result.rows,
+            path: '/admin/templates'
+        });
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+        res.status(500).render('error', { 
+            message: 'Failed to load templates',
+            error: error.message 
+        });
+    }
+});
+
+// API route for fetching templates (alternative endpoint used by frontend)
+router.get('/templates/data', requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT * FROM email_templates ORDER BY created_at DESC'
+        );
+        res.json({ success: true, templates: result.rows });
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+        res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+});
+
+// Get single template by ID (for editing)
+router.get('/templates/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('SELECT * FROM email_templates WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+        res.json({ success: true, template: result.rows[0] });
+    } catch (error) {
+        console.error('Error fetching template:', error);
+        res.status(500).json({ error: 'Failed to fetch template' });
+    }
+});
+
+router.post('/templates', requireAdmin, async (req, res) => {
+    try {
+        const { name, subject, body, description, replyTo, reply_to } = req.body;
+        const replyToValue = replyTo || reply_to || null;
+        
+        if (!name || !subject || !body) {
+            return res.status(400).json({ error: 'Name, subject, and body are required' });
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (replyToValue && replyToValue.trim() && !emailRegex.test(replyToValue.trim())) {
+            return res.status(400).json({ error: 'Invalid reply-to email address format' });
+        }
+        const result = await db.query(
+            `INSERT INTO email_templates (name, subject, body, description, reply_to, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
+            [name, subject, body, description || null, replyToValue ? replyToValue.trim() : null, req.session.userId]
+        );
+        res.json({ success: true, template: result.rows[0] });
+    } catch (error) {
+        console.error('Error creating template:', error);
+        res.status(500).json({ error: 'Failed to create template' });
+    }
+});
+
+router.put('/templates/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, subject, body, description, replyTo, reply_to } = req.body;
+        const replyToValue = replyTo || reply_to || null;
+        
+        if (!name || !subject || !body) {
+            return res.status(400).json({ error: 'Name, subject, and body are required' });
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (replyToValue && replyToValue.trim() && !emailRegex.test(replyToValue.trim())) {
+            return res.status(400).json({ error: 'Invalid reply-to email address format' });
+        }
+        const result = await db.query(
+            `UPDATE email_templates 
+             SET name = $1, subject = $2, body = $3, description = $4, reply_to = $5, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6
+             RETURNING *`,
+            [name, subject, body, description || null, replyToValue ? replyToValue.trim() : null, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+        res.json({ success: true, template: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating template:', error);
+        res.status(500).json({ error: 'Failed to update template' });
+    }
+});
+
+router.delete('/templates/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('DELETE FROM email_templates WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+// Email sending route
+router.post('/coupons/:id/send-email-to-users', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { template_id, subject, body, user_ids } = req.body;
+        
+        if (!mailService.enabled) {
+            return res.status(400).json({ 
+                error: 'Mail service is not enabled',
+                mailServiceEnabled: false
+            });
+        }
+        
+        if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+            return res.status(400).json({ error: 'At least one user ID is required' });
+        }
+        
+        // Get coupon
+        const couponResult = await db.query('SELECT * FROM coupons WHERE id = $1', [id]);
+        if (couponResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Coupon not found' });
+        }
+        const coupon = couponResult.rows[0];
+        
+        // Get template if provided
+        let template = null;
+        let replyTo = null;
+        if (template_id) {
+            const templateResult = await db.query('SELECT * FROM email_templates WHERE id = $1', [template_id]);
+            if (templateResult.rows.length > 0) {
+                template = templateResult.rows[0];
+                replyTo = template.reply_to;
+            }
+        }
+        
+        // Get selected users (including upgrade_token fields)
+        const placeholders = user_ids.map((_, i) => `$${i + 1}`).join(', ');
+        const usersResult = await db.query(
+            `SELECT *, upgrade_token, upgrade_token_expiry FROM users WHERE id IN (${placeholders})`,
+            user_ids
+        );
+        
+        const users = usersResult.rows;
+        const results = [];
+        
+        for (const user of users) {
+            try {
+                // Get or generate upgrade token for user
+                let upgradeToken = user.upgrade_token;
+                if (!upgradeToken || (user.upgrade_token_expiry && new Date(user.upgrade_token_expiry) < new Date())) {
+                    const crypto = require('crypto');
+                    upgradeToken = crypto.randomBytes(32).toString('hex');
+                    const tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                    await db.query(
+                        'UPDATE users SET upgrade_token = $1, upgrade_token_expiry = $2 WHERE id = $3',
+                        [upgradeToken, tokenExpiry, user.id]
+                    );
+                }
+                
+                // Build upgrade link
+                const appUrl = process.env.APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : 'https://isked.app');
+                const upgradeLink = `${appUrl}/upgrade/${upgradeToken}`;
+                
+                const variables = {
+                    name: user.display_name || user.full_name || 'User',
+                    user_name: user.display_name || user.full_name || 'User',
+                    email: user.email,
+                    user_email: user.email,
+                    couponCode: coupon.code,
+                    coupon_code: coupon.code,
+                    couponDescription: coupon.description || '',
+                    coupon_description: coupon.description || '',
+                    upgrade_link: upgradeLink,
+                    upgradeLink: upgradeLink
+                };
+                
+                const emailSubject = template ? 
+                    mailService.replaceTemplateVariables(template.subject, variables) : 
+                    subject;
+                const emailBody = template ? 
+                    mailService.replaceTemplateVariables(template.body, variables) : 
+                    body;
+                
+                const emailResult = await mailService.sendCustomEmail(
+                    user.email,
+                    emailSubject,
+                    emailBody,
+                    variables,
+                    replyTo
+                );
+                
+                results.push({ user: user.email, success: true, result: emailResult });
+            } catch (error) {
+                results.push({ user: user.email, success: false, error: error.message });
+            }
+        }
+        
+        const successCount = results.filter(r => r.success).length;
+        const errorCount = results.filter(r => !r.success).length;
+        
+        res.json({
+            success: true,
+            message: `Sent ${successCount} email(s) successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+            results,
+            mailServiceEnabled: true
+        });
+    } catch (error) {
+        console.error('Error sending emails:', error);
+        res.status(500).json({ error: 'Failed to send emails: ' + error.message });
     }
 });
 
