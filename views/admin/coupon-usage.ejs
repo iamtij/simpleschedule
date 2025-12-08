@@ -154,8 +154,8 @@ function getPlanTypeBadge(planType) {
                                     </div>
                                     <!-- Subscription Status Badge -->
                                     <div class="flex items-center space-x-2">
-                                        <%= getSubscriptionBadge(usage) %>
-                                        <%= getPlanTypeBadge(usage.plan_type) %>
+                                        <%- getSubscriptionBadge(usage) %>
+                                        <%- getPlanTypeBadge(usage.plan_type) %>
                                     </div>
                                 </div>
                             </div>
