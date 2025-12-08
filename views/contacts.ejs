@@ -193,7 +193,7 @@
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+                <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -202,7 +202,7 @@
                             <th class="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referral Potential</th>
                             <th class="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Contact</th>
                             <th class="hidden xl:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Follow-up</th>
-                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="contacts-table-body" class="bg-white divide-y divide-gray-200">
@@ -435,7 +435,7 @@
             if (filteredContacts.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
                             No contacts found. <button class="text-blue-600 hover:text-blue-800" onclick="showAddContactModal()">Add your first contact</button>
                         </td>
                     </tr>
@@ -506,7 +506,7 @@
                     <td class="hidden xl:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
                         ${getFollowUpBadge(contact.next_follow_up)}
                     </td>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium bg-white">
                         <div class="flex space-x-2 sm:space-x-3">
                             <button onclick="viewContact(${contact.id})" class="text-blue-600 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-50 flex items-center space-x-1 transition-colors" title="View Contact">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
