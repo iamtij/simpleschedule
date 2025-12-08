@@ -592,7 +592,18 @@ router.get('/coupons/:id/usage', async (req, res) => {
                        'user_id', u.id,
                        'name', COALESCE(u.display_name, u.full_name),
                        'email', u.email,
-                       'used_at', cu.used_at
+                       'used_at', cu.used_at,
+                       'is_pro', u.is_pro,
+                       'pro_expires_at', u.pro_expires_at,
+                       'revenuecat_entitlement_status', u.revenuecat_entitlement_status,
+                       'trial_started_at', u.trial_started_at,
+                       'plan_type', COALESCE(
+                           u.plan_type,
+                           (SELECT plan_type FROM payment_proofs 
+                            WHERE user_id = u.id AND status = 'approved' 
+                            ORDER BY reviewed_at DESC NULLS LAST, submitted_at DESC 
+                            LIMIT 1)
+                       )
                    ) ORDER BY cu.used_at DESC) FILTER (WHERE u.id IS NOT NULL) as usage_details,
                    CASE 
                        WHEN c.status = true THEN 'active'
