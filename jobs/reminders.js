@@ -42,13 +42,6 @@ function getHostDisplayName(row) {
     return row.host_display_name || row.host_full_name || row.host_name || row.username;
 }
 
-function getTimezoneOffsetMinutes(timezoneId, referenceDate) {
-    try {
-        return timezone.getTimezoneOffset(timezoneId, referenceDate);
-    } catch (error) {
-        return timezone.getTimezoneOffset(undefined, referenceDate); // fallback to default
-    }
-}
 
 function computeBookingStartUtc(row) {
     const rawDateStr = typeof row.date_str === 'string' && row.date_str.length === 10
@@ -63,25 +56,16 @@ function computeBookingStartUtc(row) {
         return null;
     }
 
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const [startHour = '00', startMinute = '00'] = normalizeTime(row.start_time).split(':');
-
-    if ([year, month, day].some((value) => Number.isNaN(value))) {
+    const normalizedStartTime = normalizeTime(row.start_time);
+    if (!normalizedStartTime) {
         return null;
     }
 
-    const referenceDate = new Date(Date.UTC(
-        year,
-        (month || 1) - 1,
-        day || 1,
-        parseInt(startHour, 10),
-        parseInt(startMinute, 10)
-    ));
-
-    const offsetMinutes = getTimezoneOffsetMinutes(row.timezone, referenceDate);
-    const utcTimestamp = referenceDate.getTime() - (offsetMinutes * 60 * 1000);
-
-    return new Date(utcTimestamp);
+    // Use the localToUtc helper function for proper timezone conversion
+    const userTimezone = row.timezone || timezone.getDefaultTimezone();
+    const bookingStartUtc = timezone.localToUtc(dateStr, normalizedStartTime, userTimezone);
+    
+    return bookingStartUtc;
 }
 
 async function checkReminderColumnsExist() {

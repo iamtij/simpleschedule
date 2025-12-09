@@ -891,48 +891,19 @@ The isked Team`,
         }
 
         try {
-            // Parse date and time components
-            const [year, month, day] = dateStr.split('-').map(Number);
-            const [hours, minutes] = startTimeStr.split(':').map(Number);
-
-            if ([year, month, day, hours, minutes].some(Number.isNaN)) {
-                return null;
-            }
-
             // Get user's timezone
             const userTz = timezone.getUserTimezone(userTimezone);
             
-            // Create a date string representing the appointment start time in the user's timezone
-            // We'll use Intl.DateTimeFormat to properly convert from local time to UTC
-            const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-            
-            // Create a date object assuming the time is in the user's timezone
-            // We'll use a workaround: create the date in UTC first, then adjust for timezone offset
-            const tempDate = new Date(dateTimeStr + 'Z'); // Treat as UTC temporarily
-            const offsetMinutes = timezone.getTimezoneOffset(userTz, tempDate);
-            
-            // Convert: If user is in UTC+8 (offset = +480), and appointment is at 14:00 local,
-            // then UTC time = 14:00 - 8 hours = 06:00 UTC
-            // So we subtract the offset from the UTC date we created
-            const appointmentStartUTC = new Date(Date.UTC(
-                year,
-                month - 1,
-                day,
-                hours,
-                minutes,
-                0
-            ));
-            
-            // Adjust for timezone: subtract offset to convert local time to UTC
-            // offsetMinutes is positive for timezones ahead of UTC
-            const appointmentStart = new Date(appointmentStartUTC.getTime() - (offsetMinutes * 60 * 1000));
+            // Use the localToUtc helper function for proper timezone conversion
+            // This converts the local booking time to UTC correctly
+            const appointmentStartUtc = timezone.localToUtc(dateStr, startTimeStr, userTz);
 
-            if (Number.isNaN(appointmentStart.getTime())) {
+            if (!appointmentStartUtc || Number.isNaN(appointmentStartUtc.getTime())) {
                 return null;
             }
 
             // Subtract X minutes to get delivery time
-            const deliveryTime = new Date(appointmentStart.getTime() - minutesBefore * 60 * 1000);
+            const deliveryTime = new Date(appointmentStartUtc.getTime() - minutesBefore * 60 * 1000);
 
             // Check if delivery time is in the past
             if (deliveryTime < new Date()) {
@@ -941,6 +912,7 @@ The isked Team`,
 
             return deliveryTime;
         } catch (error) {
+            console.error('[MAIL SERVICE] Error calculating delivery time:', error);
             return null;
         }
     }
