@@ -141,7 +141,7 @@ router.get('/:username/:duration/slots', async (req, res) => {
             return res.status(404).json({ error: 'This meeting duration is not available' });
         }
         
-        const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
+        const bufferMinutes = userResult.rows[0].buffer_minutes ?? null;
         const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
         const date = req.query.date;
         const clientTimezone = req.query.timezone || userTimezone;
@@ -294,7 +294,7 @@ router.get('/:username/:duration/slots', async (req, res) => {
         // Create array of slots with dynamic meeting length + buffer time
         const slots = [];
         const meetingLength = duration; // Use duration from URL parameter
-        const bufferTime = bufferMinutes || 15; // Default to 15 if not set
+        const bufferTime = bufferMinutes ?? 15; // Default to 15 only if null/undefined, 0 means no buffer
         const totalInterval = meetingLength + bufferTime;
         
 
@@ -366,39 +366,27 @@ router.get('/:username/:duration/slots', async (req, res) => {
                 const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
                     // Apply buffer time to the conflict boundaries
                     const conflictStartWithBuffer = conflict.start - bufferTime;
-                const conflictEndWithBuffer = conflict.end + bufferTime;
+                    const conflictEndWithBuffer = conflict.end + bufferTime;
+                    
+                    // Check if slot overlaps with the expanded conflict zone (including buffer)
+                    return (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
+                });
                 
-                // Debug logging for buffer time logic
+                // Only check if the actual meeting fits within working hours
+                const fitsInWorkingHours = slotEnd <= workEnd;
+                
                 const slotStartTime = minutesToTime(slotStart);
                 const slotEndTime = minutesToTime(slotEnd);
-                const conflictStartTime = minutesToTime(conflict.start);
-                const conflictEndTime = minutesToTime(conflict.end);
-                const conflictStartWithBufferTime = minutesToTime(conflictStartWithBuffer);
-                const conflictEndWithBufferTime = minutesToTime(conflictEndWithBuffer);
                 
-                const overlaps = (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
+                // Verify slot duration matches requested duration
+                const calculatedDuration = timeToMinutes(slotEndTime) - timeToMinutes(slotStartTime);
                 
-                
-                
-                // Check if slot overlaps with the expanded conflict zone (including buffer)
-                return overlaps;
-            });
-            
-            // Only check if the actual meeting fits within working hours
-            const fitsInWorkingHours = slotEnd <= workEnd;
-            
-            const slotStartTime = minutesToTime(slotStart);
-            const slotEndTime = minutesToTime(slotEnd);
-            
-            // Verify slot duration matches requested duration
-            const calculatedDuration = timeToMinutes(slotEndTime) - timeToMinutes(slotStartTime);
-            
-            if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
-                slots.push({
-                    start_time: slotStartTime,
-                    end_time: slotEndTime
-                });
-            }
+                if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
+                    slots.push({
+                        start_time: slotStartTime,
+                        end_time: slotEndTime
+                    });
+                }
             }
         });
 
@@ -1126,7 +1114,7 @@ router.get('/:username/slots', async (req, res) => {
             meetingLength = 60;
         }
         
-        const bufferMinutes = userResult.rows[0].buffer_minutes || 0;
+        const bufferMinutes = userResult.rows[0].buffer_minutes ?? null;
         const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
         const date = req.query.date;
         const clientTimezone = req.query.timezone || userTimezone;
@@ -1289,7 +1277,7 @@ router.get('/:username/slots', async (req, res) => {
         
         // Create array of slots with dynamic meeting length + buffer time
         const slots = [];
-        const bufferTime = bufferMinutes || 15; // Default to 15 if not set
+        const bufferTime = bufferMinutes ?? 15; // Default to 15 only if null/undefined, 0 means no buffer
         const totalInterval = meetingLength + bufferTime;
 
         // Current time in minutes since midnight in client's timezone
@@ -1360,36 +1348,24 @@ router.get('/:username/slots', async (req, res) => {
                 const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
                     // Apply buffer time to the conflict boundaries
                     const conflictStartWithBuffer = conflict.start - bufferTime;
-                const conflictEndWithBuffer = conflict.end + bufferTime;
+                    const conflictEndWithBuffer = conflict.end + bufferTime;
+                    
+                    // Check if slot overlaps with the expanded conflict zone (including buffer)
+                    return (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
+                });
                 
-                // Debug logging for buffer time logic
+                // Only check if the actual meeting fits within working hours
+                const fitsInWorkingHours = slotEnd <= workEnd;
+                
                 const slotStartTime = minutesToTime(slotStart);
                 const slotEndTime = minutesToTime(slotEnd);
-                const conflictStartTime = minutesToTime(conflict.start);
-                const conflictEndTime = minutesToTime(conflict.end);
-                const conflictStartWithBufferTime = minutesToTime(conflictStartWithBuffer);
-                const conflictEndWithBufferTime = minutesToTime(conflictEndWithBuffer);
                 
-                const overlaps = (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
-                
-                
-                
-                // Check if slot overlaps with the expanded conflict zone (including buffer)
-                return overlaps;
-            });
-            
-            // Only check if the actual meeting fits within working hours
-            const fitsInWorkingHours = slotEnd <= workEnd;
-            
-            const slotStartTime = minutesToTime(slotStart);
-            const slotEndTime = minutesToTime(slotEnd);
-            
-            if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
-                slots.push({
-                    start_time: slotStartTime,
-                    end_time: slotEndTime
-                });
-            }
+                if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
+                    slots.push({
+                        start_time: slotStartTime,
+                        end_time: slotEndTime
+                    });
+                }
             }
         });
 
