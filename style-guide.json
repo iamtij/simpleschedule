@@ -1,0 +1,1230 @@
+{
+  "project": {
+    "name": "SimpleSchedule (isked)",
+    "version": "1.0.1",
+    "description": "Web-based scheduling and CRM application"
+  },
+  "technology_stack": {
+    "backend": {
+      "runtime": "Node.js >= 20.0.0",
+      "framework": "Express.js",
+      "view_engine": "EJS",
+      "session_storage": "PostgreSQL via connect-pg-simple"
+    },
+    "database": {
+      "production": "PostgreSQL",
+      "development": "SQLite",
+      "migration_system": "Custom migration system supporting both databases"
+    },
+    "frontend": {
+      "css_framework": "Tailwind CSS 2.2.19",
+      "calendar_library": "FullCalendar 5.11.3",
+      "font_family": "Inter (Google Fonts)",
+      "responsive_design": true
+    },
+    "authentication": {
+      "method": "Session-based with bcryptjs",
+      "session_duration": "24 hours",
+      "cookie_name": "isked.sid"
+    }
+  },
+  "code_style": {
+    "javascript": {
+      "module_system": "CommonJS (require/module.exports)",
+      "indentation": {
+        "type": "spaces",
+        "size": 4
+      },
+      "line_endings": "LF (Unix-style)",
+      "quotes": {
+        "preference": "single",
+        "allow_double": "for template literals and JSON"
+      },
+      "semicolons": true,
+      "trailing_commas": false,
+      "max_line_length": "No strict limit, but prefer readability"
+    },
+    "naming_conventions": {
+      "variables": "camelCase",
+      "functions": "camelCase",
+      "constants": "camelCase (not SCREAMING_SNAKE_CASE)",
+      "classes": "PascalCase",
+      "private_methods": "camelCase with underscore prefix (_methodName)",
+      "files": {
+        "routes": "kebab-case (e.g., booking.js, googleAuth.js)",
+        "services": "camelCase (e.g., mail.js, sms.js)",
+        "utils": "camelCase (e.g., timezone.js, subscription.js)",
+        "middleware": "camelCase (e.g., auth.js, pro.js)",
+        "models": "PascalCase (e.g., Coupon.js)",
+        "migrations": "numbered_snake_case (e.g., 001_initial_schema.sql)"
+      },
+      "database": {
+        "tables": "snake_case (e.g., meeting_durations, date_availability)",
+        "columns": "snake_case (e.g., user_id, created_at, is_active)",
+        "primary_keys": "id",
+        "foreign_keys": "{table}_id (e.g., user_id, contact_id)"
+      }
+    },
+    "code_organization": {
+      "imports": {
+        "order": [
+          "External dependencies (require statements)",
+          "Internal modules (./relative paths)",
+          "Local utilities"
+        ],
+        "grouping": "Group related imports together"
+      },
+      "file_structure": {
+        "routes": "Express router setup, route handlers",
+        "services": "Class-based services for external integrations",
+        "middleware": "Export functions, not classes",
+        "utils": "Export utility functions"
+      }
+    }
+  },
+  "database_patterns": {
+    "query_style": {
+      "parameterization": "Use $1, $2, $3 for PostgreSQL parameters",
+      "error_handling": "Try-catch blocks with proper error propagation",
+      "connection_pooling": "Use pg Pool with production optimizations"
+    },
+    "migration_naming": {
+      "format": "{number}_{description}.sql",
+      "examples": [
+        "001_initial_schema.sql",
+        "015_add_google_calendar_integration.sql",
+        "041_add_email_templates.sql"
+      ]
+    },
+    "common_patterns": {
+      "soft_deletes": "Use status columns (is_active, deleted_at) when needed",
+      "timestamps": "created_at, updated_at columns",
+      "cascade_deletes": "Configured in migrations for referential integrity"
+    }
+  },
+  "frontend_style": {
+    "html": {
+      "doctype": "<!DOCTYPE html>",
+      "lang": "en",
+      "meta_tags": {
+        "charset": "UTF-8",
+        "viewport": "width=device-width, initial-scale=1.0"
+      }
+    },
+    "css": {
+      "framework": "Tailwind CSS via CDN",
+      "custom_css": "Separate CSS files in /public/css/",
+      "inline_styles": "Only for email templates (required for email clients)",
+      "responsive_breakpoints": {
+        "mobile": "@media (max-width: 768px)",
+        "small_mobile": "@media (max-width: 480px)"
+      }
+    },
+    "color_palette": {
+      "primary": {
+        "blue": "#3b82f6",
+        "blue_hover": "#2563eb",
+        "blue_light": "#eff6ff",
+        "blue_border": "#93c5fd"
+      },
+      "grays": {
+        "50": "#f9fafb",
+        "100": "#f3f4f6",
+        "200": "#e5e7eb",
+        "300": "#d1d5db",
+        "400": "#9ca3af",
+        "500": "#6b7280",
+        "600": "#4b5563",
+        "700": "#374151",
+        "800": "#1f2937",
+        "900": "#111827"
+      },
+      "status_colors": {
+        "success": "#059669",
+        "success_bg": "#d1fae5",
+        "warning": "#f59e0b",
+        "error": "#dc2626",
+        "error_bg": "#fee2e2"
+      }
+    },
+    "typography": {
+      "font_family": "Inter, sans-serif",
+      "font_weights": [400, 500, 600],
+      "font_sizes": {
+        "xs": "0.75rem",
+        "sm": "0.875rem",
+        "base": "1rem",
+        "lg": "1.125rem",
+        "xl": "1.25rem",
+        "2xl": "1.5rem",
+        "3xl": "1.875rem"
+      }
+    },
+    "spacing": {
+      "unit": "4px (Tailwind's base unit)",
+      "common_values": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "12px",
+        "lg": "16px",
+        "xl": "20px",
+        "2xl": "24px"
+      }
+    },
+    "border_radius": {
+      "sm": "4px",
+      "md": "6px",
+      "lg": "8px",
+      "xl": "12px",
+      "full": "50%"
+    },
+    "ejs_templates": {
+      "location": "/views directory",
+      "partials": "/views/partials directory",
+      "naming": "kebab-case (ejs extension)",
+      "data_passing": "Render with data object",
+      "error_pages": "error.ejs for error rendering"
+    }
+  },
+  "email_templates": {
+    "style": {
+      "layout": "Centered, mobile-responsive",
+      "styling": "Inline styles (required for email clients)",
+      "width": "600px max-width",
+      "background": "#ffffff",
+      "padding": "20-24px"
+    },
+    "colors": {
+      "primary": "#3b82f6",
+      "text": "#333333",
+      "text_dark": "#111827",
+      "text_medium": "#374151",
+      "background_light": "#f9fafb"
+    },
+    "typography": {
+      "font_size": "15-16px",
+      "line_height": "1.6",
+      "font_weight": "400 (normal), 500 (medium)"
+    },
+    "buttons": {
+      "primary": {
+        "background": "#3b82f6",
+        "color": "#ffffff",
+        "padding": "12px 24px",
+        "border_radius": "6px",
+        "font_weight": "500"
+      },
+      "secondary": {
+        "background": "#ffffff",
+        "color": "#3b82f6",
+        "border": "2px solid #3b82f6",
+        "padding": "12px 24px",
+        "border_radius": "6px"
+      }
+    },
+    "placeholders": {
+      "format": "{{variable_name}} or {{camelCase}}",
+      "examples": [
+        "{{user_name}}",
+        "{{user_email}}",
+        "{{booking_date}}",
+        "{{meeting_link}}"
+      ]
+    }
+  },
+  "api_patterns": {
+    "routes": {
+      "structure": "Express Router",
+      "error_handling": "Try-catch with appropriate HTTP status codes",
+      "response_types": {
+        "json": "res.json() for API endpoints",
+        "render": "res.render() for page views",
+        "redirect": "res.redirect() for navigation"
+      }
+    },
+    "middleware": {
+      "authentication": "isAuthenticated() from middleware/auth.js",
+      "admin": "isAdmin() from middleware/auth.js",
+      "pro_subscription": "checkUserAccess() from utils/subscription.js"
+    },
+    "error_responses": {
+      "400": "Bad Request - Invalid input",
+      "403": "Forbidden - Insufficient permissions",
+      "404": "Not Found - Resource doesn't exist",
+      "500": "Internal Server Error - Server-side error"
+    }
+  },
+  "service_patterns": {
+    "class_structure": {
+      "pattern": "Class-based services",
+      "constructor": "Initialize with environment variable checks",
+      "enabled_flag": "Check if service is enabled before operations",
+      "error_logging": "Use console.error for service status"
+    },
+    "common_services": {
+      "mail": "MailService class in services/mail.js",
+      "sms": "SMS service in services/sms.js",
+      "telegram": "Telegram service in services/telegram.js",
+      "googleCalendar": "GoogleCalendarService in services/googleCalendar.js",
+      "googleSheets": "GoogleSheetsService in services/googleSheets.js"
+    }
+  },
+  "security": {
+    "production": {
+      "security_headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+      },
+      "session_cookie": {
+        "secure": true,
+        "httpOnly": true,
+        "sameSite": "lax"
+      },
+      "logging": "Disable console.log in production to prevent log rate limits"
+    },
+    "password_hashing": "bcryptjs",
+    "input_validation": "Validate all user inputs",
+    "sql_injection_prevention": "Always use parameterized queries"
+  },
+  "file_structure": {
+    "root": {
+      "config": "config.js - Application configuration",
+      "entry": "index.js - Main application file",
+      "database": "db/ - Database connection and migrations"
+    },
+    "directories": {
+      "routes": "Express route handlers",
+      "services": "External service integrations",
+      "middleware": "Express middleware",
+      "utils": "Utility functions",
+      "models": "Data models",
+      "views": "EJS templates",
+      "public": "Static assets (CSS, JS, images)",
+      "migrations": "Database migration files",
+      "jobs": "Background job processors",
+      "scripts": "Utility scripts"
+    }
+  },
+  "time_formatting": {
+    "storage": "24-hour format (HH:MM)",
+    "display": "12-hour format with AM/PM",
+    "timezone": "User-specific timezone support via utils/timezone.js",
+    "functions": {
+      "convertTo12Hour": "Convert 24-hour to 12-hour format",
+      "convertTo24Hour": "Convert 12-hour to 24-hour format",
+      "formatTime": "Format time to 12-hour with AM/PM"
+    }
+  },
+  "phone_number_formatting": {
+    "sms_api": {
+      "country": "Philippines",
+      "format": "63XXXXXXXXX (no leading 0, no spaces/special characters)",
+      "example": "639178430126",
+      "function": "formatPhoneNumber() in services/sms.js"
+    }
+  },
+  "best_practices": {
+    "error_handling": {
+      "async_functions": "Always use try-catch blocks",
+      "error_propagation": "Throw errors to be caught by route handlers",
+      "user_facing_errors": "Show generic messages in production",
+      "development_errors": "Show detailed error messages in development"
+    },
+    "database": {
+      "connection_pooling": "Use connection pool, never create new connections per query",
+      "query_parameterization": "Always use parameterized queries",
+      "transaction_handling": "Use transactions for multi-step operations"
+    },
+    "code_reusability": {
+      "helper_functions": "Extract common logic to utility functions",
+      "service_classes": "Use service classes for external integrations",
+      "middleware": "Use middleware for cross-cutting concerns"
+    },
+    "performance": {
+      "static_files": "Cache static files in production (1 day)",
+      "database_pool": "Configure appropriate pool size for production",
+      "query_optimization": "Use indexes and efficient queries"
+    }
+  },
+  "environment_variables": {
+    "required": {
+      "NODE_ENV": "production or development",
+      "DATABASE_URL": "PostgreSQL connection string",
+      "SESSION_SECRET": "Secret for session encryption"
+    },
+    "optional": {
+      "PORT": "Server port (default: 3000)",
+      "MAILGUN_API_KEY": "Mailgun API key for email",
+      "MAILGUN_DOMAIN": "Mailgun domain",
+      "RECAPTCHA_SITE_KEY": "reCAPTCHA site key",
+      "RECAPTCHA_SECRET_KEY": "reCAPTCHA secret key",
+      "APP_URL": "Application URL for email links"
+    }
+  },
+  "git_workflow": {
+    "branch_naming": "main (production branch)",
+    "commit_messages": "Descriptive commit messages",
+    "file_organization": "Organize changes by feature/functionality"
+  },
+  "design_system": {
+    "visual_identity": {
+      "brand_name": "isked",
+      "brand_colors": {
+        "primary": "#3b82f6",
+        "primary_dark": "#2563eb",
+        "accent_indigo": "#4f46e5",
+        "accent_purple": "#9333ea",
+        "accent_pink": "#db2777"
+      },
+      "logo_usage": {
+        "placement": "Top-left in navigation, centered in email headers",
+        "sizing": "Consistent across all pages",
+        "spacing": "Adequate padding around logo"
+      },
+      "favicon_set": {
+        "sizes": ["16x16", "32x32", "96x96", "192x192", "512x512"],
+        "formats": ["png", "ico"],
+        "apple_touch": "180x180"
+      },
+      "theme_color": "#4f46e5",
+      "design_philosophy": {
+        "style": "Clean, minimal, modern",
+        "aesthetic": "Professional yet approachable",
+        "focus": "User experience and clarity"
+      }
+    },
+    "semantic_color_system": {
+      "primary_actions": {
+        "default": "#3b82f6",
+        "hover": "#2563eb",
+        "active": "#1d4ed8",
+        "disabled": "#9ca3af",
+        "text_on_primary": "#ffffff"
+      },
+      "secondary_actions": {
+        "default": "#ffffff",
+        "border": "#3b82f6",
+        "text": "#3b82f6",
+        "hover_bg": "#eff6ff",
+        "hover_border": "#2563eb"
+      },
+      "success": {
+        "default": "#059669",
+        "background": "#d1fae5",
+        "text": "#065f46",
+        "border": "#10b981"
+      },
+      "warning": {
+        "default": "#f59e0b",
+        "background": "#fef3c7",
+        "text": "#92400e",
+        "border": "#fbbf24"
+      },
+      "error": {
+        "default": "#dc2626",
+        "background": "#fee2e2",
+        "text": "#991b1b",
+        "border": "#ef4444"
+      },
+      "info": {
+        "default": "#3b82f6",
+        "background": "#dbeafe",
+        "text": "#1e40af",
+        "border": "#60a5fa"
+      },
+      "status_badges": {
+        "pro": { "bg": "#dbeafe", "text": "#1e40af" },
+        "free_trial": { "bg": "#dbeafe", "text": "#1e40af" },
+        "expired": { "bg": "#f3f4f6", "text": "#6b7280" },
+        "active": { "bg": "#d1fae5", "text": "#059669" },
+        "inactive": { "bg": "#f3f4f6", "text": "#6b7280" },
+        "monthly": { "bg": "#dbeafe", "text": "#1e40af" },
+        "yearly": { "bg": "#d1fae5", "text": "#059669" }
+      },
+      "neutral_grays": {
+        "50": "#f9fafb",
+        "100": "#f3f4f6",
+        "200": "#e5e7eb",
+        "300": "#d1d5db",
+        "400": "#9ca3af",
+        "500": "#6b7280",
+        "600": "#4b5563",
+        "700": "#374151",
+        "800": "#1f2937",
+        "900": "#111827"
+      },
+      "usage_rules": {
+        "primary_blue": "Main actions, links, active states",
+        "success_green": "Positive actions, confirmations, completed states",
+        "error_red": "Destructive actions, errors, warnings",
+        "warning_amber": "Caution, pending states",
+        "grays": "Text, borders, backgrounds, disabled states"
+      }
+    },
+    "spacing_scale": {
+      "base_unit": "4px",
+      "scale": {
+        "0": "0px",
+        "1": "4px",
+        "2": "8px",
+        "3": "12px",
+        "4": "16px",
+        "5": "20px",
+        "6": "24px",
+        "8": "32px",
+        "10": "40px",
+        "12": "48px",
+        "16": "64px",
+        "20": "80px"
+      },
+      "usage_rules": {
+        "component_padding": {
+          "small": "12px (3)",
+          "medium": "16px (4)",
+          "large": "24px (6)"
+        },
+        "section_spacing": {
+          "tight": "16px (4)",
+          "normal": "24px (6)",
+          "loose": "32px (8)"
+        },
+        "element_gaps": {
+          "tight": "8px (2)",
+          "normal": "12px (3)",
+          "loose": "16px (4)"
+        },
+        "container_padding": {
+          "mobile": "16px (4)",
+          "tablet": "24px (6)",
+          "desktop": "32px (8)"
+        }
+      },
+      "responsive_adjustments": {
+        "mobile": "Reduce spacing by 25-33%",
+        "tablet": "Use standard spacing",
+        "desktop": "Can increase spacing for large screens"
+      }
+    },
+    "component_library": {
+      "buttons": {
+        "primary": {
+          "base": "bg-blue-600 text-white px-4 py-2 rounded-lg font-medium",
+          "hover": "hover:bg-blue-700 transition-colors",
+          "active": "active:bg-blue-800",
+          "disabled": "disabled:bg-gray-400 disabled:cursor-not-allowed",
+          "focus": "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+          "sizes": {
+            "sm": "px-3 py-1.5 text-sm",
+            "md": "px-4 py-2 text-base",
+            "lg": "px-6 py-3 text-lg"
+          }
+        },
+        "secondary": {
+          "base": "bg-white text-blue-600 border-2 border-blue-600 px-4 py-2 rounded-lg font-medium",
+          "hover": "hover:bg-blue-50 hover:border-blue-700 transition-colors",
+          "active": "active:bg-blue-100",
+          "disabled": "disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed"
+        },
+        "danger": {
+          "base": "bg-red-600 text-white px-4 py-2 rounded-lg font-medium",
+          "hover": "hover:bg-red-700 transition-colors",
+          "active": "active:bg-red-800"
+        },
+        "success": {
+          "base": "bg-green-600 text-white px-4 py-2 rounded-lg font-medium",
+          "hover": "hover:bg-green-700 transition-colors"
+        },
+        "ghost": {
+          "base": "bg-transparent text-gray-700 px-4 py-2 rounded-lg font-medium",
+          "hover": "hover:bg-gray-100 transition-colors"
+        },
+        "fab": {
+          "base": "bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg",
+          "hover": "hover:bg-blue-700",
+          "transition": "transition-all duration-300",
+          "mobile_size": "w-12 h-12"
+        }
+      },
+      "inputs": {
+        "text": {
+          "base": "w-full px-4 py-2.5 border border-gray-300 rounded-lg",
+          "focus": "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+          "disabled": "disabled:bg-gray-100 disabled:cursor-not-allowed",
+          "error": "border-red-500 focus:ring-red-500",
+          "transition": "transition shadow-sm"
+        },
+        "textarea": {
+          "base": "w-full px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm leading-relaxed",
+          "focus": "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+          "resize": "resize-y"
+        },
+        "select": {
+          "base": "w-full px-4 py-2.5 border border-gray-300 rounded-lg",
+          "focus": "focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        }
+      },
+      "cards": {
+        "base": "bg-white rounded-lg shadow-sm border border-gray-200",
+        "hover": "hover:shadow-md transition-shadow",
+        "padding": {
+          "sm": "p-4",
+          "md": "p-6",
+          "lg": "p-8"
+        }
+      },
+      "modals": {
+        "overlay": "fixed inset-0 bg-gray-600 bg-opacity-50 z-50",
+        "content": {
+          "base": "bg-white rounded-lg shadow-xl w-full max-w-md mx-4",
+          "mobile": "max-w-90% min-width-unset",
+          "padding": "px-4 sm:px-6 py-4"
+        },
+        "header": "px-4 sm:px-6 py-4 border-b border-gray-200",
+        "body": "px-4 sm:px-6 py-4",
+        "footer": "px-4 sm:px-6 py-4 border-t border-gray-200 flex justify-end space-x-3"
+      },
+      "badges": {
+        "base": "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+        "variants": {
+          "default": "bg-gray-100 text-gray-800",
+          "primary": "bg-blue-100 text-blue-800",
+          "success": "bg-green-100 text-green-800",
+          "warning": "bg-yellow-100 text-yellow-800",
+          "error": "bg-red-100 text-red-800",
+          "purple": "bg-purple-100 text-purple-800"
+        }
+      },
+      "tables": {
+        "container": "bg-white rounded-lg shadow-sm overflow-hidden",
+        "header": "bg-gray-50 px-6 py-3 border-b border-gray-200",
+        "row": {
+          "base": "hover:bg-gray-50 transition-colors",
+          "border": "border-b border-gray-200"
+        },
+        "cell": {
+          "base": "px-6 py-4 text-sm",
+          "header": "text-xs font-medium text-gray-500 uppercase tracking-wider"
+        }
+      },
+      "navigation": {
+        "link": {
+          "base": "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+          "default": "text-gray-700 hover:text-blue-600",
+          "active": "text-blue-600 bg-blue-50",
+          "mobile": "block px-3 py-2 rounded-md text-base font-medium"
+        }
+      },
+      "toast": {
+        "container": "fixed top-4 right-4 z-50 flex flex-col gap-2",
+        "mobile": "bottom-4 left-4 right-4 top-auto",
+        "item": {
+          "base": "bg-white rounded-lg shadow-lg p-3 flex items-start gap-2.5",
+          "success": "bg-green-100 border-l-4 border-green-500",
+          "error": "bg-red-100 border-l-4 border-red-500",
+          "info": "bg-blue-100 border-l-4 border-blue-500",
+          "transition": "transition-all duration-300 ease-in-out"
+        }
+      }
+    },
+    "typography_hierarchy": {
+      "font_family": {
+        "primary": "Inter, sans-serif",
+        "mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+      },
+      "font_weights": {
+        "normal": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700,
+        "extrabold": 800
+      },
+      "scale": {
+        "xs": {
+          "size": "0.75rem",
+          "line_height": "1rem",
+          "usage": "Labels, captions, badges"
+        },
+        "sm": {
+          "size": "0.875rem",
+          "line_height": "1.25rem",
+          "usage": "Secondary text, helper text"
+        },
+        "base": {
+          "size": "1rem",
+          "line_height": "1.5rem",
+          "usage": "Body text, default text"
+        },
+        "lg": {
+          "size": "1.125rem",
+          "line_height": "1.75rem",
+          "usage": "Large body text"
+        },
+        "xl": {
+          "size": "1.25rem",
+          "line_height": "1.75rem",
+          "usage": "Section headings, card titles"
+        },
+        "2xl": {
+          "size": "1.5rem",
+          "line_height": "2rem",
+          "usage": "Page subheadings"
+        },
+        "3xl": {
+          "size": "1.875rem",
+          "line_height": "2.25rem",
+          "usage": "Page headings"
+        },
+        "4xl": {
+          "size": "2.25rem",
+          "line_height": "2.5rem",
+          "usage": "Hero headings (mobile)"
+        },
+        "5xl": {
+          "size": "3rem",
+          "line_height": "1",
+          "usage": "Hero headings (desktop)"
+        },
+        "6xl": {
+          "size": "3.75rem",
+          "line_height": "1",
+          "usage": "Large hero headings"
+        }
+      },
+      "headings": {
+        "h1": {
+          "classes": "text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900",
+          "usage": "Page titles, hero headings"
+        },
+        "h2": {
+          "classes": "text-2xl sm:text-3xl font-bold text-gray-900",
+          "usage": "Section headings"
+        },
+        "h3": {
+          "classes": "text-xl sm:text-2xl font-semibold text-gray-900",
+          "usage": "Subsection headings, card titles"
+        },
+        "h4": {
+          "classes": "text-lg font-semibold text-gray-900",
+          "usage": "Component titles"
+        }
+      },
+      "body_text": {
+        "default": "text-base text-gray-700",
+        "muted": "text-sm text-gray-500",
+        "strong": "font-semibold text-gray-900"
+      },
+      "letter_spacing": {
+        "tight": "-0.025em",
+        "normal": "0",
+        "wide": "0.025em",
+        "wider": "0.05em"
+      }
+    },
+    "layout_grid_system": {
+      "container": {
+        "max_widths": {
+          "sm": "640px",
+          "md": "768px",
+          "lg": "1024px",
+          "xl": "1280px",
+          "2xl": "1536px",
+          "full": "100%"
+        },
+        "padding": {
+          "mobile": "px-4",
+          "tablet": "px-6",
+          "desktop": "px-8"
+        },
+        "centering": "mx-auto"
+      },
+      "grid": {
+        "columns": {
+          "1": "grid-cols-1",
+          "2": "grid-cols-1 md:grid-cols-2",
+          "3": "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+          "4": "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+        },
+        "gaps": {
+          "sm": "gap-4",
+          "md": "gap-6",
+          "lg": "gap-8"
+        }
+      },
+      "flexbox": {
+        "common_patterns": {
+          "row": "flex flex-row",
+          "column": "flex flex-col",
+          "center": "flex items-center justify-center",
+          "between": "flex items-center justify-between",
+          "start": "flex items-start",
+          "end": "flex items-end"
+        },
+        "spacing": {
+          "gap_sm": "gap-2",
+          "gap_md": "gap-4",
+          "gap_lg": "gap-6"
+        }
+      },
+      "breakpoints": {
+        "sm": "640px",
+        "md": "768px",
+        "lg": "1024px",
+        "xl": "1280px",
+        "2xl": "1536px"
+      }
+    },
+    "state_patterns": {
+      "empty_states": {
+        "structure": {
+          "icon": "Centered SVG icon (w-12 h-12 text-gray-400)",
+          "heading": "text-lg font-medium text-gray-900",
+          "description": "text-sm text-gray-500",
+          "action": "Optional CTA button"
+        },
+        "examples": {
+          "no_bookings": {
+            "icon": "Calendar SVG",
+            "heading": "No bookings found",
+            "description": "Your appointments will appear here",
+            "spacing": "py-12 text-center"
+          },
+          "no_contacts": {
+            "icon": "User group SVG",
+            "heading": "No contacts found",
+            "description": "Add your first contact to get started",
+            "action": "Add Contact button"
+          },
+          "no_appointments_today": {
+            "icon": "Calendar SVG (w-12 h-12)",
+            "heading": "No appointments scheduled for today",
+            "spacing": "text-center text-gray-500 py-4"
+          }
+        },
+        "styling": {
+          "container": "flex flex-col items-center",
+          "icon_margin": "mb-4",
+          "text_spacing": "mt-2"
+        }
+      },
+      "loading_states": {
+        "spinner": {
+          "size": "w-4 h-4",
+          "style": "border-2 border-gray-200 border-t-blue-600 rounded-full",
+          "animation": "spin 1s ease-in-out infinite",
+          "keyframes": "@keyframes spin { to { transform: rotate(360deg); } }"
+        },
+        "skeleton": {
+          "base": "bg-gray-200 animate-pulse rounded",
+          "text": "h-4 bg-gray-200 rounded w-3/4",
+          "button": "h-10 bg-gray-200 rounded w-24",
+          "card": "h-32 bg-gray-200 rounded"
+        },
+        "overlay": {
+          "base": "absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10 rounded-lg",
+          "transition": "opacity 0.3s ease",
+          "active": "opacity-100 pointer-events-auto",
+          "inactive": "opacity-0 pointer-events-none"
+        },
+        "button_loading": {
+          "state": "disabled with spinner",
+          "text": "Loading... or spinner only"
+        }
+      },
+      "error_states": {
+        "inline_errors": {
+          "style": "text-sm text-red-600 mt-1",
+          "icon": "Optional error icon"
+        },
+        "form_errors": {
+          "container": "bg-red-50 border border-red-200 rounded-lg p-4",
+          "text": "text-sm text-red-800",
+          "list": "list-disc list-inside"
+        },
+        "page_errors": {
+          "container": "text-center py-12",
+          "icon": "w-12 h-12 text-red-400 mx-auto mb-4",
+          "heading": "text-lg font-medium text-gray-900",
+          "message": "text-sm text-gray-500",
+          "action": "Retry button"
+        },
+        "toast_errors": {
+          "style": "bg-red-100 border-l-4 border-red-500",
+          "icon": "Red X or warning icon",
+          "message": "Clear, actionable error message"
+        }
+      }
+    },
+    "fullcalendar_ui_rules": {
+      "container": {
+        "background": "#FAFAFA",
+        "border_radius": "6px",
+        "overflow": "hidden"
+      },
+      "toolbar": {
+        "buttons": {
+          "base": "bg-gray-50 border border-gray-200 text-gray-600 font-medium px-4 py-2.5 rounded-md text-sm",
+          "hover": "bg-gray-100 border-gray-300 text-gray-700 transform translateY(-0.5px) shadow-sm",
+          "active": "bg-gray-200 border-gray-300 text-gray-900 shadow-sm",
+          "transition": "transition-all duration-150 ease",
+          "shadow": "box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05)"
+        },
+        "title": {
+          "color": "#111827",
+          "font_weight": "600",
+          "mobile": "text-2xl text-center w-full"
+        }
+      },
+      "events": {
+        "base": {
+          "background": "transparent",
+          "border": "none",
+          "color": "#374151",
+          "padding": "1px 4px",
+          "margin": "0.5px 2px",
+          "border_radius": "4px",
+          "min_height": "18px",
+          "font_size": "11px",
+          "line_height": "1.1"
+        },
+        "hover": {
+          "background": "#F9FAFB"
+        },
+        "time_display": {
+          "font_size": "10px",
+          "white_space": "nowrap",
+          "margin_right": "4px"
+        }
+      },
+      "day_grid": {
+        "today": {
+          "background": "#F0F9FF",
+          "border": "none"
+        },
+        "borders": {
+          "color": "#E5E7EB",
+          "style": "solid"
+        }
+      },
+      "time_grid": {
+        "slot_height": "40px",
+        "background": "#FAFAFA",
+        "border_color": "#E5E7EB",
+        "now_indicator": {
+          "color": "#10B981",
+          "line_style": "solid"
+        }
+      },
+      "mobile_optimizations": {
+        "toolbar": {
+          "layout": "flex-col",
+          "spacing": "gap-3",
+          "button_size": "min-height: 44px (touch target)",
+          "button_text": "text-0.8rem"
+        },
+        "events": {
+          "font_size": "11px",
+          "title_display": "block with ellipsis"
+        },
+        "view_buttons": {
+          "width": "100%",
+          "flex": "1",
+          "font_size": "0.75rem"
+        }
+      }
+    },
+    "mobile_specific_rules": {
+      "touch_targets": {
+        "minimum_size": "44x44px",
+        "button_padding": "0.75rem 1rem",
+        "spacing_between": "At least 8px"
+      },
+      "navigation": {
+        "mobile_menu": {
+          "trigger": "Hamburger menu (min 44x44px)",
+          "overlay": "Full screen or slide-in",
+          "items": "Stack vertically, full width",
+          "spacing": "py-2 px-3"
+        },
+        "fab": {
+          "size": "w-12 h-12 (smaller than desktop)",
+          "position": "bottom-4 right-4",
+          "z_index": "z-50"
+        }
+      },
+      "forms": {
+        "input_height": "Minimum 44px",
+        "font_size": "16px (prevents zoom on iOS)",
+        "spacing": "mb-4 between fields",
+        "submit_button": "Full width on mobile, centered"
+      },
+      "modals": {
+        "width": "90% max-width",
+        "padding": "p-4",
+        "margin": "m-4",
+        "scroll": "Allow vertical scrolling",
+        "close_button": "Top-right, min 44x44px"
+      },
+      "tables": {
+        "responsive": "Horizontal scroll or card layout",
+        "card_layout": "Convert rows to cards on mobile",
+        "hide_columns": "Hide less important columns"
+      },
+      "typography": {
+        "headings": "Reduce by one size level",
+        "body": "Maintain readability (min 14px)",
+        "line_height": "Increase for mobile (1.6-1.75)"
+      },
+      "spacing": {
+        "reduce_by": "25-33% from desktop",
+        "container_padding": "px-4 (16px)",
+        "section_margins": "mb-4 to mb-6"
+      },
+      "breakpoints": {
+        "mobile": "max-width: 640px",
+        "small_mobile": "max-width: 480px",
+        "tablet": "min-width: 641px, max-width: 1023px"
+      }
+    },
+    "motion_guidelines": {
+      "principles": {
+        "purpose": "Enhance usability, provide feedback",
+        "avoid": "Excessive animation, distracting motion",
+        "preference": "Respect prefers-reduced-motion"
+      },
+      "durations": {
+        "fast": "150ms",
+        "normal": "200-300ms",
+        "slow": "400-500ms"
+      },
+      "easing": {
+        "default": "ease",
+        "smooth": "ease-in-out",
+        "bounce": "ease-out (rarely used)"
+      },
+      "transitions": {
+        "colors": "transition-colors duration-200",
+        "transform": "transition-transform duration-200",
+        "opacity": "transition-opacity duration-300",
+        "all": "transition-all duration-300"
+      },
+      "animations": {
+        "spinner": {
+          "duration": "1s",
+          "timing": "ease-in-out",
+          "iteration": "infinite",
+          "keyframes": "rotate(360deg)"
+        },
+        "fade_in": {
+          "duration": "300ms",
+          "keyframes": "opacity 0 to 1"
+        },
+        "slide_in": {
+          "duration": "300ms",
+          "keyframes": "translateX/Y with opacity"
+        },
+        "scale": {
+          "duration": "200ms",
+          "keyframes": "scale(0.95) to scale(1)"
+        }
+      },
+      "interactions": {
+        "hover": {
+          "transform": "translateY(-1px) or translateY(-2px)",
+          "shadow": "Increase shadow elevation",
+          "color": "Darken background by one shade"
+        },
+        "active": {
+          "transform": "translateY(0) or scale(0.98)",
+          "shadow": "Reduce shadow"
+        },
+        "focus": {
+          "ring": "ring-2 ring-blue-500 ring-offset-2",
+          "outline": "outline-none (use ring instead)"
+        }
+      },
+      "reduced_motion": {
+        "media_query": "@media (prefers-reduced-motion: reduce)",
+        "rule": "Disable animations, use instant transitions",
+        "implementation": "animation: none; transition: none;"
+      }
+    },
+    "accessibility": {
+      "semantic_html": {
+        "headings": "Use h1-h6 in proper hierarchy",
+        "landmarks": "Use nav, main, aside, footer",
+        "lists": "Use ul/ol for lists, not divs"
+      },
+      "aria_attributes": {
+        "labels": "aria-label for icon-only buttons",
+        "expanded": "aria-expanded for dropdowns/menus",
+        "roles": "role='menu', role='menuitem' for menus",
+        "live_regions": "aria-live for dynamic content"
+      },
+      "keyboard_navigation": {
+        "focus_indicators": "Visible focus rings (ring-2 ring-blue-500)",
+        "tab_order": "Logical tab sequence",
+        "skip_links": "Skip to main content link",
+        "keyboard_shortcuts": "Document any keyboard shortcuts"
+      },
+      "color_contrast": {
+        "text": "WCAG AA minimum (4.5:1 for normal text)",
+        "large_text": "WCAG AA minimum (3:1 for 18pt+)",
+        "interactive": "Sufficient contrast for all states"
+      },
+      "images": {
+        "alt_text": "Descriptive alt text for all images",
+        "decorative": "alt='' for decorative images",
+        "icons": "aria-label if icon-only, or hidden with aria-hidden='true'"
+      },
+      "forms": {
+        "labels": "Always associate labels with inputs",
+        "errors": "Associate error messages with inputs (aria-describedby)",
+        "required": "Indicate required fields",
+        "validation": "Show errors immediately, clear on correction"
+      },
+      "screen_readers": {
+        "hidden_text": "sr-only class for screen reader only text",
+        "status_updates": "Use aria-live regions for dynamic updates",
+        "loading": "Announce loading states"
+      },
+      "touch_targets": {
+        "minimum": "44x44px for all interactive elements",
+        "spacing": "Adequate spacing between targets"
+      },
+      "testing": {
+        "keyboard_only": "Test all functionality with keyboard",
+        "screen_reader": "Test with screen reader (NVDA, JAWS, VoiceOver)",
+        "color_blindness": "Test color contrast and patterns"
+      }
+    },
+    "email_design_improvements": {
+      "structure": {
+        "doctype": "HTML5 with X-UA-Compatible for Outlook",
+        "wrapper": "Table-based layout (600px max-width)",
+        "mobile_responsive": "Media queries for mobile devices"
+      },
+      "template_system": {
+        "header": {
+          "padding": "40px 20px 30px 20px",
+          "logo": "Centered, 28px font-size, font-weight 600",
+          "color": "#111827"
+        },
+        "content": {
+          "padding": "0 40px 40px 40px",
+          "mobile": "0 20px 40px 20px",
+          "text_align": "center for main content",
+          "font_size": "15-16px",
+          "line_height": "1.6"
+        },
+        "footer": {
+          "padding": "30px 40px 40px 40px",
+          "border": "1px solid #e5e7eb (top border)",
+          "text_align": "center",
+          "font_size": "12-14px",
+          "color": "#6b7280"
+        }
+      },
+      "styling": {
+        "inline_styles": "All styles must be inline",
+        "table_layout": "Use tables for layout (email client compatibility)",
+        "role_presentation": "role='presentation' on layout tables",
+        "background": {
+          "wrapper": "#f5f5f5",
+          "container": "#ffffff",
+          "sections": "#f9fafb"
+        }
+      },
+      "typography": {
+        "font_family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+        "headings": {
+          "h1": "28px, font-weight 600, color #111827",
+          "mobile": "24px"
+        },
+        "body": {
+          "size": "15-16px",
+          "color": "#333333",
+          "line_height": "1.6"
+        },
+        "links": {
+          "color": "#3b82f6",
+          "text_decoration": "none",
+          "hover": "underline (if supported)"
+        }
+      },
+      "buttons": {
+        "primary": {
+          "display": "inline-block",
+          "padding": "12px 24px",
+          "background": "#3b82f6",
+          "color": "#ffffff !important",
+          "text_decoration": "none",
+          "border_radius": "6px",
+          "font_weight": "500",
+          "font_size": "15px",
+          "text_align": "center"
+        },
+        "secondary": {
+          "display": "inline-block",
+          "padding": "12px 24px",
+          "background": "#ffffff",
+          "color": "#3b82f6 !important",
+          "border": "2px solid #3b82f6",
+          "text_decoration": "none",
+          "border_radius": "6px",
+          "font_weight": "500"
+        },
+        "spacing": "margin: 0 12px 0 0 (for multiple buttons)"
+      },
+      "sections": {
+        "info_box": {
+          "background": "#f9fafb",
+          "border_radius": "6px",
+          "padding": "20px",
+          "margin": "0 0 24px 0"
+        },
+        "spacing": {
+          "paragraphs": "margin: 0 0 20px 0",
+          "sections": "margin: 0 0 24px 0"
+        }
+      },
+      "mobile_optimization": {
+        "media_query": "@media only screen and (max-width: 600px)",
+        "width": "100% !important",
+        "padding": "Reduce by 50% (40px to 20px)",
+        "font_sizes": "Reduce heading by 4px",
+        "buttons": "Full width or stacked",
+        "border_radius": "Remove on mobile (0 !important)"
+      },
+      "outlook_compatibility": {
+        "conditional_comments": "<!--[if mso]> for Outlook-specific styles",
+        "font_family": "Arial, sans-serif for Outlook",
+        "vml": "Use VML for complex layouts if needed"
+      },
+      "testing": {
+        "clients": [
+          "Gmail (web, iOS, Android)",
+          "Outlook (2016, 2019, 365)",
+          "Apple Mail",
+          "Mobile clients"
+        ],
+        "checklist": [
+          "Render correctly in all clients",
+          "Mobile responsive",
+          "Links work",
+          "Images load",
+          "Colors display correctly",
+          "Text is readable"
+        ]
+      },
+      "content_guidelines": {
+        "clarity": "Clear, concise messaging",
+        "cta": "Single, clear call-to-action",
+        "hierarchy": "Clear visual hierarchy",
+        "personalization": "Use placeholders for dynamic content"
+      }
+    }
+  }
+}
+

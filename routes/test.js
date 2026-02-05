@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mailService = require('../services/mail');
+const smsService = require('../services/sms');
 
 function buildSampleBooking({ clientEmail }) {
     const now = new Date();
@@ -111,6 +112,66 @@ router.get('/reminder/host/:email', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to send host reminder',
+            error: error.message
+        });
+    }
+});
+
+// Send a test SMS to the given phone number (e.g. /test/sms/639171234567).
+// SMS is sent to phone numbers only; use your mobile number to receive it.
+router.get('/sms/:phone', async (req, res) => {
+    const phone = req.params.phone?.replace(/\D/g, '') || '';
+    if (!phone || phone.length < 10) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid phone number. Use e.g. /test/sms/639171234567'
+        });
+    }
+
+    const now = new Date();
+    const start = new Date(now.getTime() + 60 * 60 * 1000);
+    const toDateString = (d) => d.toISOString().split('T')[0];
+    const toTimeString = (d) => d.toISOString().split('T')[1].slice(0, 5);
+
+    const booking = {
+        id: 0,
+        client_name: 'Test Client',
+        client_email: 'tjtalusan@gmail.com',
+        client_phone: req.params.phone.trim(),
+        date: toDateString(start),
+        start_time: toTimeString(start),
+        end_time: toTimeString(new Date(start.getTime() + 30 * 60 * 1000)),
+        notes: 'Test SMS from SimpleSchedule',
+        confirmation_uuid: 'test-sms-' + Date.now()
+    };
+
+    const host = {
+        id: 1,
+        full_name: 'Test Host',
+        username: 'testhost',
+        email: 'tjtalusan@gmail.com',
+        is_pro: true,
+        pro_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    };
+
+    try {
+        const result = await smsService.sendBookingConfirmationSMS(booking, host);
+        if (result == null && !process.env.SEMAPHORE_API_KEY) {
+            return res.status(503).json({
+                success: false,
+                message: 'SMS not sent: SEMAPHORE_API_KEY is not set',
+                hint: 'Add SEMAPHORE_API_KEY to .env to enable SMS'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Test SMS sent to ' + booking.client_phone,
+            result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send test SMS',
             error: error.message
         });
     }

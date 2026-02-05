@@ -89,7 +89,23 @@ async function checkUserAccess(userId) {
     return { hasAccess: false, reason: 'No trial or subscription', isPro: false };
 }
 
+/**
+ * Check if a user object has active Pro for features (e.g. SMS).
+ * Uses same rules as checkUserAccess: is_pro and (lifetime or expiration + 1 day grace).
+ * @param {{ is_pro?: boolean, pro_expires_at?: string|Date|null }} user - User row or host object
+ * @returns {boolean}
+ */
+function isProActiveForFeatures(user) {
+    if (!user || !user.is_pro) return false;
+    if (!user.pro_expires_at) return true; // lifetime
+    const expiration = new Date(user.pro_expires_at);
+    const expirationPlusOne = new Date(expiration);
+    expirationPlusOne.setDate(expirationPlusOne.getDate() + 1);
+    return new Date() <= expirationPlusOne;
+}
+
 module.exports = {
-    checkUserAccess
+    checkUserAccess,
+    isProActiveForFeatures
 };
 

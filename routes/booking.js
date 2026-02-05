@@ -6,7 +6,7 @@ const smsService = require('../services/sms');
 const telegramService = require('../services/telegram');
 const googleCalendarService = require('../services/googleCalendar');
 const timezone = require('../utils/timezone');
-const { checkUserAccess } = require('../utils/subscription');
+const { checkUserAccess, isProActiveForFeatures } = require('../utils/subscription');
 
 // Helper function to convert time string (HH:MM) to minutes since midnight
 function timeToMinutes(timeStr) {
@@ -296,7 +296,6 @@ router.get('/:username/:duration/slots', async (req, res) => {
         const meetingLength = duration; // Use duration from URL parameter
         const bufferTime = bufferMinutes ?? 15; // Default to 15 only if null/undefined, 0 means no buffer
         const totalInterval = meetingLength + bufferTime;
-        
 
         // Current time in minutes since midnight in client's timezone
         const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
@@ -634,17 +633,15 @@ router.post('/:username/:duration', async (req, res) => {
             mailService.sendHostNotification(booking, host)
         ];
 
-        // Only attempt SMS if phone number is provided
-        if (booking.client_phone) {
-            if (host.is_pro && (!host.pro_expires_at || new Date(host.pro_expires_at) > new Date())) {
-                notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
-            } else {
-            }
+        // Only attempt SMS if phone number is provided and host has active Pro
+        if (booking.client_phone && isProActiveForFeatures(host)) {
+            notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
         }
 
         await Promise.all(notifications);
     } catch (notificationError) {
         // Don't fail the booking if notifications fail
+        console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
     // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)
@@ -1027,17 +1024,15 @@ router.post('/:username', async (req, res) => {
             mailService.sendHostNotification(booking, host)
         ];
 
-        // Only attempt SMS if phone number is provided
-        if (booking.client_phone) {
-            if (host.is_pro && (!host.pro_expires_at || new Date(host.pro_expires_at) > new Date())) {
-                notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
-            } else {
-            }
+        // Only attempt SMS if phone number is provided and host has active Pro
+        if (booking.client_phone && isProActiveForFeatures(host)) {
+            notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
         }
 
         await Promise.all(notifications);
     } catch (notificationError) {
         // Don't fail the booking if notifications fail
+        console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
     // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)

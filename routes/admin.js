@@ -109,7 +109,7 @@ router.get('/', requireAdmin, async (req, res) => {
 
 // List users with search, filter, and pagination
 router.get('/users/data', requireAdmin, async (req, res) => {
-    const { page = 1, search = '', status = 'all', subscription = 'all', planType = 'all' } = req.query;
+    const { page = 1, search = '', status = 'all', subscription = 'all', planType = 'all', couponCode = '' } = req.query;
     const limit = 10;
     const offset = (page - 1) * limit;
     let where = [];
@@ -182,6 +182,17 @@ router.get('/users/data', requireAdmin, async (req, res) => {
             )
         )`);
         params.push(planType);
+    }
+    
+    // Add coupon code filter
+    if (couponCode) {
+        where.push(`EXISTS (
+            SELECT 1 FROM coupon_usage cu
+            INNER JOIN coupons c ON cu.coupon_id = c.id
+            WHERE cu.user_id = u.id
+            AND c.code = $${params.length + 1}
+        )`);
+        params.push(couponCode);
     }
     
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
@@ -506,17 +517,28 @@ router.get('/users/:userId/bookings', requireAdmin, async (req, res) => {
 });
 
 // Render the admin user management UI
-router.get('/users', requireAdmin, (req, res) => {
+router.get('/users', requireAdmin, async (req, res) => {
     const filters = {
         search: req.query.search || '',
         status: req.query.status || '',
         subscription: req.query.subscription || '',
-        planType: req.query.planType || ''
+        planType: req.query.planType || '',
+        couponCode: req.query.couponCode || ''
     };
+    
+    // Fetch all coupons for the filter dropdown
+    let coupons = [];
+    try {
+        const couponResult = await db.query('SELECT id, code FROM coupons ORDER BY code ASC');
+        coupons = couponResult.rows;
+    } catch (error) {
+        console.error('Error fetching coupons:', error);
+    }
     
     res.render('admin/users', {
         path: '/admin/users',
-        filters
+        filters,
+        coupons
     });
 });
 
@@ -594,8 +616,11 @@ router.get('/coupons/:id/usage', async (req, res) => {
                        'name', COALESCE(u.display_name, u.full_name),
                        'email', u.email,
                        'used_at', cu.used_at,
+                       'status', u.status,
+                       'created_at', u.created_at,
                        'is_pro', u.is_pro,
                        'pro_expires_at', u.pro_expires_at,
+                       'pro_started_at', u.pro_started_at,
                        'revenuecat_entitlement_status', u.revenuecat_entitlement_status,
                        'trial_started_at', u.trial_started_at,
                        'plan_type', COALESCE(
@@ -624,6 +649,31 @@ router.get('/coupons/:id/usage', async (req, res) => {
         const coupon = result.rows[0];
         coupon.status = coupon.status_text;
         delete coupon.status_text;
+        
+        // Calculate trial_days_left for each usage
+        if (coupon.usage_details) {
+            coupon.usage_details = coupon.usage_details.map(usage => {
+                let trialDaysLeft = null;
+                
+                if (usage.trial_started_at && !usage.is_pro) {
+                    const trialStart = new Date(usage.trial_started_at);
+                    const now = new Date();
+                    const daysSinceTrial = (now - trialStart) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysSinceTrial <= 5) {
+                        trialDaysLeft = Math.ceil(5 - daysSinceTrial);
+                    } else {
+                        trialDaysLeft = 0;
+                    }
+                }
+                
+                return {
+                    ...usage,
+                    status: usage.status ? 'active' : 'inactive',
+                    trial_days_left: trialDaysLeft
+                };
+            });
+        }
 
         res.render('admin/coupon-usage', { 
             coupon,

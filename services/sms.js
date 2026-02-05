@@ -1,5 +1,6 @@
 const axios = require('axios');
 const urlShortener = require('./urlShortener');
+const { isProActiveForFeatures } = require('../utils/subscription');
 
 const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
 const SEMAPHORE_SENDER = 'isked';
@@ -39,8 +40,7 @@ function formatTime(time) {
 }
 
 async function sendBookingConfirmationSMS(booking, host) {
-    // Check if host has pro subscription
-    if (!host.is_pro || (host.pro_expires_at && new Date(host.pro_expires_at) < new Date())) {
+    if (!isProActiveForFeatures(host)) {
         console.log('SMS not sent: Host does not have an active pro subscription');
         return null;
     }

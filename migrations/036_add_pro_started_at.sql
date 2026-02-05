@@ -10,3 +10,7 @@ WHERE is_pro = TRUE AND pro_started_at IS NULL;
 
 
 
+
+
+
+

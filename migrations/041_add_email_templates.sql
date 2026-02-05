@@ -16,3 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_email_templates_name ON email_templates(name);
 -- Create index on created_at for sorting
 CREATE INDEX IF NOT EXISTS idx_email_templates_created_at ON email_templates(created_at);
 
+
+
+
+

@@ -4,10 +4,15 @@ const fs = require('fs');
 const timezone = require('../utils/timezone');
 
 const mailgun = new Mailgun(FormData);
-const mg = mailgun.client({
+const mgConfig = {
     username: 'api',
     key: process.env.MAILGUN_API_KEY || 'key-yourkeyhere'
-});
+};
+// Use EU API if MAILGUN_EU=true or MAILGUN_URL is set (Forbidden often = wrong region)
+if (process.env.MAILGUN_EU === 'true' || process.env.MAILGUN_URL) {
+    mgConfig.url = process.env.MAILGUN_URL || 'https://api.eu.mailgun.net';
+}
+const mg = mailgun.client(mgConfig);
 
 class MailService {
     constructor() {
