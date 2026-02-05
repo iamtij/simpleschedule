@@ -290,6 +290,7 @@ router.post('/forgot-password', async (req, res) => {
             success: 'Password reset instructions have been sent to your email'
         });
     } catch (error) {
+        console.error('Forgot password error:', error);
         res.render('forgot-password', { 
             error: 'An error occurred. Please try again.', 
             success: null 
@@ -317,6 +318,7 @@ router.get('/reset-password/:token', async (req, res) => {
 
         res.render('reset-password', { error: null, token });
     } catch (error) {
+        console.error('Reset password GET error:', error);
         res.render('reset-password', { 
             error: 'An error occurred. Please try again.',
             token: null
@@ -356,6 +358,7 @@ router.post('/reset-password/:token', async (req, res) => {
         req.session.successMessage = 'Your password has been successfully reset. Please log in with your new password.';
         res.redirect('/auth/login');
     } catch (error) {
+        console.error('Reset password POST error:', error);
         res.render('reset-password', { 
             error: 'An error occurred. Please try again.',
             token
