@@ -1,5 +1,6 @@
 const db = require('../db');
 const mailService = require('../services/mail');
+const smsService = require('../services/sms');
 const timezone = require('../utils/timezone');
 
 const REMINDER_MINUTES_BEFORE = 30;
@@ -136,7 +137,10 @@ async function fetchCandidateBookings() {
             u.timezone,
             u.display_name AS host_display_name,
             u.full_name AS host_full_name,
-            u.name AS host_name
+            u.name AS host_name,
+            u.is_pro AS host_is_pro,
+            u.pro_expires_at AS host_pro_expires_at,
+            u.sms_phone AS host_sms_phone
         FROM bookings b
         JOIN users u ON u.id = b.user_id
         WHERE b.status != 'cancelled'
@@ -180,10 +184,15 @@ async function processBooking(row) {
     };
 
     const host = {
+        id: row.user_id,
         name: getHostDisplayName(row),
+        full_name: row.host_full_name,
         username: row.username,
         email: row.host_email,
-        meeting_link: row.meeting_link
+        meeting_link: row.meeting_link,
+        is_pro: row.host_is_pro,
+        pro_expires_at: row.host_pro_expires_at,
+        sms_phone: row.host_sms_phone
     };
 
     let clientReminderSent = false;
@@ -199,6 +208,16 @@ async function processBooking(row) {
             await mailService.sendHostReminder(booking, host);
             hostReminderSent = true;
         }
+
+        // SMS 30-min reminders (Pro only) — send only when we sent the matching email this run
+        try {
+            if (clientReminderSent && booking.client_phone) {
+                smsService.sendClientReminder30MinSMS(booking, host).catch(() => {});
+            }
+            if (hostReminderSent && host.sms_phone) {
+                smsService.sendHostReminder30MinSMS(booking, host).catch(() => {});
+            }
+        } catch (_) {}
 
         if (clientReminderSent || hostReminderSent) {
             // Check if reminder columns exist before trying to update them

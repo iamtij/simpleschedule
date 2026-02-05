@@ -128,7 +128,66 @@ async function sendHostNotificationSMS(booking, host) {
     }
 }
 
+/**
+ * Send 30-minute reminder SMS to client. Pro hosts only.
+ */
+async function sendClientReminder30MinSMS(booking, host) {
+    if (!isProActiveForFeatures(host)) return null;
+    if (!SEMAPHORE_API_KEY) return null;
+    if (!booking.client_phone || !booking.client_phone.trim()) return null;
+
+    const baseUrl = process.env.BASE_URL || 'https://isked.app';
+    const joinUrl = booking.confirmation_uuid
+        ? `${baseUrl}/booking/${host.username}/confirmation/${booking.confirmation_uuid}`
+        : '';
+
+    let message = `Reminder: Your appointment with ${host.full_name || host.name || host.username} is in 30 mins. ${formatDate(booking.date)} at ${formatTime(booking.start_time)}.`;
+    if (joinUrl) message += ` Join: ${joinUrl}`;
+
+    try {
+        const response = await axios.post(SEMAPHORE_API_URL, {
+            apikey: SEMAPHORE_API_KEY,
+            number: formatPhoneNumber(booking.client_phone),
+            message: message.trim(),
+            sendername: SEMAPHORE_SENDER
+        });
+        console.log('Client 30-min reminder SMS sent:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to send client 30-min reminder SMS:', error.response?.data || error.message);
+        return null;
+    }
+}
+
+/**
+ * Send 30-minute reminder SMS to host. Pro only, and only if host has sms_phone set.
+ */
+async function sendHostReminder30MinSMS(booking, host) {
+    if (!host.sms_phone || !host.sms_phone.trim()) return null;
+    if (!isProActiveForFeatures(host)) return null;
+    if (!SEMAPHORE_API_KEY) return null;
+
+    const dashboardUrl = `${process.env.BASE_URL || 'https://isked.app'}/dashboard`;
+    const message = `Reminder: Meeting with ${booking.client_name} in 30 mins. ${formatDate(booking.date)} at ${formatTime(booking.start_time)}. View: ${dashboardUrl}`;
+
+    try {
+        const response = await axios.post(SEMAPHORE_API_URL, {
+            apikey: SEMAPHORE_API_KEY,
+            number: formatPhoneNumber(host.sms_phone),
+            message: message.trim(),
+            sendername: SEMAPHORE_SENDER
+        });
+        console.log('Host 30-min reminder SMS sent:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to send host 30-min reminder SMS:', error.response?.data || error.message);
+        return null;
+    }
+}
+
 module.exports = {
     sendBookingConfirmationSMS,
-    sendHostNotificationSMS
+    sendHostNotificationSMS,
+    sendClientReminder30MinSMS,
+    sendHostReminder30MinSMS
 }; 
