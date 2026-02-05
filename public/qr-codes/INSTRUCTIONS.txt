@@ -9,7 +9,7 @@ ERROR EXPLANATION:
 ------------------
 The browser is trying to load:
 - http://localhost:3000/qr-codes/gcash-monthly-499.jpg (404 - Not Found)
-- http://localhost:3000/qr-codes/gcash-yearly-3999.jpg (404 - Not Found)
+- http://localhost:3000/qr-codes/gcash-yearly-4788.png (404 - Not Found)
 
 This is normal until you add the actual image files.
 
@@ -18,7 +18,7 @@ HOW TO FIX:
 1. Take screenshots or save your GCash QR code images
 2. Save them with these EXACT filenames:
    - gcash-monthly-499.jpg (for PHP 499 monthly plan)
-   - gcash-yearly-3999.jpg (for PHP 3,999 yearly plan)
+   - gcash-yearly-4788.png (for PHP 4,788 yearly plan)
 
 3. Copy both image files to this directory:
    /Users/admin/SimpleSchedule/public/qr-codes/

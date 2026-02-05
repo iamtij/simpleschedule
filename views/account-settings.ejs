@@ -754,7 +754,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <h4 class="font-medium text-gray-900">Yearly</h4>
-                                    <p class="text-sm text-gray-600">PHP 3,999/year</p>
+                                    <p class="text-sm text-gray-600">PHP 4,788/year</p>
                                     <p class="text-xs text-gray-500 mt-1">Save PHP 1,989 (33% off)</p>
                                 </div>
                                 <input type="radio" name="planType" value="yearly" class="plan-radio" checked required>
@@ -791,8 +791,8 @@
                         <div id="qr-yearly" class="qr-code-container hidden">
                             <div class="bg-white border-2 border-gray-200 rounded-lg p-4 flex flex-col items-center">
                                 <img id="qr-img-yearly" 
-                                     src="/qr-codes/gcash-yearly-3999.jpg" 
-                                     alt="GCash QR Code for PHP 3,999 Yearly Plan" 
+                                     src="/qr-codes/gcash-yearly-4788.png" 
+                                     alt="GCash QR Code for PHP 4,788 Yearly Plan" 
                                      class="max-w-full h-auto rounded-lg mb-3" 
                                      style="max-height: 300px;"
                                      onerror="this.style.display='none'; this.parentElement.querySelector('.qr-error-message').classList.remove('hidden');">
@@ -801,9 +801,9 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                     </svg>
                                     <p class="text-sm text-gray-600">QR code image not found</p>
-                                    <p class="text-xs text-gray-500 mt-1">Please upload: gcash-yearly-3999.jpg</p>
+                                    <p class="text-xs text-gray-500 mt-1">Please upload: gcash-yearly-4788.png</p>
                                 </div>
-                                <p class="text-sm font-medium text-gray-900">PHP 3,999.00</p>
+                                <p class="text-sm font-medium text-gray-900">PHP 4,788.00</p>
                                 <p class="text-xs text-gray-600 mt-1">Yearly Plan</p>
                             </div>
                         </div>
@@ -4182,7 +4182,7 @@
                             const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                             
                             // Get amount based on plan type
-                            const amount = proof.plan_type === 'monthly' ? 'PHP 499' : 'PHP 3,999';
+                            const amount = proof.plan_type === 'monthly' ? 'PHP 499' : 'PHP 4,788';
                             
                             // Map status to display text and colors
                             let statusText = 'Pending';

@@ -99,7 +99,7 @@ router.post('/:token/payment-proof', upload.single('proof'), async (req, res) =>
     const user = userResult.rows[0];
 
     // Determine plan price
-    const planPrice = planType === 'monthly' ? 'PHP 499' : 'PHP 3,999';
+    const planPrice = planType === 'monthly' ? 'PHP 499' : 'PHP 4,788';
 
     // Save payment proof
     const proofResult = await db.query(

@@ -716,7 +716,7 @@ router.post('/payment-proof', requireLogin, upload.single('proof'), async (req, 
         }
 
         const user = userResult.rows[0];
-        const planPrice = planType === 'monthly' ? 'PHP 499' : 'PHP 3,999';
+        const planPrice = planType === 'monthly' ? 'PHP 499' : 'PHP 4,788';
 
         // Save payment proof to database
         try {

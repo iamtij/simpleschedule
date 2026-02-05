@@ -171,7 +171,7 @@ SimpleSchedule (branded as "isked") is a web-based scheduling and CRM applicatio
 
 #### Subscription Types
 - Monthly subscription (PHP 499/month)
-- Yearly subscription (PHP 3,999/year)
+- Yearly subscription (PHP 4,788/year)
 - Trial period: 5 days for new users
 - Lifetime subscriptions: Admin-granted Pro status (no expiration)
 - Free tier with limited features
@@ -674,7 +674,7 @@ A: Set your timezone in Settings. All times are displayed in your timezone, and 
 
 ### Subscription & Access
 - **Trial Period**: 5 days for new users
-- **Subscription Plans**: PHP 499/month (monthly) or PHP 3,999/year (yearly)
+- **Subscription Plans**: PHP 499/month (monthly) or PHP 4,788/year (yearly)
 - **Access Priority**: Admin-granted Pro > RevenueCat > Trial > No access
 - **Grace Period**: 1 day after subscription expiration before auto-deactivation
 - **Payment**: GCash via QR codes, payment proof upload required, admin approval

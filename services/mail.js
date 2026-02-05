@@ -1036,7 +1036,7 @@ The isked Team`,
         }
 
         const adminEmail = 'tjtalusan@gmail.com';
-        const planName = planType === 'monthly' ? 'Monthly (PHP 499)' : 'Yearly (PHP 3,999)';
+        const planName = planType === 'monthly' ? 'Monthly (PHP 499)' : 'Yearly (PHP 4,788)';
         const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
 
         const content = `
