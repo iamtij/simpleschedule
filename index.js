@@ -131,8 +131,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start background jobs
-// Reminder job disabled for now
-// reminderJob.start();
+reminderJob.start();
 
 // Start subscription expiration job
 const subscriptionExpirationJob = require('./jobs/subscriptionExpiration');

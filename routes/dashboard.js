@@ -546,7 +546,7 @@ router.post('/account/sms-phone', requireLogin, async (req, res) => {
 router.post('/account', requireLogin, async (req, res) => {
     try {
         const body = req.body || {};
-        const { full_name, display_name, meeting_link, sms_phone } = body;
+        const { full_name, display_name, meeting_link, sms_phone, timezone } = body;
 
         const updates = [];
         const values = [];
@@ -556,6 +556,7 @@ router.post('/account', requireLogin, async (req, res) => {
         const hasDisplayName = Object.prototype.hasOwnProperty.call(body, 'display_name');
         const hasMeetingLink = Object.prototype.hasOwnProperty.call(body, 'meeting_link');
         const hasSmsPhone = Object.prototype.hasOwnProperty.call(body, 'sms_phone') || body.sms_phone !== undefined;
+        const hasTimezone = Object.prototype.hasOwnProperty.call(body, 'timezone');
 
         if (hasFullName) {
             const sanitizedFullName = typeof full_name === 'string' ? full_name.trim() : null;
@@ -593,6 +594,13 @@ router.post('/account', requireLogin, async (req, res) => {
             const normalizedSmsPhone = sanitizedSmsPhone && sanitizedSmsPhone.length > 0 ? sanitizedSmsPhone : null;
             updates.push(`sms_phone = $${paramIndex}`);
             values.push(normalizedSmsPhone);
+            paramIndex++;
+        }
+
+        if (hasTimezone) {
+            const tz = typeof timezone === 'string' && timezone.trim() ? timezone.trim() : 'Asia/Manila';
+            updates.push(`timezone = $${paramIndex}`);
+            values.push(tz);
             paramIndex++;
         }
 
@@ -891,7 +899,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone FROM users WHERE id = $1',
             [req.session.userId]
         );
 
