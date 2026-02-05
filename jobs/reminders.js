@@ -44,15 +44,30 @@ function getHostDisplayName(row) {
 }
 
 
+/**
+ * Get calendar date YYYY-MM-DD from a row, avoiding UTC shift when row.date is a JS Date.
+ * Prefers date_str from SQL TO_CHAR; if falling back to row.date as Date, use local date
+ * components so the calendar date is correct regardless of server timezone.
+ */
+function getBookingDateStr(row) {
+    if (typeof row.date_str === 'string' && row.date_str.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(row.date_str)) {
+        return row.date_str;
+    }
+    if (typeof row.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+        return row.date;
+    }
+    const d = row.date instanceof Date && !Number.isNaN(row.date.getTime()) ? row.date : null;
+    if (d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+    return null;
+}
+
 function computeBookingStartUtc(row) {
-    const rawDateStr = typeof row.date_str === 'string' && row.date_str.length === 10
-        ? row.date_str
-        : (typeof row.date === 'string'
-            ? row.date
-            : row.date?.toISOString?.().split('T')[0]);
-
-    const dateStr = rawDateStr && /^\d{4}-\d{2}-\d{2}$/.test(rawDateStr) ? rawDateStr : null;
-
+    const dateStr = getBookingDateStr(row);
     if (!dateStr) {
         return null;
     }
@@ -62,10 +77,11 @@ function computeBookingStartUtc(row) {
         return null;
     }
 
-    // Use the localToUtc helper function for proper timezone conversion
-    const userTimezone = row.timezone || timezone.getDefaultTimezone();
+    // Reminder is 30 min before the appointment in the host's local timezone.
+    // Resolve host timezone (never treat stored date/time as UTC).
+    const userTimezone = timezone.getUserTimezone(row.timezone);
     const bookingStartUtc = timezone.localToUtc(dateStr, normalizedStartTime, userTimezone);
-    
+
     return bookingStartUtc;
 }
 
@@ -212,12 +228,18 @@ async function processBooking(row) {
         // SMS 30-min reminders (Pro only) — send only when we sent the matching email this run
         try {
             if (clientReminderSent && booking.client_phone) {
-                smsService.sendClientReminder30MinSMS(booking, host).catch(() => {});
+                await smsService.sendClientReminder30MinSMS(booking, host).catch((err) => {
+                    console.error('[REMINDERS] Client 30-min SMS failed for booking', booking.id, err?.message || err);
+                });
             }
             if (hostReminderSent && host.sms_phone) {
-                smsService.sendHostReminder30MinSMS(booking, host).catch(() => {});
+                await smsService.sendHostReminder30MinSMS(booking, host).catch((err) => {
+                    console.error('[REMINDERS] Host 30-min SMS failed for booking', booking.id, err?.message || err);
+                });
             }
-        } catch (_) {}
+        } catch (err) {
+            console.error('[REMINDERS] SMS reminder error for booking', row.id, err?.message || err);
+        }
 
         if (clientReminderSent || hostReminderSent) {
             // Check if reminder columns exist before trying to update them
