@@ -261,7 +261,7 @@ router.get('/settings', requireLogin, async (req, res) => {
     }
 
     const userResult = await db.query(
-      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes FROM users WHERE id = $1',
+      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone FROM users WHERE id = $1',
       [req.session.userId]
     );
 

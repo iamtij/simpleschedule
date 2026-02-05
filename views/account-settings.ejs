@@ -231,6 +231,46 @@
                             This link will be included in booking confirmation emails
                         </p>
                     </div>
+
+                    <!-- SMS Notifications (Pro) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">SMS Notifications (Pro)</label>
+                        <div class="relative">
+                            <div id="sms-phone-display" class="flex items-center space-x-3">
+                                <input type="text" value="<%= user.sms_phone || '' %>" readonly
+                                    class="flex-1 bg-gray-50 border-gray-300 rounded-lg text-gray-600 sm:text-sm cursor-not-allowed px-3 py-2"
+                                    placeholder="Not set">
+                                <button id="edit-sms-phone-btn" type="button"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Change
+                                </button>
+                            </div>
+                            <div id="sms-phone-edit" class="hidden">
+                                <form class="space-y-4">
+                                    <div>
+                                        <input type="tel" id="new-sms-phone" name="new-sms-phone"
+                                            class="block w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-4 py-3"
+                                            placeholder="09xx xxx xxxx (Philippine format)"
+                                            value="<%= user.sms_phone || '' %>">
+                                        <p id="sms-phone-error" class="mt-2 text-sm text-red-600 hidden"></p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <button type="submit" id="save-sms-phone-btn"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Save
+                                        </button>
+                                        <button type="button" id="cancel-sms-phone-edit"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Receive booking confirmations via SMS. Philippine format (e.g. 09xx xxx xxxx). Leave blank to disable.
+                        </p>
+                    </div>
                 </div>
                         </div>
                     </div>
@@ -894,11 +934,14 @@
                             document.querySelector('#username-display input')?.value || '';
             const meetingLink = document.getElementById('new-meeting-link')?.value || 
                                document.querySelector('#meeting-link-display input')?.value || '';
+            const smsPhone = (document.getElementById('new-sms-phone')?.value ?? 
+                             document.querySelector('#sms-phone-display input')?.value ?? '').trim();
             
             const data = {};
             if (displayName) data.display_name = displayName;
             if (username) data.username = username;
             if (meetingLink) data.meeting_link = meetingLink;
+            data.sms_phone = smsPhone; // Always include (can be empty to disable)
             
             fetch('/dashboard/account', {
                 method: 'POST',
@@ -969,6 +1012,7 @@
             initUsernameEditing();
             initDisplayNameEditing();
             initMeetingLinkEditing();
+            initSmsPhoneEditing();
             initCopyLink();
             initAvailabilitySettings();
             // Delay date availability loading slightly to ensure DOM is ready
@@ -1457,6 +1501,94 @@
                 .finally(() => {
                     saveBtn.disabled = false;
                     saveBtn.textContent = 'Save';
+                });
+            });
+        }
+
+        // SMS Phone inline editing
+        function initSmsPhoneEditing() {
+            const editBtn = document.getElementById('edit-sms-phone-btn');
+            const display = document.getElementById('sms-phone-display');
+            const edit = document.getElementById('sms-phone-edit');
+            if (!editBtn || !display || !edit) return;
+            const form = edit.querySelector('form');
+            const input = document.getElementById('new-sms-phone');
+            const cancelBtn = document.getElementById('cancel-sms-phone-edit');
+            const saveBtn = document.getElementById('save-sms-phone-btn');
+            const errorDisplay = document.getElementById('sms-phone-error');
+            let currentSmsPhone = (input && input.value) ? input.value.trim() : '';
+
+            function showEdit() {
+                display.classList.add('hidden');
+                edit.classList.remove('hidden');
+                if (input) {
+                    input.focus();
+                    input.value = currentSmsPhone;
+                }
+                validateSmsPhone();
+            }
+
+            function hideEdit() {
+                edit.classList.add('hidden');
+                display.classList.remove('hidden');
+                if (input) input.value = currentSmsPhone;
+                if (errorDisplay) {
+                    errorDisplay.classList.add('hidden');
+                    errorDisplay.textContent = '';
+                }
+                if (saveBtn) saveBtn.disabled = true;
+                const displayInput = display.querySelector('input');
+                if (displayInput) displayInput.value = currentSmsPhone || '';
+            }
+
+            function validateSmsPhone() {
+                const smsPhone = input ? input.value.trim() : '';
+                const hasChanged = smsPhone !== currentSmsPhone;
+                if (saveBtn) saveBtn.disabled = !hasChanged;
+            }
+
+            editBtn.addEventListener('click', showEdit);
+            if (cancelBtn) cancelBtn.addEventListener('click', hideEdit);
+            if (input) input.addEventListener('input', validateSmsPhone);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const newSmsPhone = input ? input.value.trim() : '';
+                if (saveBtn) saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                fetch('/dashboard/account/sms-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sms_phone: newSmsPhone })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentSmsPhone = newSmsPhone;
+                        const displayInput = display.querySelector('input');
+                        if (displayInput) displayInput.value = newSmsPhone || '';
+                        hideEdit();
+                        toast.show({
+                            type: 'success',
+                            title: 'Success',
+                            message: 'SMS notification number updated'
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to update SMS number');
+                    }
+                })
+                .catch(error => {
+                    if (errorDisplay) {
+                        errorDisplay.textContent = error.message;
+                        errorDisplay.classList.remove('hidden');
+                    }
+                })
+                .finally(() => {
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save';
+                    }
                 });
             });
         }

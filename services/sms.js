@@ -96,6 +96,39 @@ async function sendBookingConfirmationSMS(booking, host) {
     }
 }
 
+async function sendHostNotificationSMS(booking, host) {
+    if (!host.sms_phone || host.sms_phone.trim() === '') {
+        return; // Don't send SMS to host if they haven't set a phone number
+    }
+    if (!isProActiveForFeatures(host)) {
+        console.log('SMS not sent to host: Host does not have an active pro subscription');
+        return null;
+    }
+    if (!SEMAPHORE_API_KEY) {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('Semaphore API key missing. SMS functionality will be disabled.');
+        }
+        return;
+    }
+
+    const message = `New booking! ${booking.client_name} on ${formatDate(booking.date)} at ${formatTime(booking.start_time)}. View: ${process.env.BASE_URL || 'https://isked.app'}/dashboard`;
+
+    try {
+        const response = await axios.post(SEMAPHORE_API_URL, {
+            apikey: SEMAPHORE_API_KEY,
+            number: formatPhoneNumber(host.sms_phone),
+            message: message.trim(),
+            sendername: SEMAPHORE_SENDER
+        });
+        console.log('Host SMS sent successfully:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to send host SMS:', error.response?.data || error.message);
+        return null;
+    }
+}
+
 module.exports = {
-    sendBookingConfirmationSMS
+    sendBookingConfirmationSMS,
+    sendHostNotificationSMS
 }; 

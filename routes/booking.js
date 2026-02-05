@@ -409,7 +409,7 @@ router.post('/:username/:duration', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled FROM users WHERE username = $1',
         [username]
     );
 
@@ -637,6 +637,10 @@ router.post('/:username/:duration', async (req, res) => {
         if (booking.client_phone && isProActiveForFeatures(host)) {
             notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
         }
+        // Send SMS to host if they have sms_phone configured (Pro only)
+        if (host.sms_phone && host.sms_phone.trim() && isProActiveForFeatures(host)) {
+            notifications.push(smsService.sendHostNotificationSMS(booking, host));
+        }
 
         await Promise.all(notifications);
     } catch (notificationError) {
@@ -820,7 +824,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled FROM users WHERE username = $1',
         [username]
     );
 
@@ -1027,6 +1031,10 @@ router.post('/:username', async (req, res) => {
         // Only attempt SMS if phone number is provided and host has active Pro
         if (booking.client_phone && isProActiveForFeatures(host)) {
             notifications.push(smsService.sendBookingConfirmationSMS(booking, host));
+        }
+        // Send SMS to host if they have sms_phone configured (Pro only)
+        if (host.sms_phone && host.sms_phone.trim() && isProActiveForFeatures(host)) {
+            notifications.push(smsService.sendHostNotificationSMS(booking, host));
         }
 
         await Promise.all(notifications);

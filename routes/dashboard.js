@@ -520,18 +520,42 @@ router.get('/account', requireLogin, async (req, res) => {
   }
 });
 
+// Update SMS phone only (must be before POST /account so /account/sms-phone matches)
+router.post('/account/sms-phone', requireLogin, async (req, res) => {
+    try {
+        const smsPhone = req.body && typeof req.body.sms_phone === 'string'
+            ? req.body.sms_phone.trim() || null
+            : (req.body && req.body.sms_phone === null ? null : undefined);
+
+        if (smsPhone === undefined) {
+            return res.status(400).json({ error: 'Invalid request: sms_phone field required' });
+        }
+
+        await db.query(
+            'UPDATE users SET sms_phone = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [smsPhone, req.session.userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update SMS phone' });
+    }
+});
+
 // Update account details
 router.post('/account', requireLogin, async (req, res) => {
     try {
-        const { full_name, display_name, meeting_link } = req.body;
+        const body = req.body || {};
+        const { full_name, display_name, meeting_link, sms_phone } = body;
 
         const updates = [];
         const values = [];
         let paramIndex = 1;
 
-        const hasFullName = Object.prototype.hasOwnProperty.call(req.body, 'full_name');
-        const hasDisplayName = Object.prototype.hasOwnProperty.call(req.body, 'display_name');
-        const hasMeetingLink = Object.prototype.hasOwnProperty.call(req.body, 'meeting_link');
+        const hasFullName = Object.prototype.hasOwnProperty.call(body, 'full_name');
+        const hasDisplayName = Object.prototype.hasOwnProperty.call(body, 'display_name');
+        const hasMeetingLink = Object.prototype.hasOwnProperty.call(body, 'meeting_link');
+        const hasSmsPhone = Object.prototype.hasOwnProperty.call(body, 'sms_phone') || body.sms_phone !== undefined;
 
         if (hasFullName) {
             const sanitizedFullName = typeof full_name === 'string' ? full_name.trim() : null;
@@ -561,6 +585,14 @@ router.post('/account', requireLogin, async (req, res) => {
 
             updates.push(`has_shared_link = $${paramIndex}`);
             values.push(Boolean(normalizedMeetingLink));
+            paramIndex++;
+        }
+
+        if (hasSmsPhone) {
+            const sanitizedSmsPhone = typeof sms_phone === 'string' ? sms_phone.trim() : null;
+            const normalizedSmsPhone = sanitizedSmsPhone && sanitizedSmsPhone.length > 0 ? sanitizedSmsPhone : null;
+            updates.push(`sms_phone = $${paramIndex}`);
+            values.push(normalizedSmsPhone);
             paramIndex++;
         }
 
@@ -859,7 +891,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone FROM users WHERE id = $1',
             [req.session.userId]
         );
 
