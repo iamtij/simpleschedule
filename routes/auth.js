@@ -142,7 +142,8 @@ router.post('/register', async (req, res) => {
 
           await Promise.all([
             mailService.scheduleTrialExpirationEmail(userForEmail, 1, deliveryTime1, upgradeToken),
-            mailService.scheduleTrialExpirationEmail(userForEmail, 0, deliveryTime2, upgradeToken)
+            mailService.scheduleTrialExpirationEmail(userForEmail, 0, deliveryTime2, upgradeToken),
+            mailService.scheduleAdminTrialExpiringNotification(userForEmail, deliveryTime1)
           ]);
         }
       } catch (trialEmailError) {
@@ -158,6 +159,18 @@ router.post('/register', async (req, res) => {
         });
       } catch (emailError) {
         // Don't fail registration if email fails
+      }
+
+      // Send admin notification for new sign-up
+      try {
+        await mailService.sendAdminNewUserNotification({
+          id: result.rows[0].id,
+          full_name: full_name,
+          email: email,
+          username: username
+        });
+      } catch (adminEmailError) {
+        // Don't fail registration if admin email fails
       }
 
       return res.redirect('/dashboard');

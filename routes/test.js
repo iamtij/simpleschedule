@@ -60,6 +60,27 @@ router.get('/email/:email', async (req, res) => {
     }
 });
 
+// Send sample admin notification emails (new sign-up, subscription, trial expiring) to tjtalusan@gmail.com
+router.get('/admin-notification-samples', async (req, res) => {
+    const adminEmail = 'tjtalusan@gmail.com';
+
+    try {
+        const result = await mailService.sendSampleAdminNotifications(adminEmail);
+
+        res.json({
+            success: true,
+            message: `Sample admin notification emails sent to ${adminEmail}`,
+            results: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send sample admin notifications',
+            error: error.message
+        });
+    }
+});
+
 router.get('/trial-expiration-emails', async (req, res) => {
     try {
         const result = await mailService.sendTestTrialExpirationEmail();

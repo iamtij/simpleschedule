@@ -711,6 +711,322 @@ The isked Team`,
         }
     }
 
+    /**
+     * Send admin notification when a new user signs up
+     * @param {{ id: number, full_name: string, email: string, username: string }} user - New user details
+     */
+    async sendAdminNewUserNotification(user) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        const adminEmail = process.env.ADMIN_EMAIL || 'tjtalusan@gmail.com';
+        const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
+
+        const content = `
+                            <p style="margin: 0 0 24px 0; font-size: 18px; line-height: 1.6; color: #111827; text-align: center; font-weight: 600;">
+                                New User Sign-Up
+                            </p>
+                            <div style="background-color: #dcfce7; border-left: 4px solid #22c55e; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">User Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${user.full_name || 'N/A'}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${user.email}" style="color: #3b82f6; text-decoration: none;">${user.email}</a></p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Username: ${user.username || 'N/A'}</p>
+                                <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">User ID: ${user.id}</p>
+                            </div>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Account Status:</p>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #374151;">5-day free trial started</p>
+                            </div>
+                            <p style="margin: 0; text-align: center;">
+                                <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User in Admin Dashboard</a>
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [adminEmail],
+                subject: `New Sign-Up: ${user.full_name || user.email}`,
+                text: `New user sign-up
+
+User Details:
+- Name: ${user.full_name || 'N/A'}
+- Email: ${user.email}
+- Username: ${user.username || 'N/A'}
+- User ID: ${user.id}
+
+Account Status: 5-day free trial started
+
+View user: ${adminUrl}`,
+                html: this._generateEmailTemplate(content)
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Send all 3 sample admin notification emails to a specified address (for preview/testing)
+     * @param {string} toEmail - Email address to send samples to (e.g. tjtalusan@gmail.com)
+     * @returns {Promise<Array<{type: string, success: boolean}>>}
+     */
+    async sendSampleAdminNotifications(toEmail) {
+        if (!this.enabled) {
+            return [];
+        }
+
+        const results = [];
+
+        // 1. Sample: New user sign-up
+        const sampleNewUser = {
+            id: 99999,
+            full_name: 'Sample New User',
+            email: 'sample.user@example.com',
+            username: 'sampleuser'
+        };
+        await this._sendAdminNewUserNotificationTo(sampleNewUser, toEmail, true);
+        results.push({ type: 'New User Sign-Up', success: true });
+
+        // 2. Sample: User subscribed (payment proof)
+        const sampleSubscriber = {
+            id: 99998,
+            display_name: 'Sample Subscriber',
+            full_name: 'Sample Subscriber',
+            email: 'subscriber@example.com',
+            username: 'subscriber'
+        };
+        await this._sendPaymentProofTo(sampleSubscriber, 'monthly', 'PHP 499', null, null, toEmail, true);
+        results.push({ type: 'User Subscribed (Payment)', success: true });
+
+        // 3. Sample: Trial expiring tomorrow
+        const sampleTrialUser = {
+            id: 99997,
+            full_name: 'Sample Trial User',
+            name: 'Sample Trial User',
+            email: 'trial.user@example.com',
+            username: 'trialuser'
+        };
+        await this.sendAdminTrialExpiringNotification(sampleTrialUser, toEmail);
+        results.push({ type: 'Trial Expiring Tomorrow', success: true });
+
+        return results;
+    }
+
+    async _sendAdminNewUserNotificationTo(user, toEmail, isSample = false) {
+        if (!this.enabled) return null;
+
+        const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
+        const subjectPrefix = isSample ? '[SAMPLE] ' : '';
+
+        const content = `
+                            <p style="margin: 0 0 24px 0; font-size: 18px; line-height: 1.6; color: #111827; text-align: center; font-weight: 600;">
+                                New User Sign-Up
+                            </p>
+                            <div style="background-color: #dcfce7; border-left: 4px solid #22c55e; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">User Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${user.full_name || 'N/A'}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${user.email}" style="color: #3b82f6; text-decoration: none;">${user.email}</a></p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Username: ${user.username || 'N/A'}</p>
+                                <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">User ID: ${user.id}</p>
+                            </div>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Account Status:</p>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #374151;">5-day free trial started</p>
+                            </div>
+                            <p style="margin: 0; text-align: center;">
+                                <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User in Admin Dashboard</a>
+                            </p>`;
+
+        return mg.messages.create(this.domain, {
+            from: `isked <postmaster@${this.domain}>`,
+            to: [toEmail],
+            subject: `${subjectPrefix}New Sign-Up: ${user.full_name || user.email}`,
+            text: `New user sign-up\n\nUser Details:\n- Name: ${user.full_name || 'N/A'}\n- Email: ${user.email}\n- Username: ${user.username || 'N/A'}\n- User ID: ${user.id}\n\nAccount Status: 5-day free trial started\n\nView user: ${adminUrl}`,
+            html: this._generateEmailTemplate(content)
+        });
+    }
+
+    async _sendPaymentProofTo(user, planType, planPrice, attachmentPath, attachmentName, toEmail, isSample = false) {
+        if (!this.enabled) return null;
+
+        const planName = planType === 'monthly' ? 'Monthly (PHP 499)' : 'Yearly (PHP 4,788)';
+        const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
+        const subjectPrefix = isSample ? '[SAMPLE] ' : '';
+
+        const content = `
+                            <p style="margin: 0 0 24px 0; font-size: 18px; line-height: 1.6; color: #111827; text-align: center; font-weight: 600;">
+                                New Payment Proof Submission
+                            </p>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">User Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${user.display_name || user.full_name || 'N/A'}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${user.email}" style="color: #3b82f6; text-decoration: none;">${user.email}</a></p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Username: ${user.username || 'N/A'}</p>
+                                <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">User ID: ${user.id}</p>
+                            </div>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Subscription Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Plan: ${planName}</p>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #374151;">Price: ${planPrice}</p>
+                            </div>
+                            <div style="background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #1e40af; text-align: center;">
+                                    Please review the attached payment proof and activate the user's Pro subscription if verified.
+                                </p>
+                                <p style="margin: 0; text-align: center;">
+                                    <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User Profile in Admin Dashboard</a>
+                                </p>
+                            </div>`;
+
+        const messageData = {
+            from: `isked <postmaster@${this.domain}>`,
+            to: [toEmail],
+            subject: `${subjectPrefix}Payment Proof - ${user.display_name || user.full_name || user.email} - ${planName}`,
+            text: `New payment proof submission:\n\nUser Details:\n- Name: ${user.display_name || user.full_name || 'N/A'}\n- Email: ${user.email}\n- Username: ${user.username || 'N/A'}\n\nSubscription Details:\n- Plan: ${planName}\n- Price: ${planPrice}\n\nView user: ${adminUrl}`,
+            html: this._generateEmailTemplate(content)
+        };
+
+        if (attachmentPath && attachmentName) {
+            try {
+                const fileBuffer = fs.readFileSync(attachmentPath);
+                messageData.attachment = [{ filename: attachmentName, data: fileBuffer }];
+            } catch (fileError) {
+                console.error('Error reading attachment file:', fileError);
+            }
+        }
+
+        return mg.messages.create(this.domain, messageData);
+    }
+
+    /**
+     * Send admin notification immediately (for trial expiring tomorrow - use for samples/tests)
+     * @param {{ id: number, full_name: string, email: string, username: string }} user - User whose trial is expiring
+     * @param {string} [adminEmailOverride] - Optional override for recipient (e.g. for samples)
+     */
+    async sendAdminTrialExpiringNotification(user, adminEmailOverride = null) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        if (!user) {
+            return null;
+        }
+
+        const toEmail = adminEmailOverride || process.env.ADMIN_EMAIL || 'tjtalusan@gmail.com';
+        const isSample = !!adminEmailOverride;
+        const subjectPrefix = isSample ? '[SAMPLE] ' : '';
+        const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
+
+        const content = `
+                            <p style="margin: 0 0 24px 0; font-size: 18px; line-height: 1.6; color: #111827; text-align: center; font-weight: 600;">
+                                Trial Expiring Tomorrow
+                            </p>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">User Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${user.full_name || user.name || 'N/A'}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${user.email}" style="color: #3b82f6; text-decoration: none;">${user.email}</a></p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Username: ${user.username || 'N/A'}</p>
+                                <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">User ID: ${user.id}</p>
+                            </div>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Reminder:</p>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #374151;">This user's 5-day free trial expires tomorrow. Consider reaching out to encourage upgrade.</p>
+                            </div>
+                            <p style="margin: 0; text-align: center;">
+                                <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User in Admin Dashboard</a>
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [toEmail],
+                subject: `${subjectPrefix}Trial Expiring Tomorrow: ${user.full_name || user.name || user.email}`,
+                text: `${subjectPrefix}Trial expiring tomorrow
+
+User Details:
+- Name: ${user.full_name || user.name || 'N/A'}
+- Email: ${user.email}
+- Username: ${user.username || 'N/A'}
+- User ID: ${user.id}
+
+This user's 5-day free trial expires tomorrow. Consider reaching out to encourage upgrade.
+
+View user: ${adminUrl}`,
+                html: this._generateEmailTemplate(content)
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Schedule admin notification 1 day before a user's trial expires
+     * @param {{ id: number, full_name: string, email: string, username: string }} user - User whose trial is expiring
+     * @param {Date} deliveryTime - When to send (1 day before trial expires)
+     */
+    async scheduleAdminTrialExpiringNotification(user, deliveryTime) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        if (!user || !deliveryTime) {
+            return null;
+        }
+
+        const rfc2822Time = this._formatRFC2822(deliveryTime);
+        if (!rfc2822Time) {
+            return null;
+        }
+
+        const adminEmail = process.env.ADMIN_EMAIL || 'tjtalusan@gmail.com';
+        const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
+
+        const content = `
+                            <p style="margin: 0 0 24px 0; font-size: 18px; line-height: 1.6; color: #111827; text-align: center; font-weight: 600;">
+                                Trial Expiring Tomorrow
+                            </p>
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 0 0 20px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">User Details:</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Name: ${user.full_name || user.name || 'N/A'}</p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Email: <a href="mailto:${user.email}" style="color: #3b82f6; text-decoration: none;">${user.email}</a></p>
+                                <p style="margin: 0 0 8px 0; font-size: 15px; line-height: 1.6; color: #374151;">Username: ${user.username || 'N/A'}</p>
+                                <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.6; color: #374151;">User ID: ${user.id}</p>
+                            </div>
+                            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                                <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #111827; font-weight: 500;">Reminder:</p>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #374151;">This user's 5-day free trial expires tomorrow. Consider reaching out to encourage upgrade.</p>
+                            </div>
+                            <p style="margin: 0; text-align: center;">
+                                <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User in Admin Dashboard</a>
+                            </p>`;
+
+        try {
+            const result = await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [adminEmail],
+                subject: `Trial Expiring Tomorrow: ${user.full_name || user.name || user.email}`,
+                text: `Trial expiring tomorrow
+
+User Details:
+- Name: ${user.full_name || user.name || 'N/A'}
+- Email: ${user.email}
+- Username: ${user.username || 'N/A'}
+- User ID: ${user.id}
+
+This user's 5-day free trial expires tomorrow. Consider reaching out to encourage upgrade.
+
+View user: ${adminUrl}`,
+                html: this._generateEmailTemplate(content),
+                'o:deliverytime': rfc2822Time
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     _generateGoogleCalendarLink(booking, host) {
         const formatDateForGCal = (date) => date.replace(/-/g, '');
         const formatTimeForGCal = (time) => time.replace(/:/g, '');
@@ -1035,7 +1351,7 @@ The isked Team`,
             return null;
         }
 
-        const adminEmail = 'tjtalusan@gmail.com';
+        const adminEmail = process.env.ADMIN_EMAIL || 'tjtalusan@gmail.com';
         const planName = planType === 'monthly' ? 'Monthly (PHP 499)' : 'Yearly (PHP 4,788)';
         const adminUrl = `${process.env.APP_URL || 'https://isked.app'}/admin/users?search=${encodeURIComponent(user.email)}`;
 

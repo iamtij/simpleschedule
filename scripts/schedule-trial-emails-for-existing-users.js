@@ -80,6 +80,9 @@ async function scheduleEmailsForExistingUsers() {
                     promises.push(
                         mailService.scheduleTrialExpirationEmail(userForEmail, 1, deliveryTime1, upgradeToken)
                     );
+                    promises.push(
+                        mailService.scheduleAdminTrialExpiringNotification(userForEmail, deliveryTime1)
+                    );
                 }
 
                 // Schedule "expiration day" email if it hasn't passed yet
