@@ -899,7 +899,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path FROM users WHERE id = $1',
             [req.session.userId]
         );
 
@@ -985,8 +985,11 @@ router.get('/settings', requireLogin, async (req, res) => {
             // Use default value if table doesn't exist yet
         }
 
+        const user = userResult.rows[0];
+        user.subscriptionStatus = await checkUserAccess(req.session.userId);
+
         res.render('account-settings', {
-            user: userResult.rows[0],
+            user: user,
             availabilitySettings: availabilitySettings,
             monthlySubscriptionEnabled: monthlySubscriptionEnabled,
             title: 'Account Settings'

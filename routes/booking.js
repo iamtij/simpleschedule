@@ -66,7 +66,7 @@ router.get('/:username/:duration', async (req, res) => {
     
     // Get user and validate duration exists
     const userResult = await db.query(
-      'SELECT id, username, full_name, display_name, email FROM users WHERE username = $1',
+      'SELECT id, username, full_name, display_name, email, booking_logo_path FROM users WHERE username = $1',
       [username]
     );
     
@@ -97,10 +97,12 @@ router.get('/:username/:duration', async (req, res) => {
     }
     
     const durationInfo = durationResult.rows[0];
+    const userRow = userResult.rows[0];
     const user = {
-      ...userResult.rows[0],
+      ...userRow,
       duration_minutes: duration,
-      meeting_link: durationInfo.meeting_link
+      meeting_link: durationInfo.meeting_link,
+      booking_logo_url: userRow.booking_logo_path ? `/uploads/booking-logos/${userRow.booking_logo_path}` : null
     };
     
     res.render('booking-page', { user });
@@ -692,7 +694,7 @@ router.get('/:username', async (req, res) => {
   try {
     const username = req.params.username;
     const result = await db.query(
-      'SELECT id, username, full_name, display_name, email, meeting_link FROM users WHERE username = $1',
+      'SELECT id, username, full_name, display_name, email, meeting_link, booking_logo_path FROM users WHERE username = $1',
       [username]
     );
     
@@ -732,10 +734,12 @@ router.get('/:username', async (req, res) => {
     }
     // If no active durations, duration stays null - frontend will use /booking/:username/slots which defaults to 60 minutes
     
+    const userRow = result.rows[0];
     const user = {
-      ...result.rows[0],
+      ...userRow,
       duration_minutes: duration,
-      meeting_link: meetingLink
+      meeting_link: meetingLink,
+      booking_logo_url: userRow.booking_logo_path ? `/uploads/booking-logos/${userRow.booking_logo_path}` : null
     };
     
     res.render('booking-page', { user });

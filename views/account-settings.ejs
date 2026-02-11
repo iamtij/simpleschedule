@@ -192,6 +192,52 @@
                         </div>
                     </div>
 
+                    <!-- Booking Page Logo (Pro) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Booking Page Logo (Pro)</label>
+                        <% if (user.subscriptionStatus && user.subscriptionStatus.isPro && user.subscriptionStatus.hasAccess) { %>
+                        <p class="text-sm text-gray-600 mb-2">Upload a logo to show on your public booking page. Recommended: 400×100px.</p>
+                        <div id="booking-logo-section">
+                            <div id="booking-logo-preview" class="<%= user.booking_logo_path ? '' : 'hidden' %> mb-4">
+                                <img id="booking-logo-img" src="<%= user.booking_logo_path ? '/uploads/booking-logos/' + user.booking_logo_path : '' %>" alt="Booking logo" class="max-h-16 object-contain border border-gray-200 rounded-lg p-2 bg-white">
+                                <button type="button" id="remove-booking-logo-btn" class="mt-2 text-sm text-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                    Remove logo
+                                </button>
+                            </div>
+                            <div id="booking-logo-upload" class="<%= user.booking_logo_path ? 'hidden' : '' %>">
+                                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                                    <div class="space-y-1 text-center">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                        <div class="flex text-sm text-gray-600">
+                                            <label for="booking-logo-file" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                                <span>Upload a file</span>
+                                                <input id="booking-logo-file" name="logo" type="file" class="sr-only" accept="image/png,image/jpeg,image/jpg">
+                                            </label>
+                                            <p class="pl-1">or drag and drop</p>
+                                        </div>
+                                        <p class="text-xs text-gray-500">PNG or JPG, max 500KB. Logo displays above your name on the booking page.</p>
+                                        <p id="booking-logo-error" class="text-sm text-red-600 mt-2 hidden"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% } else { %>
+                        <div class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <svg class="w-10 h-10 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-sm text-gray-500">Upgrade to Pro to add a custom logo on your booking page.</p>
+                                <button id="open-paywall-btn-logo" type="button" class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    Upgrade to Pro
+                                </button>
+                            </div>
+                        </div>
+                        <% } %>
+                    </div>
+
                     <!-- Meeting Link -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Meeting Link</label>
@@ -1034,6 +1080,7 @@
             initMeetingLinkEditing();
             initSmsPhoneEditing();
             initCopyLink();
+            initBookingLogo();
             initAvailabilitySettings();
             // Delay date availability loading slightly to ensure DOM is ready
             setTimeout(() => {
@@ -1223,6 +1270,96 @@
                 
                 document.body.removeChild(textArea);
             }
+        }
+
+        // Booking Page Logo (Pro)
+        function initBookingLogo() {
+            const fileInput = document.getElementById('booking-logo-file');
+            const removeBtn = document.getElementById('remove-booking-logo-btn');
+            const previewDiv = document.getElementById('booking-logo-preview');
+            const uploadDiv = document.getElementById('booking-logo-upload');
+            const logoImg = document.getElementById('booking-logo-img');
+            const errorEl = document.getElementById('booking-logo-error');
+
+            if (!fileInput) return;
+
+            fileInput.addEventListener('change', async function() {
+                const file = this.files[0];
+                if (!file) return;
+
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+
+                // Client-side validation
+                if (file.size > 500 * 1024) {
+                    errorEl.textContent = 'File must be under 500KB.';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                const ext = (file.name.split('.').pop() || '').toLowerCase();
+                if (!['png', 'jpg', 'jpeg'].includes(ext)) {
+                    errorEl.textContent = 'Only PNG and JPG are allowed.';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('logo', file);
+
+                try {
+                    const res = await fetch('/settings/booking-logo', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.success) {
+                        logoImg.src = data.logo_url + '?t=' + Date.now();
+                        previewDiv.classList.remove('hidden');
+                        uploadDiv.classList.add('hidden');
+                        fileInput.value = '';
+                        if (typeof toast !== 'undefined' && toast.show) {
+                            toast.show({ type: 'success', title: 'Logo uploaded', message: 'Your booking page logo has been updated.' });
+                        }
+                    } else {
+                        errorEl.textContent = data.error || 'Upload failed.';
+                        errorEl.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    errorEl.textContent = 'Upload failed. Please try again.';
+                    errorEl.classList.remove('hidden');
+                }
+            });
+
+            if (removeBtn) {
+                removeBtn.addEventListener('click', async function() {
+                    try {
+                        const res = await fetch('/settings/booking-logo', {
+                            method: 'DELETE',
+                            credentials: 'include'
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            previewDiv.classList.add('hidden');
+                            uploadDiv.classList.remove('hidden');
+                            logoImg.src = '';
+                            if (typeof toast !== 'undefined' && toast.show) {
+                                toast.show({ type: 'success', title: 'Logo removed', message: 'Your booking page logo has been removed.' });
+                            }
+                        }
+                    } catch (err) {
+                        if (typeof toast !== 'undefined' && toast.show) {
+                            toast.show({ type: 'error', title: 'Error', message: 'Failed to remove logo.' });
+                        }
+                    }
+                });
+            }
+
+            // Open paywall for logo upgrade button
+            document.getElementById('open-paywall-btn-logo')?.addEventListener('click', function() {
+                document.getElementById('open-paywall-btn')?.click();
+            });
         }
 
         // Display Name inline editing

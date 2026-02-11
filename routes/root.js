@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+const sharp = require('sharp');
 const timezone = require('../utils/timezone');
 const { checkUserAccess } = require('../utils/subscription');
+const { requirePro } = require('../middleware/pro');
 
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
@@ -261,7 +266,7 @@ router.get('/settings', requireLogin, async (req, res) => {
     }
 
     const userResult = await db.query(
-      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone FROM users WHERE id = $1',
+      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path FROM users WHERE id = $1',
       [req.session.userId]
     );
 
@@ -939,6 +944,138 @@ router.post('/settings/date-availability', requireLogin, async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to save date availability settings' });
   }
+});
+
+// Configure multer for booking logo uploads (PRO only)
+const logoUploadDir = path.join(__dirname, '../uploads/booking-logos');
+if (!fs.existsSync(logoUploadDir)) {
+  fs.mkdirSync(logoUploadDir, { recursive: true });
+}
+
+const logoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, logoUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    const safeExt = ['.png', '.jpg', '.jpeg'].includes(ext) ? ext : '.png';
+    cb(null, `${req.session.userId}-${Date.now()}${safeExt}`);
+  }
+});
+
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: { fileSize: 500 * 1024 }, // 500KB
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = /jpeg|jpg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only PNG and JPG are allowed'));
+  }
+});
+
+// POST /settings/booking-logo - Upload booking page logo (PRO only)
+router.post('/settings/booking-logo', requireLogin, requirePro, (req, res, next) => {
+  logoUpload.single('logo')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, error: 'File must be under 500KB.' });
+      }
+      if (err.message === 'Only PNG and JPG are allowed') {
+        return res.status(400).json({ success: false, error: 'Only PNG and JPG are allowed.' });
+      }
+      return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    const userId = req.session.userId;
+
+    // Validate dimensions with sharp (max 720x168)
+    const metadata = await sharp(req.file.path).metadata();
+    if (metadata.width > 720 || metadata.height > 168) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        success: false,
+        error: 'Image must be at most 720×168 pixels.'
+      });
+    }
+
+    // Delete old logo if exists
+    const userResult = await db.query(
+      'SELECT booking_logo_path FROM users WHERE id = $1',
+      [userId]
+    );
+    if (userResult.rows[0]?.booking_logo_path) {
+      const oldPath = path.join(logoUploadDir, path.basename(userResult.rows[0].booking_logo_path));
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    const filename = path.basename(req.file.path);
+    await db.query(
+      'UPDATE users SET booking_logo_path = $1 WHERE id = $2',
+      [filename, userId]
+    );
+
+    res.json({
+      success: true,
+      logo_url: `/uploads/booking-logos/${filename}`
+    });
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    const message = error.message || 'Failed to upload logo';
+    const status = error.message?.includes('pixels') ? 400 : 500;
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// DELETE /settings/booking-logo - Remove booking page logo (PRO only)
+router.delete('/settings/booking-logo', requireLogin, requirePro, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+
+    const userResult = await db.query(
+      'SELECT booking_logo_path FROM users WHERE id = $1',
+      [userId]
+    );
+
+    const filename = userResult.rows[0]?.booking_logo_path;
+    if (filename) {
+      const filePath = path.join(logoUploadDir, path.basename(filename));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      await db.query(
+        'UPDATE users SET booking_logo_path = NULL WHERE id = $1',
+        [userId]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to remove logo' });
+  }
+});
+
+// Serve booking logo files (public - for booking page display)
+router.get('/uploads/booking-logos/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  if (!filename) return res.status(400).send('Invalid filename');
+  const filePath = path.join(logoUploadDir, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+  res.sendFile(path.join('uploads', 'booking-logos', filename), { root: path.join(__dirname, '..') });
 });
 
 // PATCH booking route
