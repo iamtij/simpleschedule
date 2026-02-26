@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const db = require('../db');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
@@ -43,6 +45,14 @@ function convertTo24Hour(time) {
     }
     
     return `${hours.toString().padStart(2, '0')}:${minutes}`;
+}
+
+// Helper: only show logo if file exists (avoids broken icon when file was deleted, e.g. after deploy)
+function getBookingLogoUrl(bookingLogoPath) {
+  if (!bookingLogoPath) return null;
+  const logoDir = path.join(__dirname, '../uploads/booking-logos');
+  const filePath = path.join(logoDir, path.basename(bookingLogoPath));
+  return fs.existsSync(filePath) ? `/uploads/booking-logos/${bookingLogoPath}` : null;
 }
 
 // Helper function to format time to 12-hour with AM/PM
@@ -102,7 +112,7 @@ router.get('/:username/:duration', async (req, res) => {
       ...userRow,
       duration_minutes: duration,
       meeting_link: durationInfo.meeting_link,
-      booking_logo_url: userRow.booking_logo_path ? `/uploads/booking-logos/${userRow.booking_logo_path}` : null
+      booking_logo_url: getBookingLogoUrl(userRow.booking_logo_path)
     };
     
     res.render('booking-page', { user });
@@ -650,14 +660,12 @@ router.post('/:username/:duration', async (req, res) => {
         console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
-    // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)
+    // Schedule 1-hour reminder emails via Mailgun; 30-min reminders via Railway cron (scripts/runReminders.js)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([
             mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleHostReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleClientReminder30Min(booking, host, userTimezone),
-            mailService.scheduleHostReminder30Min(booking, host, userTimezone)
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
         ]);
     } catch (scheduledReminderError) {
         // Don't fail the booking if scheduled reminders fail
@@ -739,7 +747,7 @@ router.get('/:username', async (req, res) => {
       ...userRow,
       duration_minutes: duration,
       meeting_link: meetingLink,
-      booking_logo_url: userRow.booking_logo_path ? `/uploads/booking-logos/${userRow.booking_logo_path}` : null
+      booking_logo_url: getBookingLogoUrl(userRow.booking_logo_path)
     };
     
     res.render('booking-page', { user });
@@ -1047,14 +1055,12 @@ router.post('/:username', async (req, res) => {
         console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
-    // Schedule reminder emails using Mailgun's built-in scheduling (1-hour and 30-minute)
+    // Schedule 1-hour reminder emails via Mailgun; 30-min reminders via Railway cron (scripts/runReminders.js)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([
             mailService.scheduleClientReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleHostReminder1Hour(booking, host, userTimezone),
-            mailService.scheduleClientReminder30Min(booking, host, userTimezone),
-            mailService.scheduleHostReminder30Min(booking, host, userTimezone)
+            mailService.scheduleHostReminder1Hour(booking, host, userTimezone)
         ]);
     } catch (scheduledReminderError) {
         // Don't fail the booking if scheduled reminders fail

@@ -352,6 +352,14 @@ router.get('/settings', requireLogin, async (req, res) => {
     const user = userResult.rows[0];
     user.subscriptionStatus = subscriptionStatus;
 
+    // Don't show broken logo if file was deleted (e.g. after deploy on ephemeral storage)
+    if (user.booking_logo_path) {
+      const logoFile = path.join(logoUploadDir, path.basename(user.booking_logo_path));
+      if (!fs.existsSync(logoFile)) {
+        user.booking_logo_path = null;
+      }
+    }
+
     res.render('account-settings', {
       user: user,
       availabilitySettings: availabilitySettings,
