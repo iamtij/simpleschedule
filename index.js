@@ -86,7 +86,7 @@ const crmRoutes = require('./routes/crm');
 const telegramRoutes = require('./routes/telegram');
 const shortUrlRoutes = require('./routes/shortUrl');
 const revenueCatRoutes = require('./routes/revenuecat');
-const reminderJob = require('./jobs/reminders');
+// Reminders handled by Railway cron (scripts/runReminders.js) - not in-app
 
 // Mount routes
 app.use('/auth', authRoutes);
@@ -131,7 +131,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start background jobs
-reminderJob.start();
+// reminderJob.start(); // Reminders via Railway cron (scripts/runReminders.js)
 
 // Start subscription expiration job
 const subscriptionExpirationJob = require('./jobs/subscriptionExpiration');

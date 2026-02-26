@@ -7,7 +7,8 @@
     "start": "bash start.sh",
     "dev": "nodemon index.js",
     "migrate": "node db/migrate.js",
-    "setup": "npm run migrate"
+    "setup": "npm run migrate",
+    "reminders": "node scripts/runReminders.js"
   },
   "dependencies": {
     "@revenuecat/purchases-js": "1.19.0",
