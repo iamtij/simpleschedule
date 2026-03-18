@@ -195,6 +195,80 @@ async function getSlotsForUser(userId, date, duration, bufferMinutes, clientTime
     return { slots };
 }
 
+/**
+ * Compute mutual availability using overlapping time ranges (not exact slot matching).
+ * Finds overlaps between host and guest slots, validates against meeting duration,
+ * and returns both valid bookable slots and partial overlaps for UX.
+ * @param {Array<{start_time, end_time}>} hostSlots - Host's available slots
+ * @param {Array<{start_time, end_time}>} guestSlots - Guest's available slots
+ * @param {number} meetingDuration - Required meeting duration in minutes
+ * @param {number} slotInterval - Minutes between generated slot options (default 15)
+ * @returns {{ slots: Array<{start_time, end_time}>, partialOverlaps: Array<{start_time, end_time, duration_minutes}> }}
+ */
+function computeMutualOverlaps(hostSlots, guestSlots, meetingDuration, slotInterval = 15) {
+    const overlaps = [];
+
+    for (const h of hostSlots) {
+        const startA = timeToMinutes(h.start_time);
+        const endA = timeToMinutes(h.end_time);
+        for (const g of guestSlots) {
+            const startB = timeToMinutes(g.start_time);
+            const endB = timeToMinutes(g.end_time);
+            const overlapStart = Math.max(startA, startB);
+            const overlapEnd = Math.min(endA, endB);
+            if (overlapEnd > overlapStart) {
+                const durationMins = overlapEnd - overlapStart;
+                overlaps.push({
+                    start: overlapStart,
+                    end: overlapEnd,
+                    duration_minutes: durationMins
+                });
+            }
+        }
+    }
+
+    // Merge overlapping ranges
+    overlaps.sort((a, b) => a.start - b.start);
+    const merged = [];
+    for (const o of overlaps) {
+        if (merged.length > 0 && o.start <= merged[merged.length - 1].end) {
+            merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, o.end);
+            merged[merged.length - 1].duration_minutes = merged[merged.length - 1].end - merged[merged.length - 1].start;
+        } else {
+            merged.push({ ...o });
+        }
+    }
+
+    const slots = [];
+    const partialOverlaps = [];
+    const slotSet = new Set();
+
+    for (const range of merged) {
+        const durationMins = range.end - range.start;
+        if (durationMins >= meetingDuration) {
+            // Generate slots at slotInterval (e.g. every 15 mins)
+            for (let t = range.start; t <= range.end - meetingDuration; t += slotInterval) {
+                const slotStart = minutesToTime(t);
+                const slotEnd = minutesToTime(t + meetingDuration);
+                const key = `${slotStart}-${slotEnd}`;
+                if (!slotSet.has(key)) {
+                    slotSet.add(key);
+                    slots.push({ start_time: slotStart, end_time: slotEnd });
+                }
+            }
+        } else {
+            partialOverlaps.push({
+                start_time: minutesToTime(range.start),
+                end_time: minutesToTime(range.end),
+                duration_minutes: durationMins
+            });
+        }
+    }
+
+    slots.sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+    return { slots, partialOverlaps };
+}
+
 // Get available time slots (no duration in path - uses default/first duration)
 // MUST be defined before /:username/:duration so "slots" isn't parsed as duration
 router.get('/:username/slots', async (req, res) => {
@@ -264,6 +338,7 @@ router.get('/:username/slots', async (req, res) => {
 
         const hostResult = await getSlotsForUser(userId, date, meetingLength, bufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
         let slots = hostResult.slots;
+        let partialOverlaps = [];
 
         if (guestUsername && guestUsername !== username.toLowerCase()) {
             const guestResult = await db.query(
@@ -276,11 +351,15 @@ router.get('/:username/slots', async (req, res) => {
             const guestId = guestResult.rows[0].id;
             const guestBufferMinutes = guestResult.rows[0].buffer_minutes ?? null;
             const guestSlotsResult = await getSlotsForUser(guestId, date, meetingLength, guestBufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
-            const guestSlotSet = new Set(guestSlotsResult.slots.map(s => `${s.start_time}-${s.end_time}`));
-            slots = slots.filter(s => guestSlotSet.has(`${s.start_time}-${s.end_time}`));
+            const { slots: mutualSlots, partialOverlaps: partial } = computeMutualOverlaps(hostResult.slots, guestSlotsResult.slots, meetingLength, 15);
+            slots = mutualSlots;
+            partialOverlaps = partial;
         }
 
-        res.json({ slots });
+        const payload = { slots };
+        if (partialOverlaps.length > 0) payload.partial_overlaps = partialOverlaps;
+        if (guestUsername) payload.meeting_duration_minutes = meetingLength;
+        res.json(payload);
     } catch (error) {
         res.json({ slots: [] });
     }
@@ -405,6 +484,7 @@ router.get('/:username/:duration/slots', async (req, res) => {
 
         const hostResult = await getSlotsForUser(userId, date, duration, bufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
         let slots = hostResult.slots;
+        let partialOverlaps = [];
 
         if (guestUsername && guestUsername !== username.toLowerCase()) {
             const guestResult = await db.query(
@@ -417,11 +497,15 @@ router.get('/:username/:duration/slots', async (req, res) => {
             const guestId = guestResult.rows[0].id;
             const guestBufferMinutes = guestResult.rows[0].buffer_minutes ?? null;
             const guestSlotsResult = await getSlotsForUser(guestId, date, duration, guestBufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
-            const guestSlotSet = new Set(guestSlotsResult.slots.map(s => `${s.start_time}-${s.end_time}`));
-            slots = slots.filter(s => guestSlotSet.has(`${s.start_time}-${s.end_time}`));
+            const { slots: mutualSlots, partialOverlaps: partial } = computeMutualOverlaps(hostResult.slots, guestSlotsResult.slots, duration, 15);
+            slots = mutualSlots;
+            partialOverlaps = partial;
         }
 
-        res.json({ slots });
+        const payload = { slots };
+        if (partialOverlaps.length > 0) payload.partial_overlaps = partialOverlaps;
+        if (guestUsername) payload.meeting_duration_minutes = duration;
+        res.json(payload);
     } catch (error) {
         res.json({ slots: [] });
     }

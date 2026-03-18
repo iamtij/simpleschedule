@@ -1335,7 +1335,7 @@
                     });
                     
                     if (availableSlots.length === 0) {
-                        timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
+                        timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername);
                         return;
                     }
                     
@@ -1348,7 +1348,7 @@
                         timeSlotsContainer.appendChild(button);
                     });
                 } else {
-                    timeSlotsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
+                    timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername);
                 }
                 
             } catch (error) {
@@ -1378,6 +1378,21 @@
                 // Pre-fill the form with selected appointment details
                 updateFormWithSelectedAppointment();
             }, 300); // Small delay for visual feedback
+        }
+
+        function buildNoSlotsMessage(data, guestUsername) {
+            const meetingMins = data.meeting_duration_minutes || duration || 60;
+            if (guestUsername && data.partial_overlaps && data.partial_overlaps.length > 0) {
+                const partialList = data.partial_overlaps.map(p =>
+                    formatTime(p.start_time + '-' + p.end_time) + ' (' + p.duration_minutes + ' min)'
+                ).join(', ');
+                return '<div class="text-center py-8 space-y-3">' +
+                    '<p class="text-gray-600">No ' + meetingMins + '-minute mutual availability found</p>' +
+                    '<p class="text-sm text-gray-500">Closest shared windows:</p>' +
+                    '<p class="text-sm font-medium text-gray-700">' + partialList + '</p>' +
+                    '</div>';
+            }
+            return '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
         }
 
         function formatTime(timeStr) {
