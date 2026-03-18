@@ -772,6 +772,7 @@
         let selectedDate = null;
         let selectedTime = null;
         let availabilityCache = new Map();
+        let partialOverlapsByDate = new Map(); // dateStr -> { partial_overlaps, meeting_duration_minutes }
         let guestUsername = null;
         let iskedUsernameDebounceTimer = null;
         const duration = <%= user.duration_minutes || 'null' %>;
@@ -815,6 +816,7 @@
             
             function refreshAvailability() {
                 availabilityCache.clear();
+                partialOverlapsByDate.clear();
                 const loadingOverlay = document.getElementById('calendar-loading-overlay');
                 if (loadingOverlay) loadingOverlay.classList.add('active');
             }
@@ -832,6 +834,7 @@
                     loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
                         setTimeout(() => initializeCalendar(), 100);
                         if (selectedDate) loadTimeSlots();
+                        else updateNoSelectionDisplay();
                     }).finally(() => {
                         const lo = document.getElementById('calendar-loading-overlay');
                         if (lo) lo.classList.remove('active');
@@ -849,6 +852,7 @@
                     loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
                         setTimeout(() => initializeCalendar(), 100);
                         if (selectedDate) loadTimeSlots();
+                        else updateNoSelectionDisplay();
                         if (!iskedError.classList.contains('hidden')) return;
                         iskedHint.classList.remove('hidden');
                     }).catch(() => {
@@ -872,6 +876,7 @@
                 loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
                     setTimeout(() => initializeCalendar(), 100);
                     if (selectedDate) loadTimeSlots();
+                    else updateNoSelectionDisplay();
                 }).finally(() => {
                     const lo = document.getElementById('calendar-loading-overlay');
                     if (lo) lo.classList.remove('active');
@@ -1140,12 +1145,8 @@
         
         async function loadMonthAvailability(year, month) {
             const loadingOverlay = document.getElementById('calendar-loading-overlay');
-            
-            // Show loading overlay for seamless experience
-            if (loadingOverlay) {
-                loadingOverlay.classList.add('active');
-            }
-            
+            if (guestUsername) partialOverlapsByDate.clear();
+            if (loadingOverlay) loadingOverlay.classList.add('active');
             try {
                 // Get the first and last day of the month
                 const firstDay = new Date(year, month, 1);
@@ -1170,21 +1171,25 @@
                     const promise = fetch(getSlotsUrl(`date=${dateStr}`))
                         .then(response => {
                             if (!response.ok) {
-                                // If response is not ok, treat as no availability
-                                return { slots: [] };
+                                return { slots: [], partial_overlaps: [], dateStr };
                             }
-                            return response.json();
+                            return response.json().then(d => ({ ...d, dateStr }));
                         })
                         .then(data => {
                             const hasSlots = data.slots && data.slots.length > 0;
                             availabilityCache.set(cacheKey, hasSlots);
+                            if (guestUsername && data.partial_overlaps && data.partial_overlaps.length > 0) {
+                                partialOverlapsByDate.set(data.dateStr, {
+                                    partial_overlaps: data.partial_overlaps,
+                                    meeting_duration_minutes: data.meeting_duration_minutes
+                                });
+                            }
                             if (data.error && guestUsername) {
                                 document.getElementById('isked-username-error').textContent = data.error === 'User not found' ? 'Username not found' : data.error;
                                 document.getElementById('isked-username-error').classList.remove('hidden');
                             }
                         })
                         .catch(error => {
-
                             availabilityCache.set(cacheKey, false);
                         });
                     
@@ -1197,6 +1202,9 @@
                 }
                 
                 updateDebugInfo();
+                if (!selectedDate) {
+                    updateNoSelectionDisplay();
+                }
                 
             } catch (error) {
 
@@ -1335,7 +1343,7 @@
                     });
                     
                     if (availableSlots.length === 0) {
-                        timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername);
+                        timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername, selectedDate);
                         return;
                     }
                     
@@ -1348,7 +1356,7 @@
                         timeSlotsContainer.appendChild(button);
                     });
                 } else {
-                    timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername);
+                    timeSlotsContainer.innerHTML = buildNoSlotsMessage(data, guestUsername, selectedDate);
                 }
                 
             } catch (error) {
@@ -1380,19 +1388,57 @@
             }, 300); // Small delay for visual feedback
         }
 
-        function buildNoSlotsMessage(data, guestUsername) {
+        function buildNoSlotsMessage(data, guestUsername, selectedDate) {
             const meetingMins = data.meeting_duration_minutes || duration || 60;
             if (guestUsername && data.partial_overlaps && data.partial_overlaps.length > 0) {
+                const dateLabel = selectedDate ? formatDateForDisplay(selectedDate) : '';
                 const partialList = data.partial_overlaps.map(p =>
                     formatTime(p.start_time + '-' + p.end_time) + ' (' + p.duration_minutes + ' min)'
                 ).join(', ');
                 return '<div class="text-center py-8 space-y-3">' +
                     '<p class="text-gray-600">No ' + meetingMins + '-minute mutual availability found</p>' +
+                    (dateLabel ? '<p class="text-sm font-medium text-gray-800">' + dateLabel + '</p>' : '') +
                     '<p class="text-sm text-gray-500">Closest shared windows:</p>' +
                     '<p class="text-sm font-medium text-gray-700">' + partialList + '</p>' +
                     '</div>';
             }
             return '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
+        }
+
+        function formatDateForDisplay(dateStr) {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function updateNoSelectionDisplay() {
+            const container = document.getElementById('time-slots');
+            if (!container) return;
+            if (!guestUsername || partialOverlapsByDate.size === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8 col-span-full"><p>Select a date to view available times</p></div>';
+                return;
+            }
+            const cacheKeyPrefix = getCacheKeyPrefix();
+            const hasAnyMutualAvailability = Array.from(availabilityCache.entries())
+                .some(([k, v]) => k.startsWith(cacheKeyPrefix) && v === true);
+            if (hasAnyMutualAvailability) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8 col-span-full"><p>Select a date to view available times</p></div>';
+                return;
+            }
+            const meetingMins = partialOverlapsByDate.values().next().value?.meeting_duration_minutes || duration || 60;
+            const entries = Array.from(partialOverlapsByDate.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            const listHtml = entries.map(([dateStr, data]) => {
+                const partialList = data.partial_overlaps.map(p =>
+                    formatTime(p.start_time + '-' + p.end_time) + ' (' + p.duration_minutes + ' min)'
+                ).join(', ');
+                return '<div class="mb-3"><p class="text-sm font-medium text-gray-800">' + formatDateForDisplay(dateStr) + '</p><p class="text-sm text-gray-600">' + partialList + '</p></div>';
+            }).join('');
+            container.innerHTML = '<div class="text-center py-8 space-y-3 col-span-full">' +
+                '<p class="text-gray-600">No ' + meetingMins + '-minute mutual availability this month</p>' +
+                '<p class="text-sm text-gray-500">Closest shared windows:</p>' +
+                '<div class="text-left max-w-md mx-auto">' + listHtml + '</div>' +
+                '</div>';
         }
 
         function formatTime(timeStr) {
