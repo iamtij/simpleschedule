@@ -42,7 +42,11 @@ A modern scheduling application built with Node.js, Express, and PostgreSQL/SQLi
    - `NODE_ENV=production`
    - `SESSION_SECRET` (generate a secure random string)
    - `DATABASE_URL` (automatically set by Railway)
-4. Deploy using the Railway CLI or GitHub integration
+4. **Persistent logo storage** (recommended): Add a Volume to your service so booking logos survive deploys.
+   - In Railway: Service → Volumes → Add Volume, mount at `/data`
+   - Railway sets `RAILWAY_VOLUME_MOUNT_PATH` automatically; logos are stored at `/data/booking-logos`
+   - Or set `LOGO_UPLOAD_DIR=/data/booking-logos` if using a custom mount path
+5. Deploy using the Railway CLI or GitHub integration
 
 ## Database Migrations
 
@@ -58,6 +62,7 @@ npm run migrate
 - `PORT`: Server port (default: 3000)
 - `DATABASE_URL`: Database connection string
 - `SESSION_SECRET`: Secret for session encryption
+- `LOGO_UPLOAD_DIR`: (optional) Path for booking logos. On Railway with a Volume mounted at `/data`, set to `/data/booking-logos` for persistent storage.
 
 ## License
 

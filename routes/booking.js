@@ -3,6 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const { getLogoUploadDir } = require('../utils/logoUpload');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
 const telegramService = require('../services/telegram');
@@ -50,7 +51,7 @@ function convertTo24Hour(time) {
 // Helper: only show logo if file exists (avoids broken icon when file was deleted, e.g. after deploy)
 function getBookingLogoUrl(bookingLogoPath) {
   if (!bookingLogoPath) return null;
-  const logoDir = path.join(__dirname, '../uploads/booking-logos');
+  const logoDir = getLogoUploadDir();
   const filePath = path.join(logoDir, path.basename(bookingLogoPath));
   return fs.existsSync(filePath) ? `/uploads/booking-logos/${bookingLogoPath}` : null;
 }
@@ -63,6 +64,227 @@ function formatTime(time) {
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
 }
+
+/**
+ * Get available time slots for a user on a given date.
+ * Used by slots routes and for guest mutual-availability filtering.
+ * @returns {Promise<{ slots: Array<{start_time, end_time}>, error?: string }>}
+ */
+async function getSlotsForUser(userId, date, duration, bufferMinutes, clientTimezone, nowInClientTimezone, todayDate) {
+    const [year, month, day] = date.split('-').map(Number);
+    const requestedDate = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = requestedDate.getUTCDay();
+
+    let availabilityResult = await db.query(
+        'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
+        [userId, date]
+    );
+    if (availabilityResult.rows.length === 0) {
+        availabilityResult = await db.query(
+            'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
+            [userId, dayOfWeek]
+        );
+    }
+    if (availabilityResult.rows.length === 0) {
+        return { slots: [] };
+    }
+
+    const dayBreaksResult = await db.query(
+        'SELECT start_time, end_time FROM breaks WHERE user_id = $1 AND day_of_week = $2',
+        [userId, dayOfWeek]
+    );
+    const universalBreaksResult = await db.query(
+        'SELECT start_time, end_time FROM universal_breaks WHERE user_id = $1 AND enabled = true',
+        [userId]
+    );
+    const breaksResult = { rows: [...dayBreaksResult.rows, ...universalBreaksResult.rows] };
+
+    const bookingsResult = await db.query(
+        'SELECT start_time, end_time FROM bookings WHERE user_id = $1 AND date = $2',
+        [userId, date]
+    );
+
+    let googleCalendarConflicts = [];
+    try {
+        const tokens = await googleCalendarService.getUserTokens(userId);
+        const userRow = await db.query(
+            'SELECT google_calendar_blocking_enabled FROM users WHERE id = $1',
+            [userId]
+        );
+        const googleCalendarBlockingEnabled = userRow.rows[0]?.google_calendar_blocking_enabled ?? true;
+        if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
+            const dayStart = `${date}T00:00:00`;
+            const dayEnd = `${date}T23:59:59`;
+            const conflictInfo = await googleCalendarService.getTimeSlotConflicts(userId, dayStart, dayEnd);
+            if (conflictInfo.hasConflicts) {
+                googleCalendarConflicts = conflictInfo.conflicts.map(conflict => {
+                    if (typeof conflict.start === 'string' && conflict.start.includes('T')) {
+                        const startTimeStr = conflict.start.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
+                        const endTimeStr = conflict.end.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
+                        return {
+                            start: timeToMinutes(startTimeStr),
+                            end: timeToMinutes(endTimeStr)
+                        };
+                    }
+                    return null;
+                }).filter(c => c !== null);
+            }
+        }
+    } catch {
+        googleCalendarConflicts = [];
+    }
+
+    const availabilityBlocks = availabilityResult.rows;
+    const breaks = breaksResult.rows;
+    const bookings = bookingsResult.rows;
+    const slots = [];
+    const bufferTime = bufferMinutes ?? 15;
+    const totalInterval = duration + bufferTime;
+    const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
+    const normalizedRequestedDate = date.trim();
+    const normalizedTodayDate = todayDate.trim();
+    const isToday = normalizedRequestedDate === normalizedTodayDate;
+    let isTodayByParsing = false;
+    try {
+        const reqDateParts = normalizedRequestedDate.split('-');
+        const todayDateParts = normalizedTodayDate.split('-');
+        if (reqDateParts.length === 3 && todayDateParts.length === 3) {
+            isTodayByParsing = (
+                parseInt(reqDateParts[0]) === parseInt(todayDateParts[0]) &&
+                parseInt(reqDateParts[1]) === parseInt(todayDateParts[1]) &&
+                parseInt(reqDateParts[2]) === parseInt(todayDateParts[2])
+            );
+        }
+    } catch (e) { /* ignore */ }
+    const isTodayFinal = isToday || isTodayByParsing;
+
+    availabilityBlocks.forEach(availability => {
+        const workStart = timeToMinutes(availability.start_time);
+        const workEnd = timeToMinutes(availability.end_time);
+        for (let time = workStart; time <= workEnd - duration; time += totalInterval) {
+            const slotStart = time;
+            const slotEnd = time + duration;
+            if (isTodayFinal) {
+                const minAllowedStartTime = currentTimeMinutes + bufferTime;
+                if (slotStart < minAllowedStartTime) continue;
+            }
+            const overlapsBreak = breaks.some(b => {
+                const breakStart = timeToMinutes(b.start_time);
+                const breakEnd = timeToMinutes(b.end_time);
+                return (slotStart < breakEnd && slotEnd > breakStart);
+            });
+            const overlapsBooking = bookings.some(b => {
+                const bookingStart = timeToMinutes(b.start_time);
+                const bookingEnd = timeToMinutes(b.end_time);
+                return (slotStart < bookingEnd && slotEnd > bookingStart);
+            });
+            const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
+                const conflictStartWithBuffer = conflict.start - bufferTime;
+                const conflictEndWithBuffer = conflict.end + bufferTime;
+                return (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
+            });
+            const fitsInWorkingHours = slotEnd <= workEnd;
+            const slotStartTime = minutesToTime(slotStart);
+            const slotEndTime = minutesToTime(slotEnd);
+            if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
+                slots.push({ start_time: slotStartTime, end_time: slotEndTime });
+            }
+        }
+    });
+
+    return { slots };
+}
+
+// Get available time slots (no duration in path - uses default/first duration)
+// MUST be defined before /:username/:duration so "slots" isn't parsed as duration
+router.get('/:username/slots', async (req, res) => {
+    try {
+        const username = req.params.username;
+        const guestUsername = (req.query.guest_username || '').trim().toLowerCase();
+
+        const userResult = await db.query(
+            'SELECT id, buffer_minutes, timezone FROM users WHERE username = $1',
+            [username]
+        );
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userId = userResult.rows[0].id;
+        let meetingLength = 60;
+        try {
+            const durationResult = await db.query(
+                'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY COALESCE(display_order, 0) ASC, duration_minutes ASC LIMIT 1',
+                [userId]
+            );
+            if (durationResult.rows.length > 0 && durationResult.rows[0].duration_minutes) {
+                meetingLength = parseInt(durationResult.rows[0].duration_minutes);
+            }
+        } catch (error) {
+            // Use default 60
+        }
+        if (isNaN(meetingLength) || meetingLength <= 0) meetingLength = 60;
+
+        const bufferMinutes = userResult.rows[0].buffer_minutes ?? null;
+        const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
+        const date = req.query.date;
+        const clientTimezone = req.query.timezone || userTimezone;
+
+        if (!date) {
+            return res.status(400).json({ error: 'Date is required' });
+        }
+
+        const [year, month, day] = date.split('-').map(Number);
+        if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+            return res.status(400).json({ error: 'Invalid date format' });
+        }
+
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: clientTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(now);
+        const nowInClientTimezone = {
+            year: parseInt(parts.find(p => p.type === 'year').value),
+            month: parseInt(parts.find(p => p.type === 'month').value),
+            day: parseInt(parts.find(p => p.type === 'day').value),
+            hour: parseInt(parts.find(p => p.type === 'hour').value),
+            minute: parseInt(parts.find(p => p.type === 'minute').value)
+        };
+        const todayDate = `${nowInClientTimezone.year}-${String(nowInClientTimezone.month).padStart(2, '0')}-${String(nowInClientTimezone.day).padStart(2, '0')}`;
+        if (date < todayDate) {
+            return res.json({ slots: [] });
+        }
+
+        const hostResult = await getSlotsForUser(userId, date, meetingLength, bufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
+        let slots = hostResult.slots;
+
+        if (guestUsername && guestUsername !== username.toLowerCase()) {
+            const guestResult = await db.query(
+                'SELECT id, buffer_minutes FROM users WHERE LOWER(username) = $1',
+                [guestUsername]
+            );
+            if (guestResult.rows.length === 0) {
+                return res.json({ slots: [], error: 'User not found' });
+            }
+            const guestId = guestResult.rows[0].id;
+            const guestBufferMinutes = guestResult.rows[0].buffer_minutes ?? null;
+            const guestSlotsResult = await getSlotsForUser(guestId, date, meetingLength, guestBufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
+            const guestSlotSet = new Set(guestSlotsResult.slots.map(s => `${s.start_time}-${s.end_time}`));
+            slots = slots.filter(s => guestSlotSet.has(`${s.start_time}-${s.end_time}`));
+        }
+
+        res.json({ slots });
+    } catch (error) {
+        res.json({ slots: [] });
+    }
+});
 
 // Get user's public booking page with specific duration
 router.get('/:username/:duration', async (req, res) => {
@@ -126,47 +348,38 @@ router.get('/:username/:duration/slots', async (req, res) => {
     try {
         const username = req.params.username;
         const duration = parseInt(req.params.duration);
-        
+        const guestUsername = (req.query.guest_username || '').trim().toLowerCase();
+
         if (isNaN(duration) || duration <= 0) {
             return res.status(400).json({ error: 'Invalid duration' });
         }
-        
-        // Get user by username
+
         const userResult = await db.query(
             'SELECT id, buffer_minutes, timezone FROM users WHERE username = $1',
             [username]
         );
-        
         if (userResult.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
-        
+
         const userId = userResult.rows[0].id;
-        
-        // Validate duration exists for user
         const durationResult = await db.query(
             'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND duration_minutes = $2 AND is_active = true',
             [userId, duration]
         );
-        
         if (durationResult.rows.length === 0) {
             return res.status(404).json({ error: 'This meeting duration is not available' });
         }
-        
+
         const bufferMinutes = userResult.rows[0].buffer_minutes ?? null;
         const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
         const date = req.query.date;
         const clientTimezone = req.query.timezone || userTimezone;
-        
+
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
         }
 
-        // Create date object preserving the date
-        const [year, month, day] = date.split('-').map(Number);
-        const requestedDate = new Date(Date.UTC(year, month - 1, day));
-        
-        // Get current time in client's timezone properly
         const now = new Date();
         const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: clientTimezone,
@@ -185,226 +398,31 @@ router.get('/:username/:duration/slots', async (req, res) => {
             hour: parseInt(parts.find(p => p.type === 'hour').value),
             minute: parseInt(parts.find(p => p.type === 'minute').value)
         };
-        
-        // Check if the requested date is in the past (in client's timezone)
         const todayDate = `${nowInClientTimezone.year}-${String(nowInClientTimezone.month).padStart(2, '0')}-${String(nowInClientTimezone.day).padStart(2, '0')}`;
         if (date < todayDate) {
             return res.json({ slots: [] });
         }
-        
-        
-        // Get day of week in UTC (0-6, where 0 is Sunday)
-        const dayOfWeek = requestedDate.getUTCDay();
 
-        // Get availability for the day - check date-specific first, then fall back to day-of-week
-        let availabilityResult = await db.query(
-            'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
-            [userId, date]
-        );
+        const hostResult = await getSlotsForUser(userId, date, duration, bufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
+        let slots = hostResult.slots;
 
-        // If no date-specific availability, fall back to day-of-week
-        if (availabilityResult.rows.length === 0) {
-            availabilityResult = await db.query(
-                'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
-                [userId, dayOfWeek]
+        if (guestUsername && guestUsername !== username.toLowerCase()) {
+            const guestResult = await db.query(
+                'SELECT id, buffer_minutes FROM users WHERE LOWER(username) = $1',
+                [guestUsername]
             );
-        }
-
-        if (availabilityResult.rows.length === 0) {
-            return res.json({ slots: [] });
-        }
-
-        // Get breaks for the day (both day-specific and universal breaks)
-        const dayBreaksResult = await db.query(
-            'SELECT start_time, end_time FROM breaks WHERE user_id = $1 AND day_of_week = $2',
-            [userId, dayOfWeek]
-        );
-        
-        // Get universal breaks
-        const universalBreaksResult = await db.query(
-            'SELECT start_time, end_time FROM universal_breaks WHERE user_id = $1 AND enabled = true',
-            [userId]
-        );
-        
-        // Combine both types of breaks
-        const breaksResult = {
-            rows: [...dayBreaksResult.rows, ...universalBreaksResult.rows]
-        };
-
-        // Get existing bookings for the date
-        const bookingsResult = await db.query(
-            'SELECT start_time, end_time FROM bookings WHERE user_id = $1 AND date = $2',
-            [userId, date]
-        );
-
-        // Get Google Calendar conflicts if enabled
-        let googleCalendarConflicts = [];
-        try {
-            const googleCalendarService = require('../services/googleCalendar');
-            const tokens = await googleCalendarService.getUserTokens(userId);
-            const userResult = await db.query(
-                'SELECT google_calendar_blocking_enabled FROM users WHERE id = $1',
-                [userId]
-            );
-            const googleCalendarBlockingEnabled = userResult.rows[0]?.google_calendar_blocking_enabled ?? true;
-            
-            if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
-                
-                // Get conflicts for the entire day
-                const dayStart = `${date}T00:00:00`;
-                const dayEnd = `${date}T23:59:59`;
-                
-                const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
-                    userId,
-                    dayStart,
-                    dayEnd
-                );
-                
-                if (conflictInfo.hasConflicts) {
-                    googleCalendarConflicts = conflictInfo.conflicts.map(conflict => {
-                        const startDate = new Date(conflict.start);
-                        const endDate = new Date(conflict.end);
-                        
-                        
-                        // Parse the conflict times directly as they come from Google Calendar
-                        // Google Calendar returns times in the user's timezone
-                        
-                        let startTimeStr, endTimeStr;
-                        
-                        if (typeof conflict.start === 'string' && conflict.start.includes('T')) {
-                            // Standard ISO format: 2025-10-21T09:00:00+08:00
-                            startTimeStr = conflict.start.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
-                            endTimeStr = conflict.end.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
-                        } else if (typeof conflict.start === 'string') {
-                            // Date-only format: 2025-10-21 (all-day event)
-                            // Skip all-day events as they shouldn't block specific time slots
-                            return null;
-                        } else {
-                            return null;
-                        }
-                        
-                        
-                        const conflictInMinutes = {
-                            start: timeToMinutes(startTimeStr),
-                            end: timeToMinutes(endTimeStr)
-                        };
-                        
-                        return conflictInMinutes;
-                    }).filter(conflict => conflict !== null);
-                }
+            if (guestResult.rows.length === 0) {
+                return res.json({ slots: [], error: 'User not found' });
             }
-        } catch (error) {
-            // Continue without Google Calendar conflicts if there's an error
-            googleCalendarConflicts = [];
+            const guestId = guestResult.rows[0].id;
+            const guestBufferMinutes = guestResult.rows[0].buffer_minutes ?? null;
+            const guestSlotsResult = await getSlotsForUser(guestId, date, duration, guestBufferMinutes, clientTimezone, nowInClientTimezone, todayDate);
+            const guestSlotSet = new Set(guestSlotsResult.slots.map(s => `${s.start_time}-${s.end_time}`));
+            slots = slots.filter(s => guestSlotSet.has(`${s.start_time}-${s.end_time}`));
         }
-
-        // Generate available time slots from all availability blocks
-        const availabilityBlocks = availabilityResult.rows;
-        const breaks = breaksResult.rows;
-        const bookings = bookingsResult.rows;
-        
-        // Create array of slots with dynamic meeting length + buffer time
-        const slots = [];
-        const meetingLength = duration; // Use duration from URL parameter
-        const bufferTime = bufferMinutes ?? 15; // Default to 15 only if null/undefined, 0 means no buffer
-        const totalInterval = meetingLength + bufferTime;
-
-        // Current time in minutes since midnight in client's timezone
-        const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
-        
-        // Check if requested date is today in client's timezone (normalize both dates for comparison)
-        const normalizedRequestedDate = date.trim();
-        const normalizedTodayDate = todayDate.trim();
-        const isToday = normalizedRequestedDate === normalizedTodayDate;
-        
-        // Also check if dates are the same by parsing them (handles edge cases)
-        let isTodayByParsing = false;
-        try {
-            const reqDateParts = normalizedRequestedDate.split('-');
-            const todayDateParts = normalizedTodayDate.split('-');
-            if (reqDateParts.length === 3 && todayDateParts.length === 3) {
-                isTodayByParsing = (
-                    parseInt(reqDateParts[0]) === parseInt(todayDateParts[0]) &&
-                    parseInt(reqDateParts[1]) === parseInt(todayDateParts[1]) &&
-                    parseInt(reqDateParts[2]) === parseInt(todayDateParts[2])
-                );
-            }
-        } catch (e) {
-            // Ignore parsing errors
-        }
-        
-        const isTodayFinal = isToday || isTodayByParsing;
-
-        // Generate slots for each availability block
-        availabilityBlocks.forEach(availability => {
-            // Convert times to minutes since midnight for easier calculation
-            const workStart = timeToMinutes(availability.start_time);
-            const workEnd = timeToMinutes(availability.end_time);
-
-            // Generate slots with proper intervals for this block
-            for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
-                const slotStart = time;
-                const slotEnd = time + meetingLength;
-                
-                // Skip slots that have already started or don't have enough buffer time
-                // For today, ensure the slot starts at least bufferTime minutes from now
-                if (isTodayFinal) {
-                    // Slot must start AFTER current time + buffer time (strict greater than)
-                    // This ensures users can't book slots that have already passed or don't have enough prep time
-                    const minAllowedStartTime = currentTimeMinutes + bufferTime;
-                    if (slotStart < minAllowedStartTime) {
-                        continue;
-                    }
-                }
-                
-                // Check if slot overlaps with any breaks (no buffer time applied to breaks)
-                const overlapsBreak = breaks.some(b => {
-                    const breakStart = timeToMinutes(b.start_time);
-                    const breakEnd = timeToMinutes(b.end_time);
-                    
-                    // Check if slot overlaps with the break zone (no buffer applied to breaks)
-                    return (slotStart < breakEnd && slotEnd > breakStart);
-                });
-                
-                // Check if slot overlaps with any bookings
-                const overlapsBooking = bookings.some(b => {
-                    const bookingStart = timeToMinutes(b.start_time);
-                    const bookingEnd = timeToMinutes(b.end_time);
-                    return (slotStart < bookingEnd && slotEnd > bookingStart);
-                });
-                
-                // Check if slot overlaps with any Google Calendar events (including buffer time)
-                const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
-                    // Apply buffer time to the conflict boundaries
-                    const conflictStartWithBuffer = conflict.start - bufferTime;
-                    const conflictEndWithBuffer = conflict.end + bufferTime;
-                    
-                    // Check if slot overlaps with the expanded conflict zone (including buffer)
-                    return (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
-                });
-                
-                // Only check if the actual meeting fits within working hours
-                const fitsInWorkingHours = slotEnd <= workEnd;
-                
-                const slotStartTime = minutesToTime(slotStart);
-                const slotEndTime = minutesToTime(slotEnd);
-                
-                // Verify slot duration matches requested duration
-                const calculatedDuration = timeToMinutes(slotEndTime) - timeToMinutes(slotStartTime);
-                
-                if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
-                    slots.push({
-                        start_time: slotStartTime,
-                        end_time: slotEndTime
-                    });
-                }
-            }
-        });
 
         res.json({ slots });
     } catch (error) {
-        // Return empty slots array instead of error to allow frontend to show "no available times"
-        // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
         res.json({ slots: [] });
     }
 });
@@ -1090,304 +1108,6 @@ router.post('/:username', async (req, res) => {
         client_email: booking.client_email,
         google_calendar_link: booking.google_calendar_link
     });
-});
-
-router.get('/:username/slots', async (req, res) => {
-    try {
-        // Get user by username
-        const userResult = await db.query(
-            'SELECT id, buffer_minutes, timezone FROM users WHERE username = $1',
-            [req.params.username]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        const userId = userResult.rows[0].id;
-        
-        // Find first active duration for the user, or default to 60 minutes
-        let meetingLength = 60; // Default to 60 minutes
-        try {
-            const durationResult = await db.query(
-                'SELECT duration_minutes FROM meeting_durations WHERE user_id = $1 AND is_active = true ORDER BY COALESCE(display_order, 0) ASC, duration_minutes ASC LIMIT 1',
-                [userId]
-            );
-            
-            // Use first active duration if available
-            if (durationResult.rows.length > 0 && durationResult.rows[0].duration_minutes) {
-                meetingLength = parseInt(durationResult.rows[0].duration_minutes);
-            }
-        } catch (error) {
-            // If query fails, continue with default 60 minutes
-        }
-        
-        // Ensure meetingLength is valid
-        if (isNaN(meetingLength) || meetingLength <= 0) {
-            meetingLength = 60;
-        }
-        
-        const bufferMinutes = userResult.rows[0].buffer_minutes ?? null;
-        const userTimezone = timezone.getUserTimezone(userResult.rows[0].timezone);
-        const date = req.query.date;
-        const clientTimezone = req.query.timezone || userTimezone;
-        
-        if (!date) {
-            return res.status(400).json({ error: 'Date is required' });
-        }
-
-        // Create date object preserving the date
-        const [year, month, day] = date.split('-').map(Number);
-        
-        // Validate date components
-        if (isNaN(year) || isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
-            return res.status(400).json({ error: 'Invalid date format' });
-        }
-        
-        const requestedDate = new Date(Date.UTC(year, month - 1, day));
-        
-        // Validate the date is valid
-        if (isNaN(requestedDate.getTime())) {
-            return res.status(400).json({ error: 'Invalid date' });
-        }
-        
-        // Get current time in client's timezone properly
-        const now = new Date();
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: clientTimezone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        const parts = formatter.formatToParts(now);
-        const nowInClientTimezone = {
-            year: parseInt(parts.find(p => p.type === 'year').value),
-            month: parseInt(parts.find(p => p.type === 'month').value),
-            day: parseInt(parts.find(p => p.type === 'day').value),
-            hour: parseInt(parts.find(p => p.type === 'hour').value),
-            minute: parseInt(parts.find(p => p.type === 'minute').value)
-        };
-        
-        // Check if the requested date is in the past (in client's timezone)
-        const todayDate = `${nowInClientTimezone.year}-${String(nowInClientTimezone.month).padStart(2, '0')}-${String(nowInClientTimezone.day).padStart(2, '0')}`;
-        if (date < todayDate) {
-            return res.json({ slots: [] });
-        }
-        
-        
-        // Get day of week in UTC (0-6, where 0 is Sunday)
-        const dayOfWeek = requestedDate.getUTCDay();
-
-        // Get availability for the day - check date-specific first, then fall back to day-of-week
-        let availabilityResult = await db.query(
-            'SELECT start_time, end_time FROM date_availability WHERE user_id = $1 AND date = $2 ORDER BY start_time',
-            [userId, date]
-        );
-
-        // If no date-specific availability, fall back to day-of-week
-        if (availabilityResult.rows.length === 0) {
-            availabilityResult = await db.query(
-                'SELECT start_time, end_time FROM availability WHERE user_id = $1 AND day_of_week = $2 ORDER BY start_time',
-                [userId, dayOfWeek]
-            );
-        }
-
-        if (availabilityResult.rows.length === 0) {
-            return res.json({ slots: [] });
-        }
-
-        // Get breaks for the day (both day-specific and universal breaks)
-        const dayBreaksResult = await db.query(
-            'SELECT start_time, end_time FROM breaks WHERE user_id = $1 AND day_of_week = $2',
-            [userId, dayOfWeek]
-        );
-        
-        // Get universal breaks
-        const universalBreaksResult = await db.query(
-            'SELECT start_time, end_time FROM universal_breaks WHERE user_id = $1 AND enabled = true',
-            [userId]
-        );
-        
-        // Combine both types of breaks
-        const breaksResult = {
-            rows: [...dayBreaksResult.rows, ...universalBreaksResult.rows]
-        };
-
-        // Get existing bookings for the date
-        const bookingsResult = await db.query(
-            'SELECT start_time, end_time FROM bookings WHERE user_id = $1 AND date = $2',
-            [userId, date]
-        );
-
-        // Get Google Calendar conflicts if enabled
-        let googleCalendarConflicts = [];
-        try {
-            const googleCalendarService = require('../services/googleCalendar');
-            const tokens = await googleCalendarService.getUserTokens(userId);
-            const userResult = await db.query(
-                'SELECT google_calendar_blocking_enabled FROM users WHERE id = $1',
-                [userId]
-            );
-            const googleCalendarBlockingEnabled = userResult.rows[0]?.google_calendar_blocking_enabled ?? true;
-            
-            if (tokens && tokens.google_access_token && googleCalendarBlockingEnabled) {
-                
-                // Get conflicts for the entire day
-                const dayStart = `${date}T00:00:00`;
-                const dayEnd = `${date}T23:59:59`;
-                
-                const conflictInfo = await googleCalendarService.getTimeSlotConflicts(
-                    userId,
-                    dayStart,
-                    dayEnd
-                );
-                
-                if (conflictInfo.hasConflicts) {
-                    googleCalendarConflicts = conflictInfo.conflicts.map(conflict => {
-                        const startDate = new Date(conflict.start);
-                        const endDate = new Date(conflict.end);
-                        
-                        
-                        // Parse the conflict times directly as they come from Google Calendar
-                        // Google Calendar returns times in the user's timezone
-                        
-                        let startTimeStr, endTimeStr;
-                        
-                        if (typeof conflict.start === 'string' && conflict.start.includes('T')) {
-                            // Standard ISO format: 2025-10-21T09:00:00+08:00
-                            startTimeStr = conflict.start.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
-                            endTimeStr = conflict.end.split('T')[1].split('+')[0].split('Z')[0].slice(0, 5);
-                        } else if (typeof conflict.start === 'string') {
-                            // Date-only format: 2025-10-21 (all-day event)
-                            // Skip all-day events as they shouldn't block specific time slots
-                            return null;
-                        } else {
-                            return null;
-                        }
-                        
-                        
-                        const conflictInMinutes = {
-                            start: timeToMinutes(startTimeStr),
-                            end: timeToMinutes(endTimeStr)
-                        };
-                        
-                        return conflictInMinutes;
-                    }).filter(conflict => conflict !== null);
-                }
-            }
-        } catch (error) {
-            // Continue without Google Calendar conflicts if there's an error
-            googleCalendarConflicts = [];
-        }
-
-        // Generate available time slots from all availability blocks
-        const availabilityBlocks = availabilityResult.rows;
-        const breaks = breaksResult.rows;
-        const bookings = bookingsResult.rows;
-        
-        // Create array of slots with dynamic meeting length + buffer time
-        const slots = [];
-        const bufferTime = bufferMinutes ?? 15; // Default to 15 only if null/undefined, 0 means no buffer
-        const totalInterval = meetingLength + bufferTime;
-
-        // Current time in minutes since midnight in client's timezone
-        const currentTimeMinutes = nowInClientTimezone.hour * 60 + nowInClientTimezone.minute;
-        
-        // Check if requested date is today in client's timezone (normalize both dates for comparison)
-        const normalizedRequestedDate = date.trim();
-        const normalizedTodayDate = todayDate.trim();
-        const isToday = normalizedRequestedDate === normalizedTodayDate;
-        
-        // Also check if dates are the same by parsing them (handles edge cases)
-        let isTodayByParsing = false;
-        try {
-            const reqDateParts = normalizedRequestedDate.split('-');
-            const todayDateParts = normalizedTodayDate.split('-');
-            if (reqDateParts.length === 3 && todayDateParts.length === 3) {
-                isTodayByParsing = (
-                    parseInt(reqDateParts[0]) === parseInt(todayDateParts[0]) &&
-                    parseInt(reqDateParts[1]) === parseInt(todayDateParts[1]) &&
-                    parseInt(reqDateParts[2]) === parseInt(todayDateParts[2])
-                );
-            }
-        } catch (e) {
-            // Ignore parsing errors
-        }
-        
-        const isTodayFinal = isToday || isTodayByParsing;
-
-        // Generate slots for each availability block
-        availabilityBlocks.forEach(availability => {
-            // Convert times to minutes since midnight for easier calculation
-            const workStart = timeToMinutes(availability.start_time);
-            const workEnd = timeToMinutes(availability.end_time);
-
-            // Generate slots with proper intervals for this block
-            for (let time = workStart; time <= workEnd - meetingLength; time += totalInterval) {
-                const slotStart = time;
-                const slotEnd = time + meetingLength;
-                
-                // Skip slots that have already started or don't have enough buffer time
-                // For today, ensure the slot starts at least bufferTime minutes from now
-                if (isTodayFinal) {
-                    // Slot must start AFTER current time + buffer time (strict greater than)
-                    // This ensures users can't book slots that have already passed or don't have enough prep time
-                    const minAllowedStartTime = currentTimeMinutes + bufferTime;
-                    if (slotStart < minAllowedStartTime) {
-                        continue;
-                    }
-                }
-                
-                // Check if slot overlaps with any breaks (no buffer time applied to breaks)
-                const overlapsBreak = breaks.some(b => {
-                    const breakStart = timeToMinutes(b.start_time);
-                    const breakEnd = timeToMinutes(b.end_time);
-                    
-                    // Check if slot overlaps with the break zone (no buffer applied to breaks)
-                    return (slotStart < breakEnd && slotEnd > breakStart);
-                });
-                
-                // Check if slot overlaps with any bookings
-                const overlapsBooking = bookings.some(b => {
-                    const bookingStart = timeToMinutes(b.start_time);
-                    const bookingEnd = timeToMinutes(b.end_time);
-                    return (slotStart < bookingEnd && slotEnd > bookingStart);
-                });
-                
-                // Check if slot overlaps with any Google Calendar events (including buffer time)
-                const overlapsGoogleCalendar = googleCalendarConflicts.some(conflict => {
-                    // Apply buffer time to the conflict boundaries
-                    const conflictStartWithBuffer = conflict.start - bufferTime;
-                    const conflictEndWithBuffer = conflict.end + bufferTime;
-                    
-                    // Check if slot overlaps with the expanded conflict zone (including buffer)
-                    return (slotStart < conflictEndWithBuffer && slotEnd > conflictStartWithBuffer);
-                });
-                
-                // Only check if the actual meeting fits within working hours
-                const fitsInWorkingHours = slotEnd <= workEnd;
-                
-                const slotStartTime = minutesToTime(slotStart);
-                const slotEndTime = minutesToTime(slotEnd);
-                
-                if (!overlapsBreak && !overlapsBooking && !overlapsGoogleCalendar && fitsInWorkingHours) {
-                    slots.push({
-                        start_time: slotStartTime,
-                        end_time: slotEndTime
-                    });
-                }
-            }
-        });
-
-        res.json({ slots });
-    } catch (error) {
-        // Return empty slots array instead of error to allow frontend to show "no available times"
-        // This ensures the booking page still works even if there's an error (e.g., when no durations are configured)
-        res.json({ slots: [] });
-    }
 });
 
 // Get user's booking playground page for testing new implementations

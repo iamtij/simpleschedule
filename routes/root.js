@@ -955,7 +955,9 @@ router.post('/settings/date-availability', requireLogin, async (req, res) => {
 });
 
 // Configure multer for booking logo uploads (PRO only)
-const logoUploadDir = path.join(__dirname, '../uploads/booking-logos');
+// Uses Railway Volume when RAILWAY_VOLUME_MOUNT_PATH is set (persistent storage)
+const { getLogoUploadDir } = require('../utils/logoUpload');
+const logoUploadDir = getLogoUploadDir();
 if (!fs.existsSync(logoUploadDir)) {
   fs.mkdirSync(logoUploadDir, { recursive: true });
 }
