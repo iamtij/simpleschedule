@@ -92,6 +92,7 @@ async function runMigrations() {
         }
         
     } catch (error) {
+        console.error('Migration error:', error.message || error);
         process.exit(1);
     } finally {
         if (pool) {

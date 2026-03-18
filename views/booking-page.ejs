@@ -851,8 +851,10 @@
                     const today = new Date();
                     loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
                         setTimeout(() => initializeCalendar(), 100);
-                        if (selectedDate) loadTimeSlots();
-                        else updateNoSelectionDisplay();
+                        // When guest loads, clear date selection so "Closest shared windows" shows immediately
+                        selectedDate = null;
+                        if (calendarInstance) calendarInstance.clear();
+                        updateNoSelectionDisplay();
                         if (!iskedError.classList.contains('hidden')) return;
                         iskedHint.classList.remove('hidden');
                     }).catch(() => {
@@ -875,6 +877,8 @@
                 const today = new Date();
                 loadMonthAvailability(today.getFullYear(), today.getMonth()).then(() => {
                     setTimeout(() => initializeCalendar(), 100);
+                    selectedDate = today.toLocaleDateString('en-CA');
+                    if (calendarInstance) calendarInstance.setDate(selectedDate, false);
                     if (selectedDate) loadTimeSlots();
                     else updateNoSelectionDisplay();
                 }).finally(() => {
@@ -1404,10 +1408,22 @@
             }
             if (guestUsername && data.meeting_duration_minutes) {
                 const dateLabel = selectedDate ? formatDateForDisplay(selectedDate) : '';
-                return '<div class="text-center py-8 space-y-3">' +
+                let html = '<div class="text-center py-8 space-y-3">' +
                     '<p class="text-gray-600">No ' + meetingMins + '-minute mutual availability for this date</p>' +
-                    (dateLabel ? '<p class="text-sm text-gray-500">' + dateLabel + '</p>' : '') +
-                    '</div>';
+                    (dateLabel ? '<p class="text-sm text-gray-500">' + dateLabel + '</p>' : '');
+                if (partialOverlapsByDate.size > 0) {
+                    const entries = Array.from(partialOverlapsByDate.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                    const listHtml = entries.map(([dateStr, d]) => {
+                        const partialList = d.partial_overlaps.map(p =>
+                            formatTime(p.start_time + '-' + p.end_time) + ' (' + p.duration_minutes + ' min)'
+                        ).join(', ');
+                        return '<div class="mb-3"><p class="text-sm font-medium text-gray-800">' + formatDateForDisplay(dateStr) + '</p><p class="text-sm text-gray-600">' + partialList + '</p></div>';
+                    }).join('');
+                    html += '<p class="text-sm text-gray-500 mt-4">Closest shared windows this month:</p>' +
+                        '<div class="text-left max-w-md mx-auto">' + listHtml + '</div>';
+                }
+                html += '</div>';
+                return html;
             }
             return '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
         }
