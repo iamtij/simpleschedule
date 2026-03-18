@@ -1402,6 +1402,13 @@
                     '<p class="text-sm font-medium text-gray-700">' + partialList + '</p>' +
                     '</div>';
             }
+            if (guestUsername && data.meeting_duration_minutes) {
+                const dateLabel = selectedDate ? formatDateForDisplay(selectedDate) : '';
+                return '<div class="text-center py-8 space-y-3">' +
+                    '<p class="text-gray-600">No ' + meetingMins + '-minute mutual availability for this date</p>' +
+                    (dateLabel ? '<p class="text-sm text-gray-500">' + dateLabel + '</p>' : '') +
+                    '</div>';
+            }
             return '<div class="text-center text-gray-500 py-8">No available times for this date</div>';
         }
 
@@ -1415,15 +1422,22 @@
         function updateNoSelectionDisplay() {
             const container = document.getElementById('time-slots');
             if (!container) return;
-            if (!guestUsername || partialOverlapsByDate.size === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8 col-span-full"><p>Select a date to view available times</p></div>';
-                return;
-            }
             const cacheKeyPrefix = getCacheKeyPrefix();
             const hasAnyMutualAvailability = Array.from(availabilityCache.entries())
                 .some(([k, v]) => k.startsWith(cacheKeyPrefix) && v === true);
+            if (!guestUsername) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8 col-span-full"><p>Select a date to view available times</p></div>';
+                return;
+            }
             if (hasAnyMutualAvailability) {
                 container.innerHTML = '<div class="text-center text-gray-500 py-8 col-span-full"><p>Select a date to view available times</p></div>';
+                return;
+            }
+            if (partialOverlapsByDate.size === 0) {
+                container.innerHTML = '<div class="text-center py-8 space-y-2 col-span-full">' +
+                    '<p class="text-gray-600">No mutual availability this month</p>' +
+                    '<p class="text-sm text-gray-500">Try a different month or check availability with the other person.</p>' +
+                    '</div>';
                 return;
             }
             const meetingMins = partialOverlapsByDate.values().next().value?.meeting_duration_minutes || duration || 60;
