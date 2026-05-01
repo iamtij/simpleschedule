@@ -9,7 +9,8 @@
     "migrate": "node db/migrate.js",
     "setup": "npm run migrate",
     "reminders": "node scripts/runReminders.js",
-    "favicons": "node scripts/generate-favicons.js"
+    "favicons": "node scripts/generate-favicons.js",
+    "og-image": "node scripts/generate-og-image.js"
   },
   "dependencies": {
     "@revenuecat/purchases-js": "1.19.0",

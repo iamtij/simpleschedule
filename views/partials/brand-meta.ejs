@@ -5,8 +5,8 @@
   var _path = typeof canonicalPath !== 'undefined' ? canonicalPath : '';
   if (_path && _path.charAt(0) !== '/') _path = '/' + _path;
   var _canonical = typeof canonicalUrl !== 'undefined' ? canonicalUrl : (_base + (_path || '/'));
-  /* Raster for social previews — many platforms still expect PNG/JPEG for og:image */
-  var _img = _base + '/images/isked-logo.png';
+  /* 1200×630 centered canvas — see scripts/generate-og-image.js */
+  var _img = _base + '/images/og-image.png';
 %>
 <meta name="description" content="<%= _desc %>">
 <link rel="canonical" href="<%= _canonical %>">
@@ -17,7 +17,9 @@
 <meta property="og:description" content="<%= _desc %>">
 <meta property="og:url" content="<%= _canonical %>">
 <meta property="og:image" content="<%= _img %>">
-<meta property="og:image:alt" content="isked">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="isked — scheduling made easy">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="<%= _pageTitle %>">
 <meta name="twitter:description" content="<%= _desc %>">
