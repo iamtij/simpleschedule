@@ -1,0 +1,7 @@
+<% if (typeof logoImageOnly !== 'undefined' && logoImageOnly) { %>
+<img src="/images/isked-logo.png" alt="isked" class="<%= typeof logoClass !== 'undefined' ? logoClass : 'h-8 w-auto max-h-10 object-contain object-left' %>" loading="eager" decoding="async" />
+<% } else { %>
+<a href="<%= typeof logoHref === 'undefined' ? '/' : logoHref %>" class="inline-flex items-center shrink-0 <%= typeof logoWrapperClass !== 'undefined' ? logoWrapperClass : '' %>" aria-label="isked">
+    <img src="/images/isked-logo.png" alt="" class="<%= typeof logoClass !== 'undefined' ? logoClass : 'h-8 w-auto max-h-10 object-contain object-left' %>" loading="eager" decoding="async" />
+</a>
+<% } %>

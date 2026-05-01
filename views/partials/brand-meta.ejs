@@ -1,0 +1,25 @@
+<% 
+  var _base = (typeof publicUrl !== 'undefined' && publicUrl) ? String(publicUrl).replace(/\/$/, '') : 'https://isked.app';
+  var _pageTitle = typeof ogTitle !== 'undefined' ? ogTitle : 'isked';
+  var _desc = typeof ogDescription !== 'undefined' ? ogDescription : 'Let others book your time with ease. Share your link, use buffers, and keep client context in one place.';
+  var _path = typeof canonicalPath !== 'undefined' ? canonicalPath : '';
+  if (_path && _path.charAt(0) !== '/') _path = '/' + _path;
+  var _canonical = typeof canonicalUrl !== 'undefined' ? canonicalUrl : (_base + (_path || '/'));
+  /* Raster for social previews — many platforms still expect PNG/JPEG for og:image */
+  var _img = _base + '/images/isked-logo.png';
+%>
+<meta name="description" content="<%= _desc %>">
+<link rel="canonical" href="<%= _canonical %>">
+<link rel="icon" href="/images/isked-logo.png" type="image/png">
+<link rel="apple-touch-icon" href="/images/isked-logo.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="isked">
+<meta property="og:title" content="<%= _pageTitle %>">
+<meta property="og:description" content="<%= _desc %>">
+<meta property="og:url" content="<%= _canonical %>">
+<meta property="og:image" content="<%= _img %>">
+<meta property="og:image:alt" content="isked">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= _pageTitle %>">
+<meta name="twitter:description" content="<%= _desc %>">
+<meta name="twitter:image" content="<%= _img %>">

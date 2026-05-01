@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>isked – Scheduling Made Easy</title>
+    <%- include('partials/brand-meta', {
+        ogTitle: 'isked – Scheduling Made Easy',
+        ogDescription: 'Let others book your time with ease. Scheduling, buffers, and client context in one calm workflow.',
+        canonicalPath: '/'
+    }) %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -45,13 +50,6 @@
         };
     </script>
     <script src="https://unpkg.com/feather-icons"></script>
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     <meta name="theme-color" content="#7c3aed">
     <style>
         .hero-mesh {
@@ -94,7 +92,7 @@
     <header class="fixed top-0 inset-x-0 z-50 border-b border-violet-100/80 bg-white/80 backdrop-blur-md">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex h-14 sm:h-16 items-center justify-between gap-4">
-                <a href="/" class="text-xl font-bold tracking-tight text-brand-700 shrink-0">isked</a>
+                <%- include('partials/brand-logo', { logoHref: '/', logoClass: 'h-8 sm:h-9 w-auto max-h-10 object-contain' }) %>
                 <div class="hidden md:flex items-center gap-6 lg:gap-8">
                     <a href="#features" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Features</a>
                     <a href="#how-it-works" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">How it works</a>

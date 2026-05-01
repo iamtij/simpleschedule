@@ -60,6 +60,9 @@ app.use(session(sessionConfig));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Absolute URLs for Open Graph / Twitter cards (override in env on deploy)
+app.locals.publicUrl = (process.env.PUBLIC_URL || process.env.APP_URL || 'https://isked.app').replace(/\/$/, '');
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));  // Limit JSON payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));  // Limit form data size

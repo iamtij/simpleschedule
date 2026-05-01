@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>isked Admin</title>
+    <%- include('./brand-meta', {
+        ogTitle: 'isked Admin',
+        ogDescription: 'Manage users, coupons, and email templates.',
+        canonicalPath: '/admin'
+    }) %>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -13,7 +18,10 @@
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <div class="flex items-center">
-                        <a href="/admin" class="text-xl font-bold text-gray-800">isked Admin</a>
+                        <a href="/admin" class="flex items-center gap-2 text-gray-800 hover:opacity-90 transition-opacity" aria-label="isked Admin home">
+                            <%- include('./brand-logo', { logoImageOnly: true, logoClass: 'h-7 w-auto max-h-8 object-contain' }) %>
+                            <span class="text-xl font-bold">Admin</span>
+                        </a>
                     </div>
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                         <a href="/admin"

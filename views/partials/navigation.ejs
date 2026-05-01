@@ -4,9 +4,7 @@
         <div class="flex justify-between items-center h-16">
             <!-- Logo and Main Navigation -->
             <div class="flex items-center">
-                <a href="/dashboard" class="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                    isked
-                </a>
+                <%- include('./brand-logo', { logoHref: '/dashboard', logoClass: 'h-8 w-auto max-h-9 object-contain hover:opacity-90 transition-opacity' }) %>
                 
                 <!-- Desktop Navigation Links -->
                 <div class="hidden md:ml-8 md:flex md:space-x-6">
