@@ -13,14 +13,15 @@ const out = path.join(root, 'images', 'og-image.png');
 
 const W = 1200;
 const H = 630;
-// Light canvas matching landing hero feel (safe for link previews)
-const bg = { r: 250, g: 248, b: 255, alpha: 1 };
+// Clean white so the preview feels full — tweak if you prefer off-white
+const bg = { r: 255, g: 255, b: 255, alpha: 1 };
 /*
- * WhatsApp / Telegram often crop the *center square* (630×630) from this 1.91:1 image.
- * Keep the logo width ≤ ~620px so it stays fully inside that square (x ≈ 285–915).
+ * Center-square crops use the middle 630×630 of this 1200×630 frame (x ≈ 285–915).
+ * Max logo width ~628 keeps the mark fully inside that zone with a tiny safety margin.
+ * Tall bound lets `fit: inside` scale width up as large as possible for a wide logo.
  */
-const maxLogoW = 600;
-const maxLogoH = 280;
+const maxLogoW = 628;
+const maxLogoH = 520;
 const maxW = maxLogoW;
 const maxH = maxLogoH;
 
