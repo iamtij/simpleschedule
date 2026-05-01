@@ -4,9 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>isked – Scheduling Made Easy</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['"Libre Baskerville"', 'Georgia', 'serif'],
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        },
+                    },
+                    animation: {
+                        'float-slow': 'float-y 5s ease-in-out infinite',
+                        'float-delayed': 'float-y 5s ease-in-out 1.2s infinite',
+                    },
+                    keyframes: {
+                        'float-y': {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                    },
+                },
+            },
+        };
+    </script>
     <script src="https://unpkg.com/feather-icons"></script>
-    <!-- Favicons -->
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -14,285 +52,167 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="#7c3aed">
     <style>
-        .hero-section {
-            background: linear-gradient(135deg, 
-                rgba(79, 70, 229, 0.1) 0%, 
-                rgba(147, 51, 234, 0.1) 50%,
-                rgba(219, 39, 119, 0.1) 100%
-            );
-            animation: gradient-shift 15s ease infinite;
-            background-size: 400% 400%;
+        .hero-mesh {
+            background-color: #faf8ff;
+            background-image:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(167, 139, 250, 0.28), transparent 55%),
+                radial-gradient(ellipse 70% 50% at 85% 30%, rgba(139, 92, 246, 0.18), transparent 50%),
+                radial-gradient(ellipse 60% 45% at 50% 95%, rgba(192, 132, 252, 0.12), transparent 45%);
         }
-
-        @keyframes gradient-shift {
-            0% {
-                background-position: 0% 50%;
+        details.mobile-nav > summary {
+            list-style: none;
+        }
+        details.mobile-nav > summary::-webkit-details-marker {
+            display: none;
+        }
+        .reveal {
+            opacity: 0;
+            transform: translateY(1.25rem);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .reveal.reveal-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .reveal {
+                opacity: 1;
+                transform: none;
+                transition: none;
             }
-            50% {
-                background-position: 100% 50%;
+            .animate-float-slow,
+            .animate-float-delayed {
+                animation: none !important;
             }
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-
-        .content-wrapper {
-            position: relative;
-            z-index: 10;
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.9);
-            transform: translateY(-2px);
-        }
-
-        .features-section {
-            position: relative;
-            z-index: 1;
-            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.9) 15%, white);
-        }
-
-        .feature-card {
-            transform-style: preserve-3d;
-            perspective: 1000px;
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-        }
-
-        .feature-card:hover .feature-icon {
-            transform: translateZ(20px) rotate(-10deg);
-        }
-
-        .feature-icon {
-            transition: all 0.4s ease;
-            transform-style: preserve-3d;
-        }
-
-        .feature-gradient {
-            background-size: 200% 200%;
-            animation: gradientMove 8s ease infinite;
-            background-image: linear-gradient(135deg, 
-                rgba(79, 70, 229, 0.1) 0%, 
-                rgba(147, 51, 234, 0.1) 50%,
-                rgba(219, 39, 119, 0.1) 100%
-            );
-        }
-
-        @keyframes gradientMove {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .highlight-number {
-            font-size: 6rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #4f46e5, #db2777);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            opacity: 0.1;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            line-height: 1;
-            z-index: 0;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            pointer-events: none;
-        }
-
-        .feature-content {
-            position: relative;
-            z-index: 2;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 1rem;
         }
     </style>
 </head>
-<body class="bg-white text-gray-900 font-sans">
+<body class="bg-white text-gray-900 font-sans antialiased">
     <!-- Navigation -->
-    <nav class="bg-white shadow-sm fixed w-full z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex-shrink-0 flex items-center">
-                    <a href="/" class="text-2xl font-bold text-indigo-600">isked</a>
+    <header class="fixed top-0 inset-x-0 z-50 border-b border-violet-100/80 bg-white/80 backdrop-blur-md">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex h-14 sm:h-16 items-center justify-between gap-4">
+                <a href="/" class="text-xl font-bold tracking-tight text-brand-700 shrink-0">isked</a>
+                <div class="hidden md:flex items-center gap-6 lg:gap-8">
+                    <a href="#features" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Features</a>
+                    <a href="#how-it-works" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">How it works</a>
+                    <a href="#pricing" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
                 </div>
-                <div class="flex items-center space-x-6">
-                    <a href="/auth/login" class="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                    <a href="/auth/register" class="bg-indigo-600 text-white px-5 py-2.5 rounded-md hover:bg-indigo-700 transition-colors font-medium shadow-sm hover:shadow">
-                        Get Started
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <a href="/auth/login" class="hidden md:inline-flex text-sm font-semibold text-gray-700 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors">
+                        Log in
                     </a>
+                    <a href="/auth/register" class="hidden md:inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition-colors">
+                        Get started
+                    </a>
+                    <details class="mobile-nav md:hidden relative">
+                        <summary class="flex cursor-pointer items-center justify-center rounded-lg border border-violet-200 bg-white p-2 text-gray-700 hover:bg-violet-50 transition-colors" aria-label="Open menu">
+                            <i data-feather="menu" class="h-5 w-5"></i>
+                        </summary>
+                        <div class="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-violet-100 bg-white p-2 shadow-xl">
+                            <a href="#features" class="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-violet-50">Features</a>
+                            <a href="#how-it-works" class="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-violet-50">How it works</a>
+                            <a href="#pricing" class="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-violet-50">Pricing</a>
+                            <hr class="my-2 border-violet-100">
+                            <a href="/auth/login" class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-violet-50">Log in</a>
+                            <a href="/auth/register" class="mt-1 block rounded-lg bg-brand-600 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-700">Get started</a>
+                        </div>
+                    </details>
                 </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </header>
 
-    <!-- Hero Section with gradient background -->
-    <section class="hero-section relative pt-32 pb-16 px-6">
-        <div class="content-wrapper">
-            <div class="max-w-7xl mx-auto text-center">
-                <h1 class="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                    <span class="block mb-2">Scheduling</span>
-                    <span class="block text-indigo-600">Made Easy</span>
-                </h1>
-                <p class="mt-8 max-w-md mx-auto text-base text-gray-600 sm:text-lg md:text-xl md:max-w-3xl">
-                    Let others book your time with ease. isked simplifies scheduling by letting you share your availability and get booked instantly — no back-and-forth emails.
-                </p>
-                <div class="mt-10 flex justify-center">
-                    <div class="rounded-md shadow-lg">
-                        <a href="/auth/register" class="w-full flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transform transition md:text-lg md:px-10 hover:scale-105">
-                            Create Your Booking Link
+    <!-- Hero -->
+    <section class="hero-mesh relative pt-24 pb-14 sm:pt-28 sm:pb-20 lg:pt-32 lg:pb-28 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-12 xl:gap-16 items-center">
+                <div class="text-center lg:text-left max-w-xl mx-auto lg:mx-0">
+                    <p class="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/90 px-3 py-1 text-xs sm:text-sm font-semibold text-brand-700 shadow-sm mb-5">
+                        <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Scheduling without the back-and-forth
+                    </p>
+                    <h1 class="font-serif text-[2rem] leading-[1.15] sm:text-4xl md:text-5xl lg:text-[2.75rem] xl:text-6xl text-gray-900">
+                        <span class="italic font-normal block mb-1">Share your link.</span>
+                        <span class="font-sans font-bold not-italic tracking-tight block text-gray-950">They pick a time. You stay in control.</span>
+                    </h1>
+                    <p class="mt-5 sm:mt-6 text-base sm:text-lg text-gray-600 leading-relaxed">
+                        Let others book your time with ease. isked keeps availability, buffers, and client context in one calm workflow — no endless email threads.
+                    </p>
+                    <div class="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 justify-center lg:justify-start">
+                        <a href="/auth/register" class="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/25 hover:bg-brand-700 transition-colors w-full sm:w-auto">
+                            Create your booking link
+                        </a>
+                        <a href="#how-it-works" class="inline-flex items-center justify-center rounded-xl border-2 border-violet-200 bg-white px-6 py-3.5 text-base font-semibold text-gray-800 hover:border-brand-400 hover:bg-violet-50/80 transition-colors w-full sm:w-auto">
+                            See how it works
                         </a>
                     </div>
-                </div>
-                <div class="mt-10">
-                    <p class="glass-card text-sm text-gray-600 px-6 py-3 inline-block rounded-lg shadow-sm">
-                        Your booking link: <span class="font-mono font-semibold text-indigo-600">isked.app/booking/yourname</span>
+                    <p class="mt-4 text-center lg:text-left text-sm text-gray-500">No credit card required to start.</p>
+                    <div class="mt-6 flex flex-wrap gap-2 justify-center lg:justify-start lg:hidden">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/95 border border-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm">
+                            <i data-feather="check-circle" class="w-3.5 h-3.5 text-emerald-500"></i> Meeting booked
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/95 border border-violet-100 px-3 py-1.5 text-xs font-medium text-brand-800 shadow-sm">
+                            <i data-feather="trending-up" class="w-3.5 h-3.5 text-brand-600"></i> Stay on top of your week
+                        </span>
+                    </div>
+                    <p class="mt-8 rounded-xl border border-violet-100 bg-white/90 px-4 py-3 text-xs sm:text-sm text-gray-600 shadow-sm inline-block max-w-full">
+                        Your booking link:
+                        <span class="font-mono font-semibold text-brand-700 break-all">isked.app/booking/yourname</span>
                     </p>
                 </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Features Section -->
-    <section class="features-section py-16 px-6 text-center bg-gradient-to-b from-white via-indigo-50/20 to-white overflow-hidden">
-        <h2 class="text-3xl font-bold mb-6 text-gray-900">Your Schedule, Streamlined</h2>
-        <p class="text-gray-600 mb-16 text-lg">A calmer, smarter way to book your time — on your terms.</p>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto text-left">
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="clock" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
+                <div class="relative mx-auto w-full max-w-md lg:max-w-none">
+                    <!-- Floating cards (desktop) -->
+                    <div class="hidden md:block absolute -left-4 top-8 z-10 animate-float-slow">
+                        <div class="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-4 py-3 shadow-xl shadow-gray-900/10">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                                <i data-feather="check" class="w-5 h-5"></i>
+                            </span>
+                            <div>
+                                <p class="text-xs font-medium text-gray-500">Just now</p>
+                                <p class="text-sm font-semibold text-gray-900">Meeting booked</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Custom Availability</h3>
-                        <p class="text-gray-600 leading-relaxed">Decide when you're free — and block out the rest. You're in control.</p>
+                    <div class="hidden md:block absolute -right-2 lg:right-4 top-1/3 z-10 animate-float-delayed">
+                        <div class="rounded-2xl border border-violet-100 bg-white px-4 py-3 shadow-xl shadow-gray-900/10">
+                            <p class="text-2xl font-bold text-brand-700 tracking-tight">24</p>
+                            <p class="text-xs font-medium text-gray-600">meetings this week</p>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="link" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Smart Links</h3>
-                        <p class="text-gray-600 leading-relaxed">Share your booking link and let others pick a time that works for them.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="shield" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Smart Buffers</h3>
-                        <p class="text-gray-600 leading-relaxed">Give yourself a breather between meetings. Your time matters.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="layers" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Multiple Time Blocks</h3>
-                        <p class="text-gray-600 leading-relaxed">Set multiple availability windows per day. Perfect for split schedules like morning and afternoon sessions.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="calendar" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Date-Specific Availability</h3>
-                        <p class="text-gray-600 leading-relaxed">Override your regular schedule for specific dates. Perfect for holidays, special events, or one-off availability changes.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="file-text" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Google Sheets Export</h3>
-                        <p class="text-gray-600 leading-relaxed">Automatically export your CRM data to Google Sheets. Keep all your contacts and interactions organized in one place.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="feature-card relative bg-white/50 backdrop-blur-sm p-8 rounded-2xl hover:shadow-xl transition-all duration-500">
-                <div class="feature-content flex flex-col gap-5 group">
-                    <div class="feature-icon bg-indigo-50 p-3 rounded-xl self-start">
-                        <i data-feather="link-2" class="w-10 h-10 text-indigo-600 group-hover:text-indigo-500"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-3 text-gray-900">Multiple Duration Links</h3>
-                        <p class="text-gray-600 leading-relaxed">Create separate booking links for different meeting durations. Offer 15, 30, or 60-minute sessions with dedicated URLs.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Stop the Scheduling Chaos Section -->
-    <section class="py-16 px-6 text-center bg-white">
-        <div class="max-w-6xl mx-auto">
-            <div class="feature-gradient p-16 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500">
-                <div class="max-w-5xl mx-auto">
-                    <h2 class="text-3xl font-bold mb-6 text-gray-900">Stop the Scheduling Chaos</h2>
-                    <p class="text-gray-600 text-xl mb-12 max-w-3xl mx-auto">Tired of endless back-and-forth emails? Double bookings? Lost client information? Here's how isked solves your biggest scheduling headaches.</p>
-                    <div class="grid md:grid-cols-2 gap-10 text-left">
-                        <div class="flex items-start gap-6 group">
-                            <div class="feature-icon bg-red-50 p-3 rounded-lg flex-shrink-0">
-                                <i data-feather="mail" class="w-8 h-8 text-red-500 group-hover:text-red-600"></i>
-                            </div>
+                    <!-- Scheduling UI mock -->
+                    <div class="relative rounded-2xl border border-violet-100 bg-white p-4 sm:p-5 shadow-2xl shadow-brand-900/10 ring-1 ring-black/5">
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
                             <div>
-                                <p class="font-bold text-lg text-gray-900 mb-2">No More Email Ping-Pong</p>
-                                <p class="text-gray-600 text-base leading-relaxed">Stop wasting hours coordinating schedules. Share your link once, and clients book instantly — no back-and-forth needed.</p>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-brand-600">Preview</p>
+                                <p class="text-sm font-bold text-gray-900">Book with Jordan</p>
+                            </div>
+                            <div class="flex gap-1">
+                                <span class="h-2 w-2 rounded-full bg-red-400"></span>
+                                <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                             </div>
                         </div>
-                        <div class="flex items-start gap-6 group">
-                            <div class="feature-icon bg-red-50 p-3 rounded-lg flex-shrink-0">
-                                <i data-feather="calendar" class="w-8 h-8 text-red-500 group-hover:text-red-600"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-lg text-gray-900 mb-2">Never Double-Book Again</p>
-                                <p class="text-gray-600 text-base leading-relaxed">Automatic conflict detection prevents overlapping appointments. Your calendar stays organized, always.</p>
-                            </div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-xs font-medium text-gray-400 mb-2">
+                            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
                         </div>
-                        <div class="flex items-start gap-6 group">
-                            <div class="feature-icon bg-red-50 p-3 rounded-lg flex-shrink-0">
-                                <i data-feather="user-x" class="w-8 h-8 text-red-500 group-hover:text-red-600"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-lg text-gray-900 mb-2">Keep Track of Every Client</p>
-                                <p class="text-gray-600 text-base leading-relaxed">Built-in CRM stores all client data and meeting history. Never lose contact information or forget past conversations.</p>
-                            </div>
+                        <div class="grid grid-cols-7 gap-1 mb-4">
+                            <% for (let d = 1; d <= 7; d++) { %>
+                            <button type="button" class="aspect-square rounded-lg text-xs font-semibold <%= d === 3 ? 'bg-brand-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-violet-50' %>"><%= 10 + d %></button>
+                            <% } %>
                         </div>
-                        <div class="flex items-start gap-6 group">
-                            <div class="feature-icon bg-red-50 p-3 rounded-lg flex-shrink-0">
-                                <i data-feather="clock" class="w-8 h-8 text-red-500 group-hover:text-red-600"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-lg text-gray-900 mb-2">Protect Your Time</p>
-                                <p class="text-gray-600 text-base leading-relaxed">Set buffer times between meetings to breathe, prepare, and avoid burnout. Your schedule respects your boundaries.</p>
-                            </div>
+                        <p class="text-xs font-semibold text-gray-500 mb-2">Available slots</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <span class="rounded-lg border border-brand-200 bg-brand-50 px-2 py-2 text-center text-xs font-semibold text-brand-800">9:00 AM</span>
+                            <span class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-500">9:30 AM</span>
+                            <span class="rounded-lg border border-brand-200 bg-brand-50 px-2 py-2 text-center text-xs font-semibold text-brand-800">10:00 AM</span>
+                            <span class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-500">10:30 AM</span>
+                            <span class="rounded-lg border border-brand-200 bg-brand-50 px-2 py-2 text-center text-xs font-semibold text-brand-800">2:00 PM</span>
+                            <span class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-500">2:30 PM</span>
                         </div>
                     </div>
                 </div>
@@ -300,204 +220,338 @@
         </div>
     </section>
 
-    <!-- Testimonials Section -->
-    <section class="py-16 px-6 text-center bg-gradient-to-b from-white via-indigo-50/20 to-white">
+    <!-- Features -->
+    <section id="features" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-brand-50/30 to-white">
         <div class="max-w-7xl mx-auto">
-            <h2 class="text-3xl font-bold mb-6 text-gray-900">What Our Users Say</h2>
-            <p class="text-gray-600 mb-16 text-lg">See how isked is helping professionals manage their schedules better.</p>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                <!-- Testimonial 1 - Robert Arellano -->
-                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
-                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
-                        "Na para bang may dumating na superhero sa gitna ng gulong-gulo kong schedule! Salamat Isked.app. Dati, sabog-sabog ang mga appointments ko, nagkakapatong-patong at minsan halos di ko na alam kung saan ako lulugar. Pero simula nung dumating si Isked, life saver talaga! Ngayon wala ng stress, walang sapawan, walang agawan ng oras sa bawat meeting. Salamat Boss Timothy Salamat Isked.app!!!!"
-                    </p>
-                    <div class="border-t border-gray-200 pt-4 text-left">
+            <div class="text-center max-w-2xl mx-auto mb-12 sm:mb-16 reveal">
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900 italic">Built for busy calendars</h2>
+                <p class="mt-4 text-base sm:text-lg text-gray-600">Everything you need to accept bookings confidently — from buffers to CRM exports.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
+                <% const feats = [
+                    { icon: 'calendar', title: 'Smart scheduling', desc: 'Custom availability, multiple windows per day, and date-specific overrides when your routine changes.' },
+                    { icon: 'link', title: 'Share-ready links', desc: 'One link (or several durations) so guests self-serve a time that fits — no coordination ping-pong.' },
+                    { icon: 'coffee', title: 'Buffer times', desc: 'Breathing room between meetings so you are never sprinting from call to call.' },
+                    { icon: 'users', title: 'Built-in CRM', desc: 'Keep client context and meeting history where you already work — fewer tabs, fewer gaps.' },
+                    { icon: 'bell', title: 'Notifications that help', desc: 'Stay ahead of the day with clear booking signals so nothing slips through the cracks.' },
+                    { icon: 'file-text', title: 'Exports & trust', desc: 'Google Sheets export for your records plus thoughtful defaults so data stays yours.' },
+                ]; %>
+                <% feats.forEach((f, i) => { %>
+                <article class="group reveal rounded-2xl border border-violet-100 bg-white/90 p-6 sm:p-8 shadow-sm hover:shadow-xl hover:border-brand-200/80 transition-all duration-300" style="transition-delay: <%= i * 40 %>ms">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-300">
+                        <i data-feather="<%= f.icon %>" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="mt-5 text-lg sm:text-xl font-bold text-gray-900"><%= f.title %></h3>
+                    <p class="mt-2 text-sm sm:text-base text-gray-600 leading-relaxed"><%= f.desc %></p>
+                </article>
+                <% }); %>
+            </div>
+            <div class="mt-14 sm:mt-16 max-w-lg mx-auto text-center reveal border-t border-violet-100 pt-12">
+                <p class="text-base sm:text-lg font-semibold text-gray-900">Put these tools to work on your calendar today.</p>
+                <p class="mt-2 text-sm text-gray-600">Free to start — your booking link goes live in minutes.</p>
+                <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-stretch">
+                    <a href="/auth/register" class="inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors">Get started free</a>
+                    <a href="#pricing" class="inline-flex justify-center items-center rounded-xl border-2 border-violet-200 bg-white px-6 py-3.5 text-base font-semibold text-gray-800 hover:border-brand-400 hover:bg-violet-50 transition-colors">See plans</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how-it-works" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-12 sm:mb-16 reveal">
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900 italic">How it works</h2>
+                <p class="mt-4 text-base sm:text-lg text-gray-600">Three steps from chaos to a link your clients actually use.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8 lg:gap-10">
+                <% const steps = [
+                    { n: '01', title: 'Set your availability', desc: 'Define when you take meetings, buffers, and exceptions for special dates.' },
+                    { n: '02', title: 'Share your booking link', desc: 'Drop it in email, bios, or invoices — guests pick a slot without asking “what time works?”' },
+                    { n: '03', title: 'Show up prepared', desc: 'Bookings land with context in your CRM so every conversation picks up where it left off.' },
+                ]; %>
+                <% steps.forEach((s, i) => { %>
+                <div class="relative reveal text-center md:text-left">
+                    <% if (i < steps.length - 1) { %>
+                    <div class="hidden md:block absolute top-10 left-[60%] w-[80%] h-px bg-gradient-to-r from-brand-200 to-transparent pointer-events-none" aria-hidden="true"></div>
+                    <% } %>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white shadow-lg shadow-brand-600/30"><%= s.n %></span>
+                    <h3 class="mt-5 text-xl font-bold text-gray-900"><%= s.title %></h3>
+                    <p class="mt-2 text-gray-600 leading-relaxed"><%= s.desc %></p>
+                </div>
+                <% }); %>
+            </div>
+            <div class="mt-14 sm:mt-16 max-w-lg mx-auto text-center reveal border-t border-gray-100 pt-12">
+                <p class="text-base sm:text-lg font-semibold text-gray-900">Your booking link is only a few minutes away.</p>
+                <p class="mt-2 text-sm text-gray-600">Sign up, set your windows, and share — we handle the rest.</p>
+                <a href="/auth/register" class="mt-6 inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors w-full sm:w-auto">Sign up free</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stop the Scheduling Chaos -->
+    <section class="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-brand-50/40 to-white">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="rounded-3xl border border-violet-100 bg-white p-8 sm:p-12 lg:p-16 shadow-xl shadow-brand-900/5">
+                <div class="max-w-3xl mx-auto text-center mb-10 sm:mb-12">
+                    <h2 class="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 italic">Stop the scheduling chaos</h2>
+                    <p class="mt-4 text-base sm:text-lg text-gray-600">Tired of endless back-and-forth, double bookings, or scattered client notes? Here is how isked helps.</p>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-8 sm:gap-10 text-left">
+                    <div class="flex gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <i data-feather="mail" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">No more email ping-pong</p>
+                            <p class="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">Share your link once; clients book instantly.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <i data-feather="calendar" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">Fewer double-booking surprises</p>
+                            <p class="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">Availability and buffers keep your calendar honest.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <i data-feather="user-check" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">Keep track of every client</p>
+                            <p class="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">CRM-friendly history so context does not vanish after the call.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <i data-feather="clock" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">Protect your time</p>
+                            <p class="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">Boundaries between meetings — so your day breathes.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-12 sm:mt-14 pt-10 border-t border-violet-100 text-center reveal">
+                    <p class="text-base sm:text-lg font-semibold text-gray-900">Stop losing hours to email ping-pong.</p>
+                    <p class="mt-2 text-sm text-gray-600">Let clients book themselves while you keep control of your calendar.</p>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-stretch">
+                        <a href="/auth/register" class="inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors">Get started free</a>
+                        <a href="#pricing" class="inline-flex justify-center items-center rounded-xl border-2 border-violet-200 bg-white px-6 py-3.5 text-base font-semibold text-gray-800 hover:border-brand-400 hover:bg-violet-50 transition-colors">View pricing</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-12 sm:mb-16 reveal">
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900 italic">What our users say</h2>
+                <p class="mt-4 text-base sm:text-lg text-gray-600">Professionals who needed calmer scheduling.</p>
+            </div>
+            <% const starSvg = '<svg class="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'; %>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                <figure class="reveal flex flex-col rounded-2xl border border-violet-100 bg-gradient-to-b from-white to-brand-50/40 p-6 sm:p-8 shadow-sm">
+                    <div class="flex gap-0.5 mb-4" aria-label="5 out of 5 stars"><%- starSvg.repeat(5).replace(/>\s*</g, '><') %></div>
+                    <blockquote class="text-gray-700 leading-relaxed text-sm sm:text-base flex-1 italic">"Na para bang may dumating na superhero sa gitna ng gulong-gulo kong schedule! Salamat Isked.app..."</blockquote>
+                    <figcaption class="mt-6 pt-4 border-t border-violet-100">
                         <p class="font-semibold text-gray-900">Robert Arellano</p>
                         <p class="text-sm text-gray-600">AMA Tax Consultant</p>
-                    </div>
-                </div>
-
-                <!-- Testimonial 2 - Sam Lara -->
-                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
-                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
-                        "Easy to understand, user-friendly, and most of all, it does its job. It's very efficient. So bawas sakit ng ulo. So 'yan ang maganda sa ISKED by Small Simple Steps. Ang laking bagay na meron talaga tayong ganitong scheduling platform that allows us to track all our commitments, and it will make sure na hindi siya babangga or hindi siya tatama, or it's not gonna coincide and overlap with all your other commitments na initially plotted na. So that makes making appointments better and stress-free. So again, make the most out of your every day with ISKED"
-                    </p>
-                    <div class="border-t border-gray-200 pt-4 text-left">
+                    </figcaption>
+                </figure>
+                <figure class="reveal flex flex-col rounded-2xl border border-violet-100 bg-gradient-to-b from-white to-brand-50/40 p-6 sm:p-8 shadow-sm">
+                    <div class="flex gap-0.5 mb-4" aria-label="5 out of 5 stars"><%- starSvg.repeat(5).replace(/>\s*</g, '><') %></div>
+                    <blockquote class="text-gray-700 leading-relaxed text-sm sm:text-base flex-1 italic">"Easy to understand, user-friendly, and most of all, it does its job. It's very efficient..."</blockquote>
+                    <figcaption class="mt-6 pt-4 border-t border-violet-100">
                         <p class="font-semibold text-gray-900">Sam Lara</p>
                         <p class="text-sm text-gray-600">USANA Brand Partner</p>
-                    </div>
-                </div>
-
-                <!-- Testimonial 3 - Joannah Rivera -->
-                <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 border border-gray-100">
-                    <p class="text-gray-700 leading-relaxed mb-6 italic text-left">
-                        "Tj's isked app is very helpful for businesses like us. It is easy to use and there's a built in mini crm there where you can check your past clients. He provides additional tips on how to maximize isked."
-                    </p>
-                    <div class="border-t border-gray-200 pt-4 text-left">
+                    </figcaption>
+                </figure>
+                <figure class="reveal flex flex-col rounded-2xl border border-violet-100 bg-gradient-to-b from-white to-brand-50/40 p-6 sm:p-8 shadow-sm md:col-span-2 lg:col-span-1">
+                    <div class="flex gap-0.5 mb-4" aria-label="5 out of 5 stars"><%- starSvg.repeat(5).replace(/>\s*</g, '><') %></div>
+                    <blockquote class="text-gray-700 leading-relaxed text-sm sm:text-base flex-1 italic">"Tj's isked app is very helpful for businesses like us. It is easy to use and there's a built in mini crm..."</blockquote>
+                    <figcaption class="mt-6 pt-4 border-t border-violet-100">
                         <p class="font-semibold text-gray-900">Joannah Rivera</p>
                         <p class="text-sm text-gray-600">Accounting Firm</p>
-                    </div>
-                </div>
+                    </figcaption>
+                </figure>
+            </div>
+            <div class="mt-14 sm:mt-16 max-w-lg mx-auto text-center reveal border-t border-violet-100 pt-12">
+                <p class="text-base sm:text-lg font-semibold text-gray-900">Your schedule can feel this calm too.</p>
+                <p class="mt-2 text-sm text-gray-600">Join professionals who stopped juggling DMs and spreadsheets.</p>
+                <a href="/auth/register" class="mt-6 inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors w-full sm:w-auto">Create your free account</a>
             </div>
         </div>
     </section>
 
-    <!-- Comparison Table Section -->
-    <section class="py-16 px-6 text-center bg-white">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-3xl font-bold mb-6 text-gray-900">See How isked Compares</h2>
-            <p class="text-gray-600 mb-12 text-lg">Why choose isked over other scheduling platforms?</p>
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-indigo-600 to-purple-600">
-                            <tr>
-                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Feature</th>
-                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">isked</th>
-                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Calendly</th>
-                                <th class="px-6 py-4 text-center text-sm font-semibold text-white">Google Appointment</th>
+    <!-- Pricing -->
+    <section id="pricing" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-brand-50/25 to-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-12 sm:mb-16 reveal">
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900 italic">Simple pricing</h2>
+                <p class="mt-4 text-base sm:text-lg text-gray-600">Start free, then unlock Pro when you are ready for unlimited scale.</p>
+            </div>
+            <div class="grid lg:grid-cols-3 gap-6 lg:gap-5 lg:items-stretch max-w-5xl mx-auto">
+                <div class="reveal rounded-2xl border border-violet-100 bg-white p-6 sm:p-8 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-900">Free</h3>
+                    <p class="mt-2 text-sm text-gray-600">Try isked and ship your first booking link.</p>
+                    <p class="mt-6 text-3xl font-bold text-gray-900">₱0</p>
+                    <p class="text-sm text-gray-500">Get started today</p>
+                    <ul class="mt-6 space-y-3 text-sm text-gray-600 flex-1">
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Core scheduling & links</li>
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Availability & buffers</li>
+                    </ul>
+                    <a href="/auth/register" class="mt-8 block w-full rounded-xl border-2 border-violet-200 py-3 text-center text-sm font-semibold text-gray-900 hover:bg-violet-50 transition-colors">Create account</a>
+                </div>
+                <div class="reveal rounded-2xl border-2 border-brand-500 bg-white p-6 sm:p-8 shadow-xl shadow-brand-600/15 flex flex-col lg:scale-[1.05] lg:z-10 relative">
+                    <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-0.5 text-xs font-bold uppercase tracking-wide text-white">Popular</span>
+                    <h3 class="text-lg font-bold text-gray-900">Pro</h3>
+                    <p class="mt-2 text-sm text-gray-600">Unlimited bookings, CRM depth, and exports.</p>
+                    <p class="mt-6 text-3xl font-bold text-gray-900">₱499<span class="text-base font-semibold text-gray-500">/mo</span></p>
+                    <p class="text-sm text-brand-700 font-medium">or ₱4,788/year — save 33%</p>
+                    <ul class="mt-6 space-y-3 text-sm text-gray-600 flex-1">
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Unlimited bookings</li>
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Unlimited contacts</li>
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Advanced CRM & Sheets export</li>
+                    </ul>
+                    <a href="/auth/register" class="mt-8 block w-full rounded-xl bg-brand-600 py-3 text-center text-sm font-semibold text-white hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/25">Start free, upgrade anytime</a>
+                </div>
+                <div class="reveal rounded-2xl border border-violet-100 bg-white p-6 sm:p-8 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-900">Teams</h3>
+                    <p class="mt-2 text-sm text-gray-600">Several calendars, onboarding, or invoicing workflows.</p>
+                    <p class="mt-6 text-3xl font-bold text-gray-900">Custom</p>
+                    <p class="text-sm text-gray-500">Let's design a fit</p>
+                    <ul class="mt-6 space-y-3 text-sm text-gray-600 flex-1">
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Volume & alignment calls</li>
+                        <li class="flex gap-2"><i data-feather="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> Priority rollout support</li>
+                    </ul>
+                    <a href="https://isked.app/booking/tjtalusan" class="mt-8 block w-full rounded-xl border-2 border-violet-200 py-3 text-center text-sm font-semibold text-gray-900 hover:bg-violet-50 transition-colors">Contact sales</a>
+                </div>
+            </div>
+            <div class="mt-12 sm:mt-14 max-w-xl mx-auto text-center reveal">
+                <p class="text-base font-semibold text-gray-900">Not sure where to start?</p>
+                <p class="mt-2 text-sm text-gray-600">Open a free account now — add Pro when you need unlimited scale.</p>
+                <a href="/auth/register" class="mt-5 inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors w-full sm:w-auto">Get started free</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-5xl mx-auto reveal">
+            <div class="text-center mb-10 sm:mb-12">
+                <h2 class="font-serif text-2xl sm:text-3xl font-bold text-gray-900 italic">See how isked compares</h2>
+                <p class="mt-3 text-gray-600 text-sm sm:text-base">Why teams choose isked for booking plus client memory.</p>
+            </div>
+            <div class="rounded-2xl border border-violet-100 shadow-xl shadow-gray-900/5 overflow-hidden bg-white">
+                <div class="overflow-x-auto -mx-px">
+                    <table class="w-full min-w-[520px]">
+                        <thead>
+                            <tr class="bg-gradient-to-r from-brand-600 to-brand-800 text-white text-left">
+                                <th class="px-4 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold">Feature</th>
+                                <th class="px-4 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold text-center">isked</th>
+                                <th class="px-4 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold text-center">Calendly</th>
+                                <th class="px-4 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold text-center whitespace-nowrap">Google Appointment</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Booking Link</td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
+                        <tbody class="divide-y divide-gray-100 text-xs sm:text-sm">
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Booking Link</td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
                             </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Client Data</td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Client Data</td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
                             </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Meeting History</td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Meeting History</td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
                             </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Follow-up Commitments</td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Follow-up Commitments</td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
                             </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Built-in CRM</td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                        Yes
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Built-in CRM</td>
+                                <td class="px-4 py-3 sm:px-6 text-center"><span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Yes</span></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
                             </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Export to Google Sheet</td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <svg class="w-6 h-6 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </td>
+                            <tr class="hover:bg-brand-50/40">
+                                <td class="px-4 py-3 sm:px-6 sm:py-4 font-medium text-gray-900">Export to Google Sheet</td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-emerald-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
+                                <td class="px-4 py-3 sm:px-6 text-center text-red-500"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+                <p class="px-4 py-3 text-xs text-gray-500 bg-gray-50 border-t border-gray-100 sm:hidden">Swipe sideways to see all columns.</p>
+            </div>
+            <div class="mt-12 sm:mt-14 max-w-lg mx-auto text-center reveal">
+                <p class="text-base sm:text-lg font-semibold text-gray-900">See the difference on your own calendar.</p>
+                <p class="mt-2 text-sm text-gray-600">Booking links plus client memory — without another complicated stack.</p>
+                <a href="/auth/register" class="mt-6 inline-flex justify-center items-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors w-full sm:w-auto">Sign up free</a>
             </div>
         </div>
     </section>
 
-    <!-- Final CTA with gradient background -->
-    <section class="py-16 px-6 text-center bg-gradient-to-b from-gray-50 to-white">
-        <h2 class="text-3xl font-bold mb-6 text-gray-900">Let Others Book You — Without the Hassle</h2>
-        <a href="/auth/register" class="mt-6 bg-indigo-600 text-white px-8 py-4 rounded-lg font-medium hover:bg-indigo-700 inline-block shadow-lg hover:shadow-xl transition-all hover:scale-105">
-            Get Started for Free
-        </a>
+    <!-- Final CTA -->
+    <section class="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-brand-700 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-30 pointer-events-none" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 45%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12) 0%, transparent 40%);"></div>
+        <div class="relative max-w-3xl mx-auto text-center reveal">
+            <h2 class="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-white italic leading-snug">Let others book you — without the hassle.</h2>
+            <p class="mt-4 text-brand-100 text-sm sm:text-base max-w-xl mx-auto">Create your link in minutes. Your calendar, buffers, and client notes stay aligned.</p>
+            <a href="/auth/register" class="mt-8 inline-flex items-center justify-center rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-brand-800 shadow-lg hover:bg-brand-50 transition-colors">
+                Get started for free
+            </a>
+        </div>
     </section>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-100">
-        <div class="max-w-7xl mx-auto py-12 px-6">
-            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-                <div class="text-gray-500 text-sm">
-                    © <%= new Date().getFullYear() %> isked. All rights reserved.
-                </div>
-                <div class="text-gray-500 text-sm">
-                    Questions? Email <a href="mailto:team@smallsimplesteps.co" class="text-indigo-600 hover:text-indigo-700">team@smallsimplesteps.co</a>
-                </div>
+    <footer class="border-t border-violet-100 bg-white">
+        <div class="max-w-7xl mx-auto py-10 sm:py-12 px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+                <p class="text-gray-500 text-sm">© <%= new Date().getFullYear() %> isked. All rights reserved.</p>
+                <p class="text-gray-500 text-sm">
+                    Questions? Email <a href="mailto:team@smallsimplesteps.co" class="font-medium text-brand-600 hover:text-brand-700">team@smallsimplesteps.co</a>
+                </p>
             </div>
         </div>
     </footer>
 
     <script>
         feather.replace();
+        (function () {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var els = document.querySelectorAll('.reveal');
+            if (!els.length || !('IntersectionObserver' in window)) {
+                els.forEach(function (el) { el.classList.add('reveal-visible'); });
+                return;
+            }
+            var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (e) {
+                    if (e.isIntersecting) {
+                        e.target.classList.add('reveal-visible');
+                        io.unobserve(e.target);
+                    }
+                });
+            }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+            els.forEach(function (el) { io.observe(el); });
+        })();
     </script>
 </body>
-</html> 
+</html>
