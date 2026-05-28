@@ -251,7 +251,11 @@ router.get('/contacts/:id', requireLogin, async (req, res) => {
     }
     const user = userResult.rows[0];
 
-    res.render('contact-detail', { user, contactId: id });
+    res.render('contact-detail', {
+      user,
+      contactId: id,
+      recurringClientsEnabled: res.locals.recurringClientsEnabled === true
+    });
   } catch (error) {
     return res.redirect('/contacts');
   }

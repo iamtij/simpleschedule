@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Client Schedules</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/js/toast.js" defer></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+    <%- include('partials/navigation', { currentPage: 'client-schedules', user: user }) %>
+
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Client Schedules</h1>
+                <p class="text-sm text-gray-600 mt-1">Recurring meetings booked in advance with your clients</p>
+            </div>
+            <a href="/client-schedules/new" class="inline-flex justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                Schedule recurring client
+            </a>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="loading" class="text-center text-gray-500 py-12">Loading schedules...</div>
+        <div id="empty-state" class="hidden text-center py-16">
+            <p class="text-gray-600 mb-4">No recurring client schedules yet.</p>
+            <a href="/client-schedules/new" class="text-blue-600 hover:underline font-medium">Create your first series</a>
+        </div>
+        <div id="series-list" class="space-y-4 hidden"></div>
+    </main>
+
+    <script>
+        const frequencyLabels = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' };
+
+        function formatTime(t) {
+            if (!t) return '';
+            const [h, m] = t.split(':');
+            const hour = parseInt(h, 10);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            return `${hour % 12 || 12}:${m} ${ampm}`;
+        }
+
+        function formatDate(d) {
+            if (!d) return '';
+            const [y, mo, day] = d.split('-').map(Number);
+            return new Date(y, mo - 1, day).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        async function cancelSeries(seriesId) {
+            if (!confirm('Cancel all future meetings in this series?')) return;
+            const res = await fetch(`/client-schedules/${seriesId}/cancel`, { method: 'PATCH' });
+            if (res.ok) {
+                toast.show({ type: 'success', title: 'Cancelled', message: 'Series cancelled.' });
+                loadSeries();
+            } else {
+                const data = await res.json();
+                toast.show({ type: 'error', title: 'Error', message: data.error || 'Failed to cancel' });
+            }
+        }
+
+        async function cancelOccurrence(seriesId, bookingId) {
+            if (!confirm('Cancel this meeting only?')) return;
+            const res = await fetch(`/client-schedules/${seriesId}/occurrences/${bookingId}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.show({ type: 'success', title: 'Cancelled', message: 'Meeting cancelled.' });
+                loadSeries();
+            } else {
+                const data = await res.json();
+                toast.show({ type: 'error', title: 'Error', message: data.error || 'Failed to cancel' });
+            }
+        }
+
+        function renderSeries(series) {
+            const today = new Date().toISOString().split('T')[0];
+            const activeBookings = (series.bookings || []).filter(b => b.status !== 'cancelled');
+            const completed = activeBookings.filter(b => b.date < today).length;
+            const upcoming = activeBookings.filter(b => b.date >= today);
+            const next = upcoming[0];
+            const isCancelled = series.status === 'cancelled';
+
+            const occurrencesHtml = (series.bookings || []).map(b => {
+                const isPast = b.date < today;
+                const cancelled = b.status === 'cancelled';
+                const statusClass = cancelled ? 'text-gray-400 line-through' : (isPast ? 'text-gray-500' : 'text-gray-800');
+                let actions = '';
+                if (!cancelled && !isPast && !isCancelled) {
+                    actions = `<button type="button" class="text-red-600 text-xs hover:underline ml-2" data-cancel-occurrence="${series.id}" data-booking-id="${b.id}">Cancel</button>`;
+                }
+                return `<li class="flex justify-between items-center py-1 ${statusClass}">
+                    <span>#${b.occurrence_index} — ${formatDate(b.date)} ${formatTime(b.start_time)}–${formatTime(b.end_time)}${cancelled ? ' (cancelled)' : ''}</span>${actions}</li>`;
+            }).join('');
+
+            return `<div class="bg-white rounded-lg shadow border ${isCancelled ? 'opacity-75' : ''}">
+                <div class="p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">${series.client_name}</h2>
+                            <p class="text-sm text-gray-500">${series.client_email}${series.client_phone ? ' · ' + series.client_phone : ''}</p>
+                            <p class="text-sm text-gray-600 mt-2">
+                                ${frequencyLabels[series.frequency] || series.frequency} · ${completed} / ${series.total_occurrences} completed
+                                ${isCancelled ? '<span class="ml-2 text-red-600 font-medium">(Series cancelled)</span>' : ''}
+                            </p>
+                            ${next && !isCancelled ? `<p class="text-sm text-blue-600 mt-1">Next: ${formatDate(next.date)} at ${formatTime(next.start_time)}</p>` : ''}
+                        </div>
+                        ${!isCancelled ? `<button type="button" class="text-red-600 text-sm font-medium hover:underline" data-cancel-series="${series.id}">Cancel series</button>` : ''}
+                    </div>
+                    <details class="mt-4">
+                        <summary class="text-sm text-blue-600 cursor-pointer hover:underline">View all ${(series.bookings || []).length} meetings</summary>
+                        <ul class="mt-2 border-t pt-2 divide-y">${occurrencesHtml}</ul>
+                    </details>
+                </div>
+            </div>`;
+        }
+
+        async function loadSeries() {
+            const loading = document.getElementById('loading');
+            const empty = document.getElementById('empty-state');
+            const list = document.getElementById('series-list');
+            try {
+                const res = await fetch('/client-schedules/api');
+                const data = await res.json();
+                loading.classList.add('hidden');
+                if (!data.series || data.series.length === 0) {
+                    empty.classList.remove('hidden');
+                    list.classList.add('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+                list.classList.remove('hidden');
+                list.innerHTML = data.series.map(renderSeries).join('');
+
+                list.querySelectorAll('[data-cancel-series]').forEach(btn => {
+                    btn.addEventListener('click', () => cancelSeries(btn.dataset.cancelSeries));
+                });
+                list.querySelectorAll('[data-cancel-occurrence]').forEach(btn => {
+                    btn.addEventListener('click', () => cancelOccurrence(btn.dataset.cancelOccurrence, btn.dataset.bookingId));
+                });
+            } catch {
+                loading.textContent = 'Failed to load schedules.';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSeries);
+    </script>
+</body>
+</html>

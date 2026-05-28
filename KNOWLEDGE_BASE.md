@@ -497,9 +497,12 @@ Access is checked in this order:
 
 ### Database Migrations
 - All migrations are in `/migrations` directory
-- Run migrations with: `npm run migrate`
+- Local: `npm run migrate` (uses `DATABASE_URL` in `.env`)
+- Railway production from your machine: set `RAILWAY_DATABASE_URL` in `.env` (public Postgres URL from Railway dashboard), then `npm run migrate:railway`
+- On deploy, Railway runs migrations automatically via `start.sh`
 - Migrations are numbered sequentially
 - Always backup database before running migrations
+- Never commit `.env` or real database credentials; use `.env.example` for variable names only
 
 ### Logs
 - Server logs: Check console output or log files

@@ -1262,4 +1262,5 @@ router.get('/:username/confirmation/:confirmationUuid', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
+module.exports.getSlotsForUser = getSlotsForUser; 

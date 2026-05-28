@@ -12,6 +12,7 @@ if (config.env === 'production') {
 }
 
 const app = express();
+const db = require('./db');
 
 // Production security headers
 if (config.env === 'production') {
@@ -56,6 +57,23 @@ const sessionConfig = {
 
 app.use(session(sessionConfig));
 
+// Per-user feature flags for templates
+app.use(async (req, res, next) => {
+    res.locals.recurringClientsEnabled = false;
+    if (req.session.userId) {
+        try {
+            const result = await db.query(
+                'SELECT recurring_clients_enabled FROM users WHERE id = $1',
+                [req.session.userId]
+            );
+            res.locals.recurringClientsEnabled = result.rows[0]?.recurring_clients_enabled === true;
+        } catch {
+            res.locals.recurringClientsEnabled = false;
+        }
+    }
+    next();
+});
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -89,6 +107,7 @@ const crmRoutes = require('./routes/crm');
 const telegramRoutes = require('./routes/telegram');
 const shortUrlRoutes = require('./routes/shortUrl');
 const revenueCatRoutes = require('./routes/revenuecat');
+const clientSchedulesRoutes = require('./routes/clientSchedules');
 // Reminders handled by Railway cron (scripts/runReminders.js) - not in-app
 
 // Mount routes
@@ -99,6 +118,7 @@ app.use('/upgrade', upgradeRoutes);
 app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
+app.use('/client-schedules', clientSchedulesRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/revenuecat', revenueCatRoutes);
 app.use('/', shortUrlRoutes); // Short URL routes (must be before root routes)

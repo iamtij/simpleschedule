@@ -53,14 +53,35 @@ A modern scheduling application built with Node.js, Express, and PostgreSQL/SQLi
 The application uses a unified migration system that works with both PostgreSQL and SQLite:
 
 ```bash
+# Local database (uses DATABASE_URL from .env)
 npm run migrate
 ```
+
+Migrations also run automatically on Railway deploy (`start.sh` runs them before the app starts).
+
+To run migrations against **Railway production from your machine**, use the Postgres **public** URL (host like `*.proxy.rlwy.net`). Railway’s internal `postgres.railway.internal` URL only works inside Railway’s network.
+
+1. In Railway: Postgres service → **Connect** → copy the public connection URL
+2. Add to your local `.env` (never commit this file):
+
+   ```
+   RAILWAY_DATABASE_URL=postgresql://postgres:...@....proxy.rlwy.net:PORT/railway
+   ```
+
+3. Run:
+
+   ```bash
+   npm run migrate:railway
+   ```
+
+See `.env.example` for the variable names.
 
 ## Environment Variables
 
 - `NODE_ENV`: Set to 'production' or 'development'
 - `PORT`: Server port (default: 3000)
-- `DATABASE_URL`: Database connection string
+- `DATABASE_URL`: Database connection string (local dev)
+- `RAILWAY_DATABASE_URL`: (optional, local `.env` only) Public Railway Postgres URL for `npm run migrate:railway`
 - `SESSION_SECRET`: Secret for session encryption
 - `LOGO_UPLOAD_DIR`: (optional) Path for booking logos. On Railway with a Volume mounted at `/data`, set to `/data/booking-logos` for persistent storage.
 

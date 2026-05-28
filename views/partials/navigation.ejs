@@ -20,6 +20,12 @@
                        class="<%= currentPage === 'contacts' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600' %> px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         Contacts
                     </a>
+                    <% if (typeof recurringClientsEnabled !== 'undefined' && recurringClientsEnabled) { %>
+                    <a href="/client-schedules" 
+                       class="<%= currentPage === 'client-schedules' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600' %> px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        Client Schedules
+                    </a>
+                    <% } %>
                     <a href="/settings" 
                        class="<%= currentPage === 'settings' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600' %> px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         Settings
@@ -111,6 +117,12 @@
                    class="<%= currentPage === 'contacts' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100' %> block px-3 py-2 rounded-md text-base font-medium transition-colors">
                     Contacts
                 </a>
+                <% if (typeof recurringClientsEnabled !== 'undefined' && recurringClientsEnabled) { %>
+                <a href="/client-schedules" 
+                   class="<%= currentPage === 'client-schedules' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100' %> block px-3 py-2 rounded-md text-base font-medium transition-colors">
+                    Client Schedules
+                </a>
+                <% } %>
                 <a href="/settings" 
                    class="<%= currentPage === 'settings' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100' %> block px-3 py-2 rounded-md text-base font-medium transition-colors">
                     Settings

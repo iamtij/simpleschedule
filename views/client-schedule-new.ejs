@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Schedule Recurring Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link href="/css/toast.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="/js/toast.js" defer></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+    <%- include('partials/navigation', { currentPage: 'client-schedules', user: user }) %>
+
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-3xl mx-auto px-4 py-4">
+            <a href="/client-schedules" class="text-sm text-gray-500 hover:text-gray-700">← Back to Client Schedules</a>
+            <h1 class="text-2xl font-bold text-gray-900 mt-2">Schedule recurring client</h1>
+            <p class="text-sm text-gray-600 mt-1">Book a client for multiple future meetings at the same time</p>
+        </div>
+    </div>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+        <form id="schedule-form" class="bg-white rounded-lg shadow p-6 space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CRM contact (optional)</label>
+                <select id="contact-select" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">— Enter client manually —</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client name *</label>
+                    <input type="text" id="client-name" required class="w-full border rounded-lg px-3 py-2"
+                        value="<%= contact ? contact.name : '' %>">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client email *</label>
+                    <input type="email" id="client-email" required class="w-full border rounded-lg px-3 py-2"
+                        value="<%= contact ? (contact.email || '') : '' %>">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client phone</label>
+                    <input type="tel" id="client-phone" class="w-full border rounded-lg px-3 py-2"
+                        value="<%= contact ? (contact.phone || '') : '' %>">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Meeting duration (minutes)</label>
+                    <select id="duration" class="w-full border rounded-lg px-3 py-2">
+                        <% const durList = durations && durations.length ? durations : [defaultDuration || 60]; %>
+                        <% durList.forEach(function(d) { %>
+                        <option value="<%= d %>" <%= d === (defaultDuration || 60) ? 'selected' : '' %>><%= d %> min</option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First meeting date *</label>
+                    <input type="text" id="start-date" required class="w-full border rounded-lg px-3 py-2" placeholder="Select date">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Time slot *</label>
+                <div id="slots-loading" class="text-sm text-gray-500 hidden">Loading available times...</div>
+                <div id="slots-empty" class="text-sm text-gray-500 hidden">Select a date to see available times.</div>
+                <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Repeats *</label>
+                    <select id="frequency" class="w-full border rounded-lg px-3 py-2">
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Every 2 weeks</option>
+                        <option value="monthly">Monthly (same day each month)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Total meetings in series *</label>
+                    <input type="number" id="total-occurrences" min="2" max="52" value="4" required
+                        class="w-full border rounded-lg px-3 py-2">
+                    <p class="text-xs text-gray-500 mt-1">How many meetings in the future (2–52)</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="notes" rows="2" class="w-full border rounded-lg px-3 py-2"></textarea>
+            </div>
+
+            <div id="preview-section" class="hidden border rounded-lg p-4 bg-gray-50">
+                <h3 class="text-sm font-medium text-gray-900 mb-2">Preview</h3>
+                <ul id="preview-list" class="text-sm space-y-1 max-h-48 overflow-y-auto"></ul>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button type="button" id="preview-btn" class="border border-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50">
+                    Preview dates
+                </button>
+                <button type="submit" id="submit-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">
+                    Confirm schedule
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        const preselectedContactId = <%= contact ? contact.id : 'null' %>;
+        let selectedDate = null;
+        let selectedSlot = null;
+        let contactsCache = [];
+
+        const datePicker = flatpickr('#start-date', {
+            minDate: 'today',
+            dateFormat: 'Y-m-d',
+            onChange: function(dates, dateStr) {
+                selectedDate = dateStr;
+                selectedSlot = null;
+                loadSlots();
+            }
+        });
+
+        function minutesToTime(mins) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        async function loadContacts() {
+            try {
+                const res = await fetch('/crm/?limit=500');
+                const data = await res.json();
+                if (!data.success) return;
+                contactsCache = data.contacts || [];
+                const sel = document.getElementById('contact-select');
+                contactsCache.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.name}${c.email ? ' (' + c.email + ')' : ''}`;
+                    if (preselectedContactId && c.id === preselectedContactId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('contact-select').addEventListener('change', function() {
+            const id = this.value;
+            if (!id) return;
+            const c = contactsCache.find(x => String(x.id) === String(id));
+            if (c) {
+                document.getElementById('client-name').value = c.name || '';
+                document.getElementById('client-email').value = c.email || '';
+                document.getElementById('client-phone').value = c.phone || '';
+            }
+        });
+
+        async function loadSlots() {
+            const grid = document.getElementById('slots-grid');
+            const loading = document.getElementById('slots-loading');
+            const empty = document.getElementById('slots-empty');
+            grid.innerHTML = '';
+            if (!selectedDate) {
+                empty.classList.remove('hidden');
+                loading.classList.add('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            loading.classList.remove('hidden');
+            const duration = document.getElementById('duration').value;
+            try {
+                const res = await fetch(`/client-schedules/slots?date=${selectedDate}&duration=${duration}`);
+                const data = await res.json();
+                loading.classList.add('hidden');
+                if (!data.slots || data.slots.length === 0) {
+                    empty.textContent = 'No available slots on this date.';
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                data.slots.forEach(slot => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'slot-btn border rounded-lg px-2 py-2 text-sm hover:border-blue-500 hover:bg-blue-50';
+                    btn.textContent = `${slot.start_time} – ${slot.end_time}`;
+                    btn.dataset.start = slot.start_time;
+                    btn.dataset.end = slot.end_time;
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.slot-btn').forEach(b => {
+                            b.classList.remove('border-blue-600', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+                        });
+                        btn.classList.add('border-blue-600', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+                        selectedSlot = { start: slot.start_time, end: slot.end_time };
+                    });
+                    grid.appendChild(btn);
+                });
+            } catch {
+                loading.classList.add('hidden');
+                empty.textContent = 'Failed to load slots.';
+                empty.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('duration').addEventListener('change', loadSlots);
+
+        function getPayload() {
+            return {
+                contact_id: document.getElementById('contact-select').value || null,
+                client_name: document.getElementById('client-name').value.trim(),
+                client_email: document.getElementById('client-email').value.trim(),
+                client_phone: document.getElementById('client-phone').value.trim() || null,
+                start_date: selectedDate,
+                start_time: selectedSlot?.start,
+                end_time: selectedSlot?.end,
+                frequency: document.getElementById('frequency').value,
+                total_occurrences: parseInt(document.getElementById('total-occurrences').value, 10),
+                notes: document.getElementById('notes').value.trim() || null
+            };
+        }
+
+        document.getElementById('preview-btn').addEventListener('click', async () => {
+            if (!selectedDate || !selectedSlot) {
+                toast.show({ type: 'error', title: 'Missing info', message: 'Select a date and time slot.' });
+                return;
+            }
+            const payload = getPayload();
+            const res = await fetch('/client-schedules/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                toast.show({ type: 'error', title: 'Preview failed', message: data.error || 'Could not preview' });
+                return;
+            }
+            const list = document.getElementById('preview-list');
+            const section = document.getElementById('preview-section');
+            section.classList.remove('hidden');
+            list.innerHTML = data.dates.map(d => {
+                const cls = d.available ? 'text-green-700' : 'text-red-600';
+                const note = d.available ? '' : ` — ${d.reason}`;
+                return `<li class="${cls}">${d.date} (meeting ${d.occurrence_index})${note}</li>`;
+            }).join('');
+            if (data.has_conflicts) {
+                toast.show({ type: 'warning', title: 'Conflicts', message: 'Some dates are unavailable. Adjust or pick another slot.' });
+            }
+        });
+
+        document.getElementById('schedule-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedDate || !selectedSlot) {
+                toast.show({ type: 'error', title: 'Missing info', message: 'Select a date and time slot.' });
+                return;
+            }
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            try {
+                const res = await fetch('/client-schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getPayload())
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    window.location.href = '/client-schedules';
+                    return;
+                }
+                if (data.conflicts) {
+                    toast.show({ type: 'error', title: 'Conflicts', message: data.conflicts.map(c => `${c.date}: ${c.reason}`).join('; ') });
+                } else {
+                    toast.show({ type: 'error', title: 'Error', message: data.error || 'Failed to create schedule' });
+                }
+            } catch {
+                toast.show({ type: 'error', title: 'Error', message: 'Network error' });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirm schedule';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadContacts();
+            if (preselectedContactId) {
+                document.getElementById('contact-select').dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
+</body>
+</html>

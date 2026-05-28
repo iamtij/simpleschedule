@@ -1531,6 +1531,119 @@ View user profile: ${adminUrl}
             throw error;
         }
     }
+
+    _formatFrequencyLabel(frequency) {
+        const labels = {
+            weekly: 'Weekly',
+            biweekly: 'Every 2 weeks',
+            monthly: 'Monthly'
+        };
+        return labels[frequency] || frequency;
+    }
+
+    _formatOccurrencesList(bookings) {
+        return bookings
+            .map((b) => {
+                const d = this._formatBookingDate(b.date);
+                const start = b.formatted_start_time || this._formatTime(b.start_time);
+                const end = b.formatted_end_time || this._formatTime(b.end_time);
+                return `<li style="margin: 0 0 6px 0; font-size: 15px; color: #374151;">${d} — ${start} to ${end}</li>`;
+            })
+            .join('');
+    }
+
+    _formatOccurrencesListPlain(bookings) {
+        return bookings
+            .map((b) => {
+                const d = this._formatBookingDate(b.date);
+                const start = b.formatted_start_time || this._formatTime(b.start_time);
+                const end = b.formatted_end_time || this._formatTime(b.end_time);
+                return `- ${d}: ${start} - ${end}`;
+            })
+            .join('\n');
+    }
+
+    async sendRecurringSeriesClientConfirmation(series, bookings, host) {
+        if (!this.enabled || !bookings.length) {
+            return null;
+        }
+
+        const hostName = host.name || host.display_name || host.full_name || host.username;
+        const frequencyLabel = this._formatFrequencyLabel(series.frequency);
+        const listHtml = this._formatOccurrencesList(bookings);
+        const first = bookings[0];
+        const formattedStart = first.formatted_start_time || this._formatTime(first.start_time);
+        const formattedEnd = first.formatted_end_time || this._formatTime(first.end_time);
+
+        const content = `
+            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                Hello ${series.client_name},
+            </p>
+            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                Your recurring appointments with ${hostName} have been scheduled (${frequencyLabel}, ${bookings.length} meetings).
+            </p>
+            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                <p style="margin: 0 0 12px 0; font-size: 15px; color: #111827; font-weight: 500;">Each session: ${formattedStart} - ${formattedEnd}</p>
+                ${host.meeting_link ? `<p style="margin: 0 0 12px 0; font-size: 15px; color: #374151;">Meeting link: <a href="${host.meeting_link}" style="color: #3b82f6;">${host.meeting_link}</a></p>` : ''}
+                <ul style="margin: 12px 0 0 0; padding-left: 20px;">${listHtml}</ul>
+                ${series.notes ? `<p style="margin: 16px 0 0 0; font-size: 15px; color: #374151;">Notes: ${series.notes}</p>` : ''}
+            </div>
+            <p style="margin: 0; font-size: 16px; color: #333333; text-align: center;">Thank you for using isked!</p>`;
+
+        const plainList = this._formatOccurrencesListPlain(bookings);
+
+        try {
+            return await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [series.client_email],
+                subject: `Recurring appointments confirmed with ${hostName}`,
+                text: `Hello ${series.client_name},\n\nYour ${bookings.length} recurring appointments (${frequencyLabel}) with ${hostName} are confirmed.\n\nTime each session: ${formattedStart} - ${formattedEnd}\n${host.meeting_link ? `Meeting link: ${host.meeting_link}\n` : ''}\n${plainList}\n\nThank you!`,
+                html: this._generateEmailTemplate(content)
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async sendRecurringSeriesHostNotification(series, bookings, host) {
+        if (!this.enabled || !bookings.length) {
+            return null;
+        }
+
+        const hostName = host.name || host.display_name || host.full_name || host.username;
+        const frequencyLabel = this._formatFrequencyLabel(series.frequency);
+        const listHtml = this._formatOccurrencesList(bookings);
+        const dashboardUrl = `${process.env.APP_URL || 'https://isked.app'}/client-schedules`;
+
+        const content = `
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; text-align: center;">Hello ${hostName},</p>
+            <p style="margin: 0 0 24px 0; font-size: 16px; color: #333333; text-align: center;">
+                You scheduled ${bookings.length} recurring meetings with ${series.client_name} (${frequencyLabel}).
+            </p>
+            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #374151;">Client: ${series.client_name}</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #374151;">Email: ${series.client_email}</p>
+                ${series.client_phone ? `<p style="margin: 0 0 12px 0; font-size: 15px; color: #374151;">Phone: ${series.client_phone}</p>` : ''}
+                <ul style="margin: 12px 0 0 0; padding-left: 20px;">${listHtml}</ul>
+            </div>
+            <p style="margin: 0; text-align: center;">
+                <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500;">View Client Schedules</a>
+            </p>`;
+
+        const plainList = this._formatOccurrencesListPlain(bookings);
+
+        try {
+            return await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [host.email],
+                subject: `Recurring schedule created: ${series.client_name}`,
+                text: `Hello ${hostName},\n\nYou created ${bookings.length} recurring meetings with ${series.client_name} (${frequencyLabel}).\n\n${plainList}\n\nView: ${dashboardUrl}`,
+                html: this._generateEmailTemplate(content)
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = new MailService(); 

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>isked - Client Schedules</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+    <%- include('partials/navigation', { currentPage: 'client-schedules', user: user }) %>
+    <main class="max-w-2xl mx-auto px-4 py-16 text-center">
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">Client Schedules</h1>
+        <p class="text-gray-600 mb-6">Recurring client scheduling is not enabled for your account. Contact support or your administrator to request access.</p>
+        <a href="/dashboard" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Back to Dashboard</a>
+    </main>
+</body>
+</html>

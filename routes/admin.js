@@ -211,6 +211,7 @@ router.get('/users/data', requireAdmin, async (req, res) => {
                 u.pro_expires_at,
                 u.pro_started_at,
                 u.trial_started_at,
+                u.recurring_clients_enabled,
                 COALESCE(u.plan_type, latest_proof.plan_type) as plan_type
              FROM users u
              LEFT JOIN LATERAL (
@@ -915,7 +916,7 @@ router.post('/coupons/:id/send-email-to-users', requireAdmin, async (req, res) =
 // Update user
 router.put('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
-    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type, manual_plan_type } = req.body;
+    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type, manual_plan_type, recurring_clients_enabled } = req.body;
     
     try {
         // Get current user state to check if is_pro is changing from false to true
@@ -1007,6 +1008,8 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
         // If set to empty string or null, clear the manual override
         const planTypeToSave = manual_plan_type === '' || manual_plan_type === null ? null : manual_plan_type;
 
+        const recurringClientsEnabled = recurring_clients_enabled === true || recurring_clients_enabled === 'true';
+
         const result = await db.query(
             `UPDATE users 
              SET full_name = $1, 
@@ -1016,10 +1019,11 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
                  pro_expires_at = $5,
                  pro_started_at = $6,
                  plan_type = $7,
+                 recurring_clients_enabled = $8,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $8
+             WHERE id = $9
              RETURNING *`,
-            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, planTypeToSave, userId]
+            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, planTypeToSave, recurringClientsEnabled, userId]
         );
 
         if (result.rows.length === 0) {

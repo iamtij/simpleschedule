@@ -7,6 +7,7 @@
     "start": "bash start.sh",
     "dev": "nodemon index.js",
     "migrate": "node db/migrate.js",
+    "migrate:railway": "bash scripts/migrate-railway.sh",
     "setup": "npm run migrate",
     "reminders": "node scripts/runReminders.js",
     "favicons": "node scripts/generate-favicons.js",
