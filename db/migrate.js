@@ -53,6 +53,7 @@ async function runMigrations() {
         const executedMigrations = new Set(result.rows.map(r => r.name));
 
         // Run pending migrations
+        let applied = 0;
         for (const file of sqlFiles) {
             if (!executedMigrations.has(file)) {
                 // Read migration file
@@ -68,10 +69,15 @@ async function runMigrations() {
                         'INSERT INTO migrations (name) VALUES ($1)',
                         [file]
                     );
+                    console.log(`Applied migration: ${file}`);
+                    applied++;
                 } catch (error) {
                     throw error;
                 }
             }
+        }
+        if (applied === 0) {
+            console.log('No pending migrations.');
         }
         
         // Attempt to fix collation version mismatch warning

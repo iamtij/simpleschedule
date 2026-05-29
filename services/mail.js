@@ -1536,7 +1536,8 @@ View user profile: ${adminUrl}
         const labels = {
             weekly: 'Weekly',
             biweekly: 'Every 2 weeks',
-            monthly: 'Monthly'
+            monthly: 'Monthly',
+            custom: 'Custom dates'
         };
         return labels[frequency] || frequency;
     }
@@ -1574,6 +1575,9 @@ View user profile: ${adminUrl}
         const first = bookings[0];
         const formattedStart = first.formatted_start_time || this._formatTime(first.start_time);
         const formattedEnd = first.formatted_end_time || this._formatTime(first.end_time);
+        const portalUrl = series.client_confirmation_token
+            ? `${process.env.APP_URL || 'https://isked.app'}/schedule/series/${series.client_confirmation_token}`
+            : null;
 
         const content = `
             <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
@@ -1588,6 +1592,9 @@ View user profile: ${adminUrl}
                 <ul style="margin: 12px 0 0 0; padding-left: 20px;">${listHtml}</ul>
                 ${series.notes ? `<p style="margin: 16px 0 0 0; font-size: 15px; color: #374151;">Notes: ${series.notes}</p>` : ''}
             </div>
+            ${portalUrl ? `<p style="margin: 0 0 24px 0; text-align: center;">
+                <a href="${portalUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500;">View schedule &amp; add to calendar</a>
+            </p>` : ''}
             <p style="margin: 0; font-size: 16px; color: #333333; text-align: center;">Thank you for using isked!</p>`;
 
         const plainList = this._formatOccurrencesListPlain(bookings);
@@ -1597,7 +1604,7 @@ View user profile: ${adminUrl}
                 from: `isked <postmaster@${this.domain}>`,
                 to: [series.client_email],
                 subject: `Recurring appointments confirmed with ${hostName}`,
-                text: `Hello ${series.client_name},\n\nYour ${bookings.length} recurring appointments (${frequencyLabel}) with ${hostName} are confirmed.\n\nTime each session: ${formattedStart} - ${formattedEnd}\n${host.meeting_link ? `Meeting link: ${host.meeting_link}\n` : ''}\n${plainList}\n\nThank you!`,
+                text: `Hello ${series.client_name},\n\nYour ${bookings.length} recurring appointments (${frequencyLabel}) with ${hostName} are confirmed.\n\nTime each session: ${formattedStart} - ${formattedEnd}\n${host.meeting_link ? `Meeting link: ${host.meeting_link}\n` : ''}\n${plainList}${portalUrl ? `\n\nView your schedule and add meetings to your calendar:\n${portalUrl}\n` : ''}\n\nThank you!`,
                 html: this._generateEmailTemplate(content)
             });
         } catch (error) {

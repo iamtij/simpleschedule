@@ -1036,7 +1036,11 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating user:', error);
-        res.status(500).json({ error: 'Failed to update user' });
+        const message = error.message || 'Failed to update user';
+        const hint = message.includes('recurring_clients_enabled')
+            ? ' Run npm run migrate locally (migration 045).'
+            : '';
+        res.status(500).json({ error: `Failed to update user: ${message}${hint}` });
     }
 });
 

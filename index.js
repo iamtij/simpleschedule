@@ -108,6 +108,7 @@ const telegramRoutes = require('./routes/telegram');
 const shortUrlRoutes = require('./routes/shortUrl');
 const revenueCatRoutes = require('./routes/revenuecat');
 const clientSchedulesRoutes = require('./routes/clientSchedules');
+const clientSchedulePortalRoutes = require('./routes/clientSchedulePortal');
 // Reminders handled by Railway cron (scripts/runReminders.js) - not in-app
 
 // Mount routes
@@ -119,6 +120,7 @@ app.use('/test', testRoutes);
 app.use('/admin', adminRoutes);
 app.use('/crm', crmRoutes);
 app.use('/client-schedules', clientSchedulesRoutes);
+app.use('/schedule', clientSchedulePortalRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/revenuecat', revenueCatRoutes);
 app.use('/', shortUrlRoutes); // Short URL routes (must be before root routes)

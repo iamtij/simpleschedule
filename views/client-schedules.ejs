@@ -34,8 +34,48 @@
         <div id="series-list" class="space-y-4 hidden"></div>
     </main>
 
+    <!-- Edit meeting modal -->
+    <div id="edit-occurrence-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50 overflow-y-auto">
+        <div class="relative top-16 mx-auto p-5 border max-w-md w-full shadow-lg rounded-lg bg-white m-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Edit meeting</h3>
+            <p class="text-xs text-gray-500 mb-4">Only meetings the client has not confirmed can be changed.</p>
+            <form id="edit-occurrence-form" class="space-y-4">
+                <input type="hidden" id="edit-series-id">
+                <input type="hidden" id="edit-booking-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="date" id="edit-date" required class="w-full border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Start time</label>
+                    <input type="time" id="edit-start-time" required class="w-full border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                    <select id="edit-duration-preset" class="w-full border rounded-lg px-3 py-2">
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">60 minutes</option>
+                        <option value="90">90 minutes</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <div id="edit-duration-custom-wrap" class="hidden mt-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Custom duration (minutes)</label>
+                        <input type="number" id="edit-duration-custom" min="5" max="480" value="60"
+                            class="w-full border rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                <p id="edit-end-preview" class="text-xs text-gray-500"></p>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="edit-cancel-btn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        const frequencyLabels = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' };
+        const frequencyLabels = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly', custom: 'Custom dates' };
 
         function formatTime(t) {
             if (!t) return '';
@@ -49,6 +89,19 @@
             if (!d) return '';
             const [y, mo, day] = d.split('-').map(Number);
             return new Date(y, mo - 1, day).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function formatConflictMessage(data) {
+            if (data.conflictType === 'google_calendar') {
+                return 'This time conflicts with an event on your Google Calendar. Choose another slot.';
+            }
+            if (data.conflictType === 'break') {
+                return 'This time falls during one of your breaks. Choose another slot.';
+            }
+            if (data.conflictType === 'booking') {
+                return data.error || 'This time conflicts with another booking.';
+            }
+            return data.error || 'This time is not available.';
         }
 
         async function cancelSeries(seriesId) {
@@ -83,16 +136,59 @@
             const next = upcoming[0];
             const isCancelled = series.status === 'cancelled';
 
+            const portalUrl = series.client_portal_url || '';
+            const shareBlock = portalUrl ? `
+                <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                    <p class="text-xs font-medium text-indigo-900 mb-2">Client confirmation link</p>
+                    <p class="text-xs text-indigo-800 mb-2">Share this link so ${series.client_name} can confirm each meeting and add it to their calendar.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" readonly value="${portalUrl}"
+                            class="client-portal-url flex-1 text-xs border border-indigo-200 rounded px-2 py-1.5 bg-white text-gray-700 truncate"
+                            aria-label="Client confirmation link">
+                        <button type="button" class="copy-portal-link shrink-0 text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700"
+                            data-url="${portalUrl}">
+                            Copy link
+                        </button>
+                        <a href="${portalUrl}" target="_blank" rel="noopener"
+                            class="shrink-0 text-xs font-medium text-center border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded hover:bg-indigo-100">
+                            Preview
+                        </a>
+                    </div>
+                    ${series.client_all_confirmed
+                        ? '<p class="text-xs text-green-700 mt-2 font-medium">Client confirmed all upcoming meetings</p>'
+                        : `<p class="text-xs text-indigo-700 mt-2">${series.client_confirmed_count || 0} of ${(series.client_confirmed_count || 0) + (series.client_pending_count || 0)} upcoming meetings confirmed</p>`
+                    }
+                </div>` : '';
+
             const occurrencesHtml = (series.bookings || []).map(b => {
                 const isPast = b.date < today;
                 const cancelled = b.status === 'cancelled';
                 const statusClass = cancelled ? 'text-gray-400 line-through' : (isPast ? 'text-gray-500' : 'text-gray-800');
+                let statusBadge = '';
+                if (!cancelled && !isPast) {
+                    if (b.client_confirmed) {
+                        statusBadge = '<span class="text-green-600 text-xs ml-1">(confirmed)</span>';
+                    } else {
+                        statusBadge = '<span class="text-amber-600 text-xs ml-1">(pending)</span>';
+                    }
+                }
                 let actions = '';
                 if (!cancelled && !isPast && !isCancelled) {
-                    actions = `<button type="button" class="text-red-600 text-xs hover:underline ml-2" data-cancel-occurrence="${series.id}" data-booking-id="${b.id}">Cancel</button>`;
+                    if (!b.client_confirmed) {
+                        const startM = b.start_time ? b.start_time.slice(0, 5) : '09:00';
+                        const endM = b.end_time ? b.end_time.slice(0, 5) : startM;
+                        const [sh, sm] = startM.split(':').map(Number);
+                        const [eh, em] = endM.split(':').map(Number);
+                        const bookingDur = Math.max(5, (eh * 60 + em) - (sh * 60 + sm)) || (series.duration_minutes || 60);
+                        actions += `<button type="button" class="text-blue-600 text-xs hover:underline ml-2 edit-occurrence-btn"
+                            data-series-id="${series.id}" data-booking-id="${b.id}"
+                            data-date="${b.date}" data-start="${b.start_time}" data-duration="${bookingDur}">Edit</button>`;
+                    }
+                    actions += `<button type="button" class="text-red-600 text-xs hover:underline ml-2" data-cancel-occurrence="${series.id}" data-booking-id="${b.id}">Cancel</button>`;
                 }
-                return `<li class="flex justify-between items-center py-1 ${statusClass}">
-                    <span>#${b.occurrence_index} — ${formatDate(b.date)} ${formatTime(b.start_time)}–${formatTime(b.end_time)}${cancelled ? ' (cancelled)' : ''}</span>${actions}</li>`;
+                return `<li class="flex justify-between items-start py-2 ${statusClass}">
+                    <span class="flex-1">#${b.occurrence_index} — ${formatDate(b.date)} ${formatTime(b.start_time)}–${formatTime(b.end_time)}${cancelled ? ' (cancelled)' : ''}${statusBadge}</span>
+                    <span class="shrink-0">${actions}</span></li>`;
             }).join('');
 
             return `<div class="bg-white rounded-lg shadow border ${isCancelled ? 'opacity-75' : ''}">
@@ -109,6 +205,7 @@
                         </div>
                         ${!isCancelled ? `<button type="button" class="text-red-600 text-sm font-medium hover:underline" data-cancel-series="${series.id}">Cancel series</button>` : ''}
                     </div>
+                    ${shareBlock}
                     <details class="mt-4">
                         <summary class="text-sm text-blue-600 cursor-pointer hover:underline">View all ${(series.bookings || []).length} meetings</summary>
                         <ul class="mt-2 border-t pt-2 divide-y">${occurrencesHtml}</ul>
@@ -116,6 +213,138 @@
                 </div>
             </div>`;
         }
+
+        function timeToMinutes(t) {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function minutesToTime(mins) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function getEditMeetingDurationMinutes() {
+            const preset = document.getElementById('edit-duration-preset').value;
+            if (preset === 'custom') {
+                return parseInt(document.getElementById('edit-duration-custom').value, 10) || 0;
+            }
+            return parseInt(preset, 10);
+        }
+
+        function setEditDurationPreset(minutes) {
+            const presets = ['30', '45', '60', '90'];
+            const presetEl = document.getElementById('edit-duration-preset');
+            const customWrap = document.getElementById('edit-duration-custom-wrap');
+            const customEl = document.getElementById('edit-duration-custom');
+            if (presets.includes(String(minutes))) {
+                presetEl.value = String(minutes);
+                customWrap.classList.add('hidden');
+            } else {
+                presetEl.value = 'custom';
+                customEl.value = minutes;
+                customWrap.classList.remove('hidden');
+            }
+        }
+
+        function updateEditDurationMode() {
+            const isCustom = document.getElementById('edit-duration-preset').value === 'custom';
+            document.getElementById('edit-duration-custom-wrap').classList.toggle('hidden', !isCustom);
+            updateEditEndPreview();
+        }
+
+        function updateEditEndPreview() {
+            const start = document.getElementById('edit-start-time').value;
+            const duration = getEditMeetingDurationMinutes();
+            const el = document.getElementById('edit-end-preview');
+            if (!start || duration < 5) {
+                el.textContent = duration > 0 && duration < 5
+                    ? 'Duration must be at least 5 minutes'
+                    : '';
+                return;
+            }
+            const end = minutesToTime(timeToMinutes(start) + duration);
+            el.textContent = `Ends at ${formatTime(end)} (${duration} min)`;
+        }
+
+        function openEditModal(seriesId, bookingId, date, startTime, durationMinutes) {
+            document.getElementById('edit-series-id').value = seriesId;
+            document.getElementById('edit-booking-id').value = bookingId;
+            document.getElementById('edit-date').value = date;
+            document.getElementById('edit-date').min = new Date().toISOString().split('T')[0];
+            const startNorm = startTime.length >= 5 ? startTime.slice(0, 5) : startTime;
+            document.getElementById('edit-start-time').value = startNorm;
+            setEditDurationPreset(durationMinutes || 60);
+            updateEditEndPreview();
+            document.getElementById('edit-occurrence-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-occurrence-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('edit-cancel-btn').addEventListener('click', closeEditModal);
+        document.getElementById('edit-start-time').addEventListener('change', updateEditEndPreview);
+        document.getElementById('edit-duration-preset').addEventListener('change', updateEditDurationMode);
+        document.getElementById('edit-duration-custom').addEventListener('change', updateEditEndPreview);
+        document.getElementById('edit-occurrence-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const seriesId = document.getElementById('edit-series-id').value;
+            const bookingId = document.getElementById('edit-booking-id').value;
+            const date = document.getElementById('edit-date').value;
+            const start_time = document.getElementById('edit-start-time').value;
+            const duration_minutes = getEditMeetingDurationMinutes();
+            if (duration_minutes < 5 || duration_minutes > 480) {
+                toast.show({ type: 'error', title: 'Invalid duration', message: 'Duration must be between 5 and 480 minutes.' });
+                return;
+            }
+            const end_time = minutesToTime(timeToMinutes(start_time) + duration_minutes);
+            try {
+                const checkRes = await fetch('/client-schedules/check-occurrence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date,
+                        start_time,
+                        end_time,
+                        duration_minutes,
+                        exclude_booking_id: bookingId
+                    })
+                });
+                const checkData = await checkRes.json();
+                if (!checkRes.ok) {
+                    toast.show({
+                        type: 'error',
+                        title: 'Scheduling conflict',
+                        message: formatConflictMessage(checkData)
+                    });
+                    return;
+                }
+
+                const res = await fetch(`/client-schedules/${seriesId}/occurrences/${bookingId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, start_time, end_time, duration_minutes })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    closeEditModal();
+                    toast.show({ type: 'success', title: 'Updated', message: 'Meeting updated.' });
+                    loadSeries();
+                } else {
+                    toast.show({
+                        type: 'error',
+                        title: 'Scheduling conflict',
+                        message: formatConflictMessage(data)
+                    });
+                }
+            } catch {
+                toast.show({ type: 'error', title: 'Error', message: 'Network error' });
+            }
+        });
 
         async function loadSeries() {
             const loading = document.getElementById('loading');
@@ -139,6 +368,31 @@
                 });
                 list.querySelectorAll('[data-cancel-occurrence]').forEach(btn => {
                     btn.addEventListener('click', () => cancelOccurrence(btn.dataset.cancelOccurrence, btn.dataset.bookingId));
+                });
+                list.querySelectorAll('.edit-occurrence-btn').forEach(btn => {
+                    btn.addEventListener('click', () => openEditModal(
+                        btn.dataset.seriesId,
+                        btn.dataset.bookingId,
+                        btn.dataset.date,
+                        btn.dataset.start,
+                        parseInt(btn.dataset.duration, 10) || 60
+                    ));
+                });
+                list.querySelectorAll('.copy-portal-link').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const url = btn.dataset.url;
+                        try {
+                            await navigator.clipboard.writeText(url);
+                            toast.show({ type: 'success', title: 'Copied', message: 'Client link copied to clipboard.' });
+                        } catch {
+                            const input = btn.closest('.bg-indigo-50')?.querySelector('.client-portal-url');
+                            if (input) {
+                                input.select();
+                                document.execCommand('copy');
+                                toast.show({ type: 'success', title: 'Copied', message: 'Client link copied.' });
+                            }
+                        }
+                    });
                 });
             } catch {
                 loading.textContent = 'Failed to load schedules.';

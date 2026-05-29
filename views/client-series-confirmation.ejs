@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your meeting schedule</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-10">
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Your meeting schedule</h1>
+            <p class="text-gray-600 mt-2">
+                Hello <%= series.client_name %>, please confirm each meeting with
+                <strong><%= host.name %></strong> below.
+            </p>
+        </div>
+
+        <% if (series.status === 'cancelled') { %>
+        <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6 text-center">
+            This schedule has been cancelled by your host.
+        </div>
+        <% } else { %>
+        <div class="bg-white rounded-lg shadow border p-5 mb-6">
+            <p class="text-sm text-gray-600">
+                <span class="font-medium text-gray-900"><%= series.frequency_label %></span>
+                · <%= activeCount %> meeting<%= activeCount === 1 ? '' : 's' %>
+            </p>
+            <% if (series.pending_count > 0) { %>
+            <p class="text-sm text-amber-700 mt-2 font-medium">
+                <%= series.confirmed_count %> confirmed · <%= series.pending_count %> awaiting your confirmation
+            </p>
+            <% } else if (activeCount > 0) { %>
+            <p class="text-sm text-green-700 mt-2 font-medium">All meetings confirmed</p>
+            <% } %>
+            <% if (host.meeting_link) { %>
+            <p class="text-sm mt-3">
+                <span class="text-gray-600">Meeting link:</span>
+                <a href="<%= host.meeting_link %>" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all"><%= host.meeting_link %></a>
+            </p>
+            <% } %>
+            <% if (series.notes) { %>
+            <p class="text-sm mt-2 text-gray-600"><span class="font-medium">Notes:</span> <%= series.notes %></p>
+            <% } %>
+        </div>
+
+        <% if (activeCount > 0) { %>
+        <div class="mb-4 flex flex-col sm:flex-row gap-2 justify-center">
+            <a href="<%= all_ics_url %>"
+               class="inline-flex justify-center items-center border border-gray-300 bg-white text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+                Download all meetings (.ics)
+            </a>
+        </div>
+        <p class="text-xs text-center text-gray-500 mb-6">Confirm each meeting first, then add it to your calendar</p>
+        <% } %>
+
+        <div class="space-y-3">
+            <% bookings.forEach(function(b) { %>
+            <% const cancelled = b.status === 'cancelled'; %>
+            <% const isPast = !cancelled && b.date < today; %>
+            <% const canConfirm = !cancelled && !isPast && !b.client_confirmed && series.status !== 'cancelled'; %>
+            <div class="bg-white rounded-lg shadow border p-4 <%= cancelled ? 'opacity-60' : '' %>" data-booking-id="<%= b.id %>">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Meeting <%= b.occurrence_index %></p>
+                        <p class="font-semibold text-gray-900 mt-1 <%= cancelled ? 'line-through' : '' %>">
+                            <%= b.formatted_date %>
+                        </p>
+                        <p class="text-sm text-gray-600 <%= cancelled ? 'line-through' : '' %>">
+                            <%= b.formatted_start_time %> – <%= b.formatted_end_time %>
+                        </p>
+                        <% if (cancelled) { %>
+                        <span class="inline-block mt-2 text-xs font-medium text-red-600">Cancelled</span>
+                        <% } else if (isPast) { %>
+                        <span class="inline-block mt-2 text-xs font-medium text-gray-500">Past</span>
+                        <% } else if (b.client_confirmed) { %>
+                        <span class="inline-block mt-2 text-xs font-medium text-green-700">Confirmed<%= b.client_confirmed_at_formatted ? ' · ' + b.client_confirmed_at_formatted : '' %></span>
+                        <% } else { %>
+                        <span class="inline-block mt-2 text-xs font-medium text-amber-700">Awaiting your confirmation</span>
+                        <% } %>
+                    </div>
+                    <% if (!cancelled && !isPast) { %>
+                    <div class="flex flex-col gap-2 shrink-0 min-w-[180px]">
+                        <% if (canConfirm) { %>
+                        <button type="button"
+                            class="confirm-meeting-btn bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+                            data-booking-id="<%= b.id %>">
+                            Confirm this meeting
+                        </button>
+                        <% } %>
+                        <% if (b.client_confirmed) { %>
+                        <a href="<%= b.google_calendar_url %>" target="_blank" rel="noopener"
+                           class="text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+                            Add to Google Calendar
+                        </a>
+                        <a href="<%= b.ics_url %>"
+                           class="text-center border border-gray-300 bg-white text-gray-800 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50">
+                            Download .ics
+                        </a>
+                        <% } %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% }); %>
+        </div>
+        <% } %>
+    </div>
+
+    <script>
+        const token = '<%= series.client_confirmation_token %>';
+        document.querySelectorAll('.confirm-meeting-btn').forEach((btn) => {
+            btn.addEventListener('click', async function() {
+                const bookingId = this.dataset.bookingId;
+                this.disabled = true;
+                const originalText = this.textContent;
+                this.textContent = 'Confirming...';
+                try {
+                    const res = await fetch(`/schedule/series/${token}/bookings/${bookingId}/confirm`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Could not confirm meeting');
+                        this.disabled = false;
+                        this.textContent = originalText;
+                    }
+                } catch {
+                    alert('Network error. Please try again.');
+                    this.disabled = false;
+                    this.textContent = originalText;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

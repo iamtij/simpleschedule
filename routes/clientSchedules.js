@@ -6,6 +6,9 @@ const { isRecurringClientsEnabled } = require('../utils/recurringClients');
 const {
     generateOccurrenceDates,
     clampOccurrenceCount,
+    parseCustomOccurrences,
+    timeToMinutes,
+    minutesToTime,
     VALID_FREQUENCIES
 } = require('../utils/recurringOccurrences');
 const { validateBookingSlot } = require('../utils/bookingValidation');
@@ -13,6 +16,7 @@ const { syncBookingToGoogleCalendar } = require('../utils/bookingGoogleSync');
 const { getSlotsForUser } = require('./booking');
 const timezone = require('../utils/timezone');
 const mailService = require('../services/mail');
+const { getClientSeriesPortalUrl } = require('../utils/calendarLinks');
 
 const requireLogin = (req, res, next) => {
     if (!req.session.userId) {
@@ -46,6 +50,17 @@ function formatTime12(time) {
     return `${hour12}:${minutes} ${ampm}`;
 }
 
+const MIN_MEETING_DURATION = 5;
+const MAX_MEETING_DURATION = 480;
+
+function clampMeetingDurationMinutes(value) {
+    const n = parseInt(value, 10);
+    if (Number.isNaN(n) || n < MIN_MEETING_DURATION || n > MAX_MEETING_DURATION) {
+        return null;
+    }
+    return n;
+}
+
 async function loadHost(userId) {
     const result = await db.query(
         `SELECT id, full_name, display_name, username, email, meeting_link, timezone,
@@ -67,19 +82,21 @@ async function validateSeriesPayload(userId, body) {
         end_time,
         frequency,
         total_occurrences,
-        notes
+        custom_occurrences,
+        notes,
+        duration_minutes: durationFromBody
     } = body;
 
-    if (!start_date || !start_time || !end_time || !frequency) {
-        return { error: 'Missing required fields', status: 400 };
-    }
-    if (!VALID_FREQUENCIES.includes(frequency)) {
+    if (!frequency || !VALID_FREQUENCIES.includes(frequency)) {
         return { error: 'Invalid frequency', status: 400 };
     }
 
-    const count = clampOccurrenceCount(total_occurrences);
-    if (!count) {
-        return { error: 'total_occurrences must be between 2 and 52', status: 400 };
+    let durationMinutes = clampMeetingDurationMinutes(durationFromBody);
+    if (!durationMinutes) {
+        return {
+            error: `Meeting duration must be between ${MIN_MEETING_DURATION} and ${MAX_MEETING_DURATION} minutes`,
+            status: 400
+        };
     }
 
     let name = client_name?.trim();
@@ -110,22 +127,59 @@ async function validateSeriesPayload(userId, body) {
         return { error: 'User not found', status: 404 };
     }
 
-    let dates;
-    try {
-        dates = generateOccurrenceDates(start_date, frequency, count);
-    } catch (e) {
-        return { error: e.message, status: 400 };
-    }
-
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    if (dates[0] < todayStr) {
-        return { error: 'Start date cannot be in the past', status: 400 };
+
+    let occurrences;
+    let seriesStartDate;
+    let seriesStartTime;
+    let seriesEndTime;
+    let count;
+
+    if (frequency === 'custom') {
+        try {
+            const parsed = parseCustomOccurrences(custom_occurrences, durationMinutes);
+            occurrences = parsed.occurrences;
+        } catch (e) {
+            return { error: e.message, status: 400 };
+        }
+        count = occurrences.length;
+        seriesStartDate = occurrences[0].date;
+        seriesStartTime = occurrences[0].start_time;
+        seriesEndTime = occurrences[0].end_time;
+        durationMinutes = timeToMinutes(seriesEndTime) - timeToMinutes(seriesStartTime);
+    } else {
+        if (!start_date || !start_time || !end_time) {
+            return { error: 'Missing required fields', status: 400 };
+        }
+        count = clampOccurrenceCount(total_occurrences);
+        if (!count) {
+            return { error: 'total_occurrences must be between 2 and 52', status: 400 };
+        }
+        let dates;
+        try {
+            dates = generateOccurrenceDates(start_date, frequency, count);
+        } catch (e) {
+            return { error: e.message, status: 400 };
+        }
+        if (dates[0] < todayStr) {
+            return { error: 'Start date cannot be in the past', status: 400 };
+        }
+        seriesStartDate = start_date;
+        seriesStartTime = start_time.length > 5 ? start_time.slice(0, 5) : start_time;
+        seriesEndTime = end_time.length > 5 ? end_time.slice(0, 5) : end_time;
+        durationMinutes =
+            timeToMinutes(seriesEndTime) - timeToMinutes(seriesStartTime);
+        occurrences = dates.map((date) => ({
+            date,
+            start_time: seriesStartTime,
+            end_time: seriesEndTime
+        }));
     }
 
-    const durationMinutes =
-        (parseInt(end_time.split(':')[0], 10) * 60 + parseInt(end_time.split(':')[1], 10)) -
-        (parseInt(start_time.split(':')[0], 10) * 60 + parseInt(start_time.split(':')[1], 10));
+    if (occurrences[0].date < todayStr) {
+        return { error: 'Meeting dates cannot be in the past', status: 400 };
+    }
 
     return {
         host,
@@ -133,27 +187,41 @@ async function validateSeriesPayload(userId, body) {
         client_name: name,
         client_email: email,
         client_phone: phone,
-        start_date,
-        start_time,
-        end_time,
+        start_date: seriesStartDate,
+        start_time: seriesStartTime,
+        end_time: seriesEndTime,
         frequency,
         total_occurrences: count,
         notes: notes || null,
-        dates,
+        occurrences,
         durationMinutes
     };
 }
 
-async function checkDatesForConflicts(userId, dates, start_time, end_time, host) {
+function getHostBufferMinutes(host) {
+    const n = parseInt(host.buffer_minutes, 10);
+    return Number.isNaN(n) ? 15 : n;
+}
+
+async function checkOccurrencesForConflicts(userId, occurrences, host, options = {}) {
     const conflicts = [];
     const googleBlocking = host.google_calendar_blocking_enabled !== false;
+    const bufferMinutes = options.bufferMinutes ?? getHostBufferMinutes(host);
 
-    for (const date of dates) {
-        const result = await validateBookingSlot(userId, date, start_time, end_time, {
-            googleCalendarBlockingEnabled: googleBlocking
+    for (const occ of occurrences) {
+        const result = await validateBookingSlot(userId, occ.date, occ.start_time, occ.end_time, {
+            googleCalendarBlockingEnabled: googleBlocking,
+            excludeBookingId: options.excludeBookingId || null,
+            excludeGoogleEventId: options.excludeGoogleEventId || null,
+            bufferMinutes
         });
         if (!result.ok) {
-            conflicts.push({ date, reason: result.reason, conflictType: result.conflictType });
+            conflicts.push({
+                date: occ.date,
+                start_time: occ.start_time,
+                reason: result.reason,
+                conflictType: result.conflictType
+            });
         }
     }
     return conflicts;
@@ -188,24 +256,90 @@ router.get('/new', async (req, res) => {
             contact = contactResult.rows[0] || null;
         }
 
-        const durationsResult = await db.query(
-            `SELECT duration_minutes FROM meeting_durations
-             WHERE user_id = $1 AND is_active = true
-             ORDER BY COALESCE(display_order, 0) ASC, duration_minutes ASC`,
-            [req.session.userId]
-        );
-        const durations = durationsResult.rows.map((r) => r.duration_minutes);
-        const defaultDuration = durations[0] || 60;
-
         res.render('client-schedule-new', {
             user,
             contact,
-            durations,
-            defaultDuration,
             currentPage: 'client-schedules'
         });
     } catch {
         res.status(500).render('error', { message: 'Failed to load form' });
+    }
+});
+
+router.post('/check-occurrence', async (req, res) => {
+    try {
+        const accessCheck = await checkUserAccess(req.session.userId);
+        if (!accessCheck.hasAccess) {
+            return res.status(403).json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' });
+        }
+
+        const {
+            date,
+            start_time,
+            end_time,
+            duration_minutes,
+            exclude_booking_id
+        } = req.body;
+
+        if (!date || !start_time) {
+            return res.status(400).json({ error: 'Date and start time are required' });
+        }
+
+        const host = await loadHost(req.session.userId);
+        if (!host) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const startNorm = start_time.length > 5 ? start_time.slice(0, 5) : start_time;
+        let endNorm = end_time ? (end_time.length > 5 ? end_time.slice(0, 5) : end_time) : null;
+        const duration =
+            clampMeetingDurationMinutes(duration_minutes) ||
+            (endNorm ? timeToMinutes(endNorm) - timeToMinutes(startNorm) : null) ||
+            60;
+
+        if (!duration || duration < MIN_MEETING_DURATION) {
+            return res.status(400).json({ error: 'Invalid meeting duration' });
+        }
+
+        if (!endNorm) {
+            endNorm = minutesToTime(timeToMinutes(startNorm) + duration);
+        }
+
+        let excludeGoogleEventId = null;
+        const excludeBookingId = exclude_booking_id ? parseInt(exclude_booking_id, 10) : null;
+        if (excludeBookingId) {
+            const existing = await db.query(
+                'SELECT google_event_id FROM bookings WHERE id = $1 AND user_id = $2',
+                [excludeBookingId, req.session.userId]
+            );
+            excludeGoogleEventId = existing.rows[0]?.google_event_id || null;
+        }
+
+        const slotCheck = await validateBookingSlot(
+            req.session.userId,
+            date,
+            startNorm,
+            endNorm,
+            {
+                googleCalendarBlockingEnabled: host.google_calendar_blocking_enabled !== false,
+                excludeBookingId,
+                excludeGoogleEventId,
+                bufferMinutes: getHostBufferMinutes(host)
+            }
+        );
+
+        if (!slotCheck.ok) {
+            return res.status(409).json({
+                ok: false,
+                error: slotCheck.reason,
+                conflictType: slotCheck.conflictType
+            });
+        }
+
+        res.json({ ok: true, start_time: startNorm, end_time: endNorm });
+    } catch (error) {
+        console.error('check-occurrence error:', error);
+        res.status(500).json({ error: 'Failed to check availability' });
     }
 });
 
@@ -217,15 +351,9 @@ router.get('/slots', async (req, res) => {
         }
 
         const host = await loadHost(req.session.userId);
-        let duration = parseInt(durationParam, 10);
-        if (isNaN(duration) || duration <= 0) {
-            const dr = await db.query(
-                `SELECT duration_minutes FROM meeting_durations
-                 WHERE user_id = $1 AND is_active = true
-                 ORDER BY COALESCE(display_order, 0) ASC LIMIT 1`,
-                [req.session.userId]
-            );
-            duration = dr.rows[0]?.duration_minutes || 60;
+        let duration = clampMeetingDurationMinutes(durationParam);
+        if (!duration) {
+            duration = 60;
         }
 
         const userTimezone = timezone.getUserTimezone(host.timezone);
@@ -290,7 +418,8 @@ router.get('/api', async (req, res) => {
         if (seriesIds.length > 0) {
             const bookingsResult = await db.query(
                 `SELECT id, recurring_series_id, date::text AS date, start_time::text AS start_time,
-                        end_time::text AS end_time, status, occurrence_index, client_name
+                        end_time::text AS end_time, status, occurrence_index, client_name,
+                        client_confirmed_at
                  FROM bookings
                  WHERE recurring_series_id = ANY($1::int[])
                  ORDER BY date ASC, start_time ASC`,
@@ -311,14 +440,27 @@ router.get('/api', async (req, res) => {
                 (b) => b.status !== 'cancelled' && b.date < today
             ).length;
             const totalActive = bookings.filter((b) => b.status !== 'cancelled').length;
+            const upcomingActive = bookings.filter(
+                (b) => b.status !== 'cancelled' && b.date >= today
+            );
+            const clientConfirmedCount = upcomingActive.filter((b) => b.client_confirmed_at).length;
+            const token = s.client_confirmation_token;
             return {
                 ...s,
                 start_date: s.start_date instanceof Date
                     ? s.start_date.toISOString().split('T')[0]
                     : s.start_date,
-                bookings,
+                duration_minutes: s.duration_minutes || 60,
+                bookings: bookings.map((b) => ({
+                    ...b,
+                    client_confirmed: !!b.client_confirmed_at
+                })),
                 completed_count: completed,
-                active_count: totalActive
+                active_count: totalActive,
+                client_portal_url: token ? getClientSeriesPortalUrl(token, req) : null,
+                client_confirmed_count: clientConfirmedCount,
+                client_pending_count: upcomingActive.length - clientConfirmedCount,
+                client_all_confirmed: upcomingActive.length > 0 && clientConfirmedCount === upcomingActive.length
             };
         });
 
@@ -341,21 +483,29 @@ router.post('/preview', async (req, res) => {
             return res.status(parsed.status).json({ error: parsed.error });
         }
 
-        const conflicts = await checkDatesForConflicts(
+        const conflicts = await checkOccurrencesForConflicts(
             req.session.userId,
-            parsed.dates,
-            parsed.start_time,
-            parsed.end_time,
+            parsed.occurrences,
             parsed.host
         );
-        const conflictDates = new Set(conflicts.map((c) => c.date));
+        const conflictKeys = new Set(
+            conflicts.map((c) => `${c.date}|${c.start_time}`)
+        );
 
-        const preview = parsed.dates.map((date, index) => ({
-            date,
-            occurrence_index: index + 1,
-            available: !conflictDates.has(date),
-            reason: conflicts.find((c) => c.date === date)?.reason || null
-        }));
+        const preview = parsed.occurrences.map((occ, index) => {
+            const key = `${occ.date}|${occ.start_time}`;
+            const conflict = conflicts.find(
+                (c) => c.date === occ.date && c.start_time === occ.start_time
+            );
+            return {
+                date: occ.date,
+                start_time: occ.start_time,
+                end_time: occ.end_time,
+                occurrence_index: index + 1,
+                available: !conflictKeys.has(key),
+                reason: conflict?.reason || null
+            };
+        });
 
         res.json({
             success: true,
@@ -365,7 +515,9 @@ router.post('/preview', async (req, res) => {
         });
     } catch (error) {
         console.error('preview error:', error);
-        res.status(500).json({ error: 'Preview failed' });
+        res.status(500).json({
+            error: error.message || 'Preview failed'
+        });
     }
 });
 
@@ -382,11 +534,9 @@ router.post('/', async (req, res) => {
             return res.status(parsed.status).json({ error: parsed.error });
         }
 
-        const conflicts = await checkDatesForConflicts(
+        const conflicts = await checkOccurrencesForConflicts(
             req.session.userId,
-            parsed.dates,
-            parsed.start_time,
-            parsed.end_time,
+            parsed.occurrences,
             parsed.host
         );
         if (conflicts.length > 0) {
@@ -423,8 +573,8 @@ router.post('/', async (req, res) => {
         const series = seriesResult.rows[0];
         const createdBookings = [];
 
-        for (let i = 0; i < parsed.dates.length; i++) {
-            const date = parsed.dates[i];
+        for (let i = 0; i < parsed.occurrences.length; i++) {
+            const occ = parsed.occurrences[i];
             const bookingResult = await client.query(
                 `INSERT INTO bookings (
                     user_id, date, start_time, end_time, client_name, client_email,
@@ -434,9 +584,9 @@ router.post('/', async (req, res) => {
                           client_name, client_email, client_phone, notes, occurrence_index`,
                 [
                     req.session.userId,
-                    date,
-                    parsed.start_time,
-                    parsed.end_time,
+                    occ.date,
+                    occ.start_time,
+                    occ.end_time,
                     parsed.client_name,
                     parsed.client_email,
                     parsed.client_phone,
@@ -482,15 +632,24 @@ router.post('/', async (req, res) => {
             }
         });
 
+        const clientPortalUrl = series.client_confirmation_token
+            ? getClientSeriesPortalUrl(series.client_confirmation_token, req)
+            : null;
+
         res.json({
             success: true,
             series_id: series.id,
-            bookings_created: createdBookings.length
+            bookings_created: createdBookings.length,
+            client_portal_url: clientPortalUrl
         });
     } catch (error) {
-        await client.query('ROLLBACK');
+        try {
+            await client.query('ROLLBACK');
+        } catch {
+            // ignore rollback errors
+        }
         console.error('create series error:', error);
-        res.status(500).json({ error: 'Failed to create schedule' });
+        res.status(500).json({ error: error.message || 'Failed to create schedule' });
     } finally {
         client.release();
     }
@@ -520,6 +679,102 @@ router.patch('/:seriesId/cancel', async (req, res) => {
         res.json({ success: true });
     } catch {
         res.status(500).json({ error: 'Failed to cancel series' });
+    }
+});
+
+router.patch('/:seriesId/occurrences/:bookingId', async (req, res) => {
+    try {
+        const seriesId = parseInt(req.params.seriesId, 10);
+        const bookingId = parseInt(req.params.bookingId, 10);
+        const { date, start_time, end_time, duration_minutes: durationFromBody } = req.body;
+
+        if (!date || !start_time) {
+            return res.status(400).json({ error: 'Date and start time are required' });
+        }
+
+        const rowResult = await db.query(
+            `SELECT b.id, b.client_confirmed_at, b.status, b.date::text AS date,
+                    b.google_event_id, rs.duration_minutes, rs.status AS series_status
+             FROM bookings b
+             JOIN recurring_series rs ON rs.id = b.recurring_series_id
+             WHERE b.id = $1 AND b.recurring_series_id = $2 AND b.user_id = $3`,
+            [bookingId, seriesId, req.session.userId]
+        );
+
+        if (rowResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Meeting not found' });
+        }
+
+        const row = rowResult.rows[0];
+        if (row.series_status === 'cancelled') {
+            return res.status(400).json({ error: 'Series is cancelled' });
+        }
+        if (row.status === 'cancelled') {
+            return res.status(400).json({ error: 'Meeting is cancelled' });
+        }
+        if (row.client_confirmed_at) {
+            return res.status(409).json({
+                error: 'This meeting was already confirmed by the client and cannot be edited'
+            });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        if (date < today) {
+            return res.status(400).json({ error: 'Cannot schedule meetings in the past' });
+        }
+
+        const startNorm = start_time.length > 5 ? start_time.slice(0, 5) : start_time;
+        let endNorm = end_time
+            ? (end_time.length > 5 ? end_time.slice(0, 5) : end_time)
+            : null;
+        const duration =
+            clampMeetingDurationMinutes(durationFromBody) ||
+            (endNorm ? timeToMinutes(endNorm) - timeToMinutes(startNorm) : null) ||
+            row.duration_minutes ||
+            60;
+        if (duration < MIN_MEETING_DURATION || duration > MAX_MEETING_DURATION) {
+            return res.status(400).json({
+                error: `Duration must be between ${MIN_MEETING_DURATION} and ${MAX_MEETING_DURATION} minutes`
+            });
+        }
+        endNorm = minutesToTime(timeToMinutes(startNorm) + duration);
+        if (timeToMinutes(endNorm) <= timeToMinutes(startNorm)) {
+            return res.status(400).json({ error: 'End time must be after start time' });
+        }
+
+        const host = await loadHost(req.session.userId);
+        const slotCheck = await validateBookingSlot(
+            req.session.userId,
+            date,
+            startNorm,
+            endNorm,
+            {
+                googleCalendarBlockingEnabled: host.google_calendar_blocking_enabled !== false,
+                excludeBookingId: bookingId,
+                excludeGoogleEventId: row.google_event_id || null,
+                bufferMinutes: getHostBufferMinutes(host)
+            }
+        );
+        if (!slotCheck.ok) {
+            return res.status(409).json({
+                error: slotCheck.reason,
+                conflictType: slotCheck.conflictType
+            });
+        }
+
+        const updateResult = await db.query(
+            `UPDATE bookings
+             SET date = $1, start_time = $2, end_time = $3
+             WHERE id = $4
+             RETURNING id, date::text AS date, start_time::text AS start_time, end_time::text AS end_time,
+                       occurrence_index, client_confirmed_at`,
+            [date, startNorm, endNorm, bookingId]
+        );
+
+        res.json({ success: true, booking: updateResult.rows[0] });
+    } catch (error) {
+        console.error('update occurrence error:', error);
+        res.status(500).json({ error: error.message || 'Failed to update meeting' });
     }
 });
 

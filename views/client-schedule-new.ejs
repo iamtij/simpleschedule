@@ -50,27 +50,34 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Meeting duration (minutes)</label>
-                    <select id="duration" class="w-full border rounded-lg px-3 py-2">
-                        <% const durList = durations && durations.length ? durations : [defaultDuration || 60]; %>
-                        <% durList.forEach(function(d) { %>
-                        <option value="<%= d %>" <%= d === (defaultDuration || 60) ? 'selected' : '' %>><%= d %> min</option>
-                        <% }); %>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">First meeting date *</label>
-                    <input type="text" id="start-date" required class="w-full border rounded-lg px-3 py-2" placeholder="Select date">
+            <div class="max-w-md">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Meeting duration *</label>
+                <select id="duration-preset" class="w-full border rounded-lg px-3 py-2">
+                    <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60" selected>60 minutes</option>
+                    <option value="90">90 minutes</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="duration-custom-wrap" class="hidden mt-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Custom duration (minutes)</label>
+                    <input type="number" id="duration-custom" min="5" max="480" value="60"
+                        class="w-full border rounded-lg px-3 py-2">
+                    <p class="text-xs text-gray-500 mt-1">Between 5 and 480 minutes</p>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Time slot *</label>
-                <div id="slots-loading" class="text-sm text-gray-500 hidden">Loading available times...</div>
-                <div id="slots-empty" class="text-sm text-gray-500 hidden">Select a date to see available times.</div>
-                <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            <div id="standard-schedule-section" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First meeting date *</label>
+                    <input type="text" id="start-date" class="w-full border rounded-lg px-3 py-2" placeholder="Select date">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Time slot *</label>
+                    <div id="slots-loading" class="text-sm text-gray-500 hidden">Loading available times...</div>
+                    <div id="slots-empty" class="text-sm text-gray-500 hidden">Select a date to see available times.</div>
+                    <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -80,14 +87,29 @@
                         <option value="weekly">Weekly</option>
                         <option value="biweekly">Every 2 weeks</option>
                         <option value="monthly">Monthly (same day each month)</option>
+                        <option value="custom">Custom (pick each date & time)</option>
                     </select>
                 </div>
-                <div>
+                <div id="total-occurrences-wrap">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Total meetings in series *</label>
-                    <input type="number" id="total-occurrences" min="2" max="52" value="4" required
-                        class="w-full border rounded-lg px-3 py-2">
-                    <p class="text-xs text-gray-500 mt-1">How many meetings in the future (2–52)</p>
+                    <input type="number" id="total-occurrences" min="2" max="52" value="4"
+                        class="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500">
+                    <p id="total-occurrences-hint" class="text-xs text-gray-500 mt-1">How many meetings in the future (2–52)</p>
                 </div>
+            </div>
+
+            <div id="custom-occurrences-section" class="hidden border rounded-lg p-4 bg-gray-50 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-900">Meeting dates & times *</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Add each meeting on its own date. End time uses the duration above.</p>
+                    </div>
+                    <button type="button" id="add-custom-row"
+                        class="text-sm border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:bg-gray-50 shrink-0">
+                        + Add date & time
+                    </button>
+                </div>
+                <div id="custom-occurrences-list" class="space-y-3"></div>
             </div>
 
             <div>
@@ -116,6 +138,8 @@
         let selectedDate = null;
         let selectedSlot = null;
         let contactsCache = [];
+        let customRowId = 0;
+        const customDatePickers = new Map();
 
         const datePicker = flatpickr('#start-date', {
             minDate: 'today',
@@ -127,10 +151,103 @@
             }
         });
 
+        function timeToMinutes(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
         function minutesToTime(mins) {
             const h = Math.floor(mins / 60);
             const m = mins % 60;
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function addDurationToTime(startTime, durationMinutes) {
+            return minutesToTime(timeToMinutes(startTime) + durationMinutes);
+        }
+
+        function getMeetingDurationMinutes() {
+            const preset = document.getElementById('duration-preset').value;
+            if (preset === 'custom') {
+                return parseInt(document.getElementById('duration-custom').value, 10) || 0;
+            }
+            return parseInt(preset, 10);
+        }
+
+        function updateDurationMode() {
+            const isCustomDuration = document.getElementById('duration-preset').value === 'custom';
+            document.getElementById('duration-custom-wrap').classList.toggle('hidden', !isCustomDuration);
+            selectedSlot = null;
+            if (selectedDate) {
+                loadSlots();
+            }
+        }
+
+        function isCustomMode() {
+            return document.getElementById('frequency').value === 'custom';
+        }
+
+        function updateScheduleMode() {
+            const custom = isCustomMode();
+            document.getElementById('standard-schedule-section').classList.toggle('hidden', custom);
+            document.getElementById('custom-occurrences-section').classList.toggle('hidden', !custom);
+            const totalInput = document.getElementById('total-occurrences');
+            const totalHint = document.getElementById('total-occurrences-hint');
+            totalInput.disabled = custom;
+            totalInput.required = !custom;
+            if (custom) {
+                totalHint.textContent = 'Not used for custom schedules — add each meeting below.';
+                if (document.getElementById('custom-occurrences-list').children.length === 0) {
+                    addCustomRow(selectedDate, selectedSlot?.start || '');
+                }
+            } else {
+                totalHint.textContent = 'How many meetings in the future (2–52)';
+            }
+        }
+
+        function addCustomRow(dateVal = '', timeVal = '') {
+            const id = ++customRowId;
+            const list = document.getElementById('custom-occurrences-list');
+            const row = document.createElement('div');
+            row.className = 'custom-row grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end bg-white border rounded-lg p-3';
+            row.dataset.rowId = String(id);
+            row.innerHTML = `
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                    <input type="text" class="custom-occurrence-date w-full border rounded-lg px-3 py-2" placeholder="Select date" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Start time</label>
+                    <input type="time" class="custom-occurrence-time w-full border rounded-lg px-3 py-2" required value="${timeVal}">
+                </div>
+                <button type="button" class="remove-custom-row text-sm text-red-600 hover:text-red-800 px-2 py-2 mb-0.5" title="Remove">Remove</button>
+            `;
+            list.appendChild(row);
+
+            const dateInput = row.querySelector('.custom-occurrence-date');
+            const fp = flatpickr(dateInput, {
+                minDate: 'today',
+                dateFormat: 'Y-m-d',
+                defaultDate: dateVal || null
+            });
+            customDatePickers.set(id, fp);
+
+            row.querySelector('.remove-custom-row').addEventListener('click', () => {
+                fp.destroy();
+                customDatePickers.delete(id);
+                row.remove();
+            });
+        }
+
+        function collectCustomOccurrences() {
+            const duration = getMeetingDurationMinutes();
+            const rows = document.querySelectorAll('#custom-occurrences-list .custom-row');
+            return Array.from(rows).map((row) => {
+                const date = row.querySelector('.custom-occurrence-date').value;
+                const start_time = row.querySelector('.custom-occurrence-time').value;
+                const end_time = addDurationToTime(start_time, duration);
+                return { date, start_time, end_time };
+            }).filter((o) => o.date && o.start_time);
         }
 
         async function loadContacts() {
@@ -175,7 +292,13 @@
             }
             empty.classList.add('hidden');
             loading.classList.remove('hidden');
-            const duration = document.getElementById('duration').value;
+            const duration = getMeetingDurationMinutes();
+            if (duration < 5 || duration > 480) {
+                loading.classList.add('hidden');
+                empty.textContent = 'Enter a valid meeting duration (5–480 min).';
+                empty.classList.remove('hidden');
+                return;
+            }
             try {
                 const res = await fetch(`/client-schedules/slots?date=${selectedDate}&duration=${duration}`);
                 const data = await res.json();
@@ -208,28 +331,64 @@
             }
         }
 
-        document.getElementById('duration').addEventListener('change', loadSlots);
+        document.getElementById('duration-preset').addEventListener('change', updateDurationMode);
+        document.getElementById('duration-custom').addEventListener('change', updateDurationMode);
+        document.getElementById('frequency').addEventListener('change', updateScheduleMode);
+        document.getElementById('add-custom-row').addEventListener('click', () => addCustomRow());
+
+        function validateBeforeSubmit() {
+            const duration = getMeetingDurationMinutes();
+            if (duration < 5 || duration > 480) {
+                toast.show({
+                    type: 'error',
+                    title: 'Invalid duration',
+                    message: 'Meeting duration must be between 5 and 480 minutes.'
+                });
+                return false;
+            }
+            if (isCustomMode()) {
+                const occ = collectCustomOccurrences();
+                if (occ.length === 0) {
+                    toast.show({ type: 'error', title: 'Missing info', message: 'Add at least one date and start time.' });
+                    return false;
+                }
+                return true;
+            }
+            if (!selectedDate || !selectedSlot) {
+                toast.show({ type: 'error', title: 'Missing info', message: 'Select a date and time slot.' });
+                return false;
+            }
+            return true;
+        }
 
         function getPayload() {
-            return {
+            const duration = getMeetingDurationMinutes();
+            const base = {
                 contact_id: document.getElementById('contact-select').value || null,
                 client_name: document.getElementById('client-name').value.trim(),
                 client_email: document.getElementById('client-email').value.trim(),
                 client_phone: document.getElementById('client-phone').value.trim() || null,
+                frequency: document.getElementById('frequency').value,
+                duration_minutes: duration,
+                notes: document.getElementById('notes').value.trim() || null
+            };
+            if (isCustomMode()) {
+                return {
+                    ...base,
+                    custom_occurrences: collectCustomOccurrences()
+                };
+            }
+            return {
+                ...base,
                 start_date: selectedDate,
                 start_time: selectedSlot?.start,
                 end_time: selectedSlot?.end,
-                frequency: document.getElementById('frequency').value,
-                total_occurrences: parseInt(document.getElementById('total-occurrences').value, 10),
-                notes: document.getElementById('notes').value.trim() || null
+                total_occurrences: parseInt(document.getElementById('total-occurrences').value, 10)
             };
         }
 
         document.getElementById('preview-btn').addEventListener('click', async () => {
-            if (!selectedDate || !selectedSlot) {
-                toast.show({ type: 'error', title: 'Missing info', message: 'Select a date and time slot.' });
-                return;
-            }
+            if (!validateBeforeSubmit()) return;
             const payload = getPayload();
             const res = await fetch('/client-schedules/preview', {
                 method: 'POST',
@@ -247,7 +406,10 @@
             list.innerHTML = data.dates.map(d => {
                 const cls = d.available ? 'text-green-700' : 'text-red-600';
                 const note = d.available ? '' : ` — ${d.reason}`;
-                return `<li class="${cls}">${d.date} (meeting ${d.occurrence_index})${note}</li>`;
+                const timeLabel = d.start_time
+                    ? ` ${d.start_time}${d.end_time ? '–' + d.end_time : ''}`
+                    : '';
+                return `<li class="${cls}">${d.date}${timeLabel} (meeting ${d.occurrence_index})${note}</li>`;
             }).join('');
             if (data.has_conflicts) {
                 toast.show({ type: 'warning', title: 'Conflicts', message: 'Some dates are unavailable. Adjust or pick another slot.' });
@@ -256,10 +418,7 @@
 
         document.getElementById('schedule-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!selectedDate || !selectedSlot) {
-                toast.show({ type: 'error', title: 'Missing info', message: 'Select a date and time slot.' });
-                return;
-            }
+            if (!validateBeforeSubmit()) return;
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
             btn.textContent = 'Creating...';
@@ -289,6 +448,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadContacts();
+            updateScheduleMode();
             if (preselectedContactId) {
                 document.getElementById('contact-select').dispatchEvent(new Event('change'));
             }

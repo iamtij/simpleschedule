@@ -386,10 +386,20 @@
         const url = `/admin/users/data?page=${currentPage}&search=${encodeURIComponent(search)}&status=${status}&subscription=${subscription}&planType=${planType}&couponCode=${encodeURIComponent(couponCode)}`;
         
         fetch(url)
-            .then(response => response.json())
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load users');
+                }
+                return data;
+            })
             .then(data => {
                 const tbody = document.getElementById('user-table-body');
                 tbody.innerHTML = '';
+
+                if (!data.users) {
+                    throw new Error(data.error || 'Failed to load users');
+                }
 
                 data.users.forEach(user => {
                     const tr = document.createElement('tr');
@@ -496,11 +506,10 @@
                 document.getElementById('next-page').disabled = currentPage === totalPages;
             })
             .catch(error => {
-
                 toast.show({
                     type: 'error',
                     title: 'Error',
-                    message: 'Failed to load users'
+                    message: error.message || 'Failed to load users'
                 });
             });
     }
