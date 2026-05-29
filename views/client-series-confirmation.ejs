@@ -51,13 +51,14 @@
             <% } %>
         </div>
 
-        <% if (activeCount > 0) { %>
+        <% if (all_ics_url) { %>
         <div class="mb-4 flex flex-col sm:flex-row gap-2 justify-center">
             <a href="<%= all_ics_url %>"
                class="inline-flex justify-center items-center border border-gray-300 bg-white text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
-                Download all meetings (.ics)
+                Download confirmed meetings (.ics)
             </a>
         </div>
+        <% } else if (activeCount > 0) { %>
         <p class="text-xs text-center text-gray-500 mb-6">Confirm each meeting first, then add it to your calendar</p>
         <% } %>
 

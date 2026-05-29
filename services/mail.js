@@ -1564,6 +1564,86 @@ View user profile: ${adminUrl}
             .join('\n');
     }
 
+    async sendRecurringSeriesClientInvite(series, bookings, host, portalUrl) {
+        if (!this.enabled || !bookings.length || !portalUrl) {
+            return null;
+        }
+
+        const hostName = host.name || host.display_name || host.full_name || host.username;
+        const frequencyLabel = this._formatFrequencyLabel(series.frequency);
+        const listHtml = this._formatOccurrencesList(bookings);
+        const plainList = this._formatOccurrencesListPlain(bookings);
+
+        const content = `
+            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                Hello ${series.client_name},
+            </p>
+            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                ${hostName} proposed ${bookings.length} meetings with you (${frequencyLabel}).
+                Please confirm <strong>each meeting</strong> before it is added to the calendar.
+            </p>
+            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                <ul style="margin: 0; padding-left: 20px;">${listHtml}</ul>
+                ${series.notes ? `<p style="margin: 16px 0 0 0; font-size: 15px; color: #374151;">Notes: ${series.notes}</p>` : ''}
+            </div>
+            <p style="margin: 0 0 24px 0; text-align: center;">
+                <a href="${portalUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500;">Review &amp; confirm meetings</a>
+            </p>
+            <p style="margin: 0; font-size: 14px; color: #6b7280; text-align: center;">
+                Calendar invites and reminders are sent only after you confirm each date.
+            </p>`;
+
+        try {
+            return await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [series.client_email],
+                subject: `Please confirm your meetings with ${hostName}`,
+                text: `Hello ${series.client_name},\n\n${hostName} proposed ${bookings.length} meetings (${frequencyLabel}). Confirm each meeting before it is added to the calendar.\n\n${plainList}\n\nConfirm here:\n${portalUrl}\n\nCalendar invites and reminders are sent only after you confirm each date.`,
+                html: this._generateEmailTemplate(content)
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async sendRecurringSeriesHostPendingNotification(series, bookings, host, portalUrl) {
+        if (!this.enabled || !bookings.length) {
+            return null;
+        }
+
+        const hostName = host.name || host.display_name || host.full_name || host.username;
+        const frequencyLabel = this._formatFrequencyLabel(series.frequency);
+        const listHtml = this._formatOccurrencesList(bookings);
+        const dashboardUrl = `${process.env.APP_URL || 'https://isked.app'}/client-schedules`;
+        const plainList = this._formatOccurrencesListPlain(bookings);
+
+        const content = `
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; text-align: center;">Hello ${hostName},</p>
+            <p style="margin: 0 0 24px 0; font-size: 16px; color: #333333; text-align: center;">
+                You created ${bookings.length} meetings with ${series.client_name} (${frequencyLabel}).
+                They are <strong>pending client confirmation</strong> — nothing is on your calendar until the client confirms each date.
+            </p>
+            <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 0 0 24px 0;">
+                <ul style="margin: 0; padding-left: 20px;">${listHtml}</ul>
+            </div>
+            ${portalUrl ? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6b7280; text-align: center;">Client confirmation link:<br><a href="${portalUrl}" style="color: #3b82f6;">${portalUrl}</a></p>` : ''}
+            <p style="margin: 0; text-align: center;">
+                <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500;">View Client Schedules</a>
+            </p>`;
+
+        try {
+            return await mg.messages.create(this.domain, {
+                from: `isked <postmaster@${this.domain}>`,
+                to: [host.email],
+                subject: `Recurring schedule created (awaiting confirmation): ${series.client_name}`,
+                text: `Hello ${hostName},\n\nYou created ${bookings.length} meetings with ${series.client_name} (${frequencyLabel}). They are pending client confirmation.\n\n${plainList}${portalUrl ? `\n\nClient link:\n${portalUrl}\n` : ''}\n\nView: ${dashboardUrl}`,
+                html: this._generateEmailTemplate(content)
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async sendRecurringSeriesClientConfirmation(series, bookings, host) {
         if (!this.enabled || !bookings.length) {
             return null;

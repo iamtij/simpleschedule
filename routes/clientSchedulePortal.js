@@ -8,6 +8,7 @@ const {
     buildEventDetails,
     getClientSeriesPortalUrl
 } = require('../utils/calendarLinks');
+const { finalizeRecurringBookingAfterClientConfirm } = require('../utils/finalizeRecurringBooking');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -61,7 +62,8 @@ function enrichBookingForView(booking, series, host) {
         notes: booking.notes || series.notes,
         clientName: series.client_name
     });
-    const confirmed = !!booking.client_confirmed_at;
+    const confirmed =
+        booking.status === 'confirmed' && !!booking.client_confirmed_at;
     return {
         ...booking,
         client_confirmed: confirmed,
@@ -83,10 +85,14 @@ function enrichBookingForView(booking, series, host) {
     };
 }
 
+function isBookingConfirmedForCalendar(booking) {
+    return booking.status === 'confirmed' && !!booking.client_confirmed_at;
+}
+
 function buildIcsEventsForBookings(bookings, series, host) {
     const hostName = host.display_name || host.full_name || host.username;
     return bookings
-        .filter((b) => b.status !== 'cancelled')
+        .filter((b) => b.status !== 'cancelled' && isBookingConfirmedForCalendar(b))
         .map((b) => {
             const details = buildEventDetails({
                 hostName,
@@ -141,6 +147,7 @@ router.get('/series/:token', async (req, res) => {
         const activeBookings = bookings.filter((b) => b.status !== 'cancelled');
         const activeCount = activeBookings.length;
         const confirmedCount = activeBookings.filter((b) => b.client_confirmed).length;
+        const hasConfirmedMeetings = confirmedCount > 0;
         const pendingCount = activeCount - confirmedCount;
 
         if (series.start_date instanceof Date) {
@@ -158,7 +165,7 @@ router.get('/series/:token', async (req, res) => {
             bookings,
             activeCount,
             today,
-            all_ics_url: `/schedule/series/${token}/calendar.ics`,
+            all_ics_url: hasConfirmedMeetings ? `/schedule/series/${token}/calendar.ics` : null,
             portal_url: getClientSeriesPortalUrl(token, req)
         });
     } catch (error) {
@@ -179,21 +186,22 @@ router.post('/series/:token/bookings/:bookingId/confirm', async (req, res) => {
             return res.status(404).json({ error: 'Schedule not found' });
         }
 
-        const result = await db.query(
-            `UPDATE bookings
-             SET client_confirmed_at = COALESCE(client_confirmed_at, CURRENT_TIMESTAMP)
-             WHERE id = $1 AND recurring_series_id = $2 AND status != 'cancelled'
-             RETURNING id, client_confirmed_at`,
-            [bookingId, series.id]
+        const outcome = await finalizeRecurringBookingAfterClientConfirm(
+            parseInt(bookingId, 10),
+            series.id
         );
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Meeting not found' });
+        if (outcome.error) {
+            return res.status(outcome.status || 400).json({
+                error: outcome.error,
+                conflictType: outcome.conflictType
+            });
         }
 
         res.json({
             success: true,
-            confirmed_at: result.rows[0].client_confirmed_at
+            already_confirmed: outcome.alreadyConfirmed,
+            confirmed_at: outcome.confirmed_at
         });
     } catch (error) {
         console.error('client booking confirm error:', error);
@@ -251,13 +259,18 @@ router.get('/series/:token/bookings/:bookingId/calendar.ics', async (req, res) =
 
         const bookingResult = await db.query(
             `SELECT id, date::text AS date, start_time::text AS start_time, end_time::text AS end_time,
-                    status, notes
+                    status, notes, client_confirmed_at
              FROM bookings
              WHERE id = $1 AND recurring_series_id = $2`,
             [bookingId, series.id]
         );
 
-        if (bookingResult.rows.length === 0 || bookingResult.rows[0].status === 'cancelled') {
+        const booking = bookingResult.rows[0];
+        if (
+            !booking ||
+            booking.status === 'cancelled' ||
+            !isBookingConfirmedForCalendar(booking)
+        ) {
             return res.status(404).send('Not found');
         }
 
@@ -267,9 +280,9 @@ router.get('/series/:token/bookings/:bookingId/calendar.ics', async (req, res) =
             display_name: series.display_name,
             meeting_link: series.meeting_link
         };
-        const events = buildIcsEventsForBookings([bookingResult.rows[0]], series, host);
+        const events = buildIcsEventsForBookings([booking], series, host);
         const ics = buildIcsCalendar(events);
-        const filename = `meeting-${bookingResult.rows[0].date}.ics`;
+        const filename = `meeting-${booking.date}.ics`;
         res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(ics);

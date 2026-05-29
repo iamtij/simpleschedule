@@ -159,7 +159,7 @@ async function fetchCandidateBookings() {
             u.sms_phone AS host_sms_phone
         FROM bookings b
         JOIN users u ON u.id = b.user_id
-        WHERE b.status != 'cancelled'
+        WHERE b.status = 'confirmed'
           ${reminderWhereClause}
           AND b.date >= (CURRENT_DATE - INTERVAL '1 day')
           AND b.date <= (CURRENT_DATE + INTERVAL '30 day')

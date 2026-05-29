@@ -12,7 +12,6 @@ const {
     VALID_FREQUENCIES
 } = require('../utils/recurringOccurrences');
 const { validateBookingSlot } = require('../utils/bookingValidation');
-const { syncBookingToGoogleCalendar } = require('../utils/bookingGoogleSync');
 const { getSlotsForUser } = require('./booking');
 const timezone = require('../utils/timezone');
 const mailService = require('../services/mail');
@@ -579,7 +578,7 @@ router.post('/', async (req, res) => {
                 `INSERT INTO bookings (
                     user_id, date, start_time, end_time, client_name, client_email,
                     client_phone, notes, status, recurring_series_id, occurrence_index
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'confirmed',$9,$10)
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10)
                 RETURNING id, confirmation_uuid, date::text, start_time::text, end_time::text,
                           client_name, client_email, client_phone, notes, occurrence_index`,
                 [
@@ -606,35 +605,28 @@ router.post('/', async (req, res) => {
         const host = parsed.host;
         host.name = host.display_name || host.full_name || host.username;
 
-        setImmediate(async () => {
-            for (const booking of createdBookings) {
-                await syncBookingToGoogleCalendar(req.session.userId, booking, host);
-                try {
-                    const userTimezone = timezone.getUserTimezone(host.timezone);
-                    await mailService.scheduleClientReminder1Hour(booking, host, userTimezone);
-                } catch {
-                    // ignore reminder schedule failures
-                }
-            }
-            try {
-                await mailService.sendRecurringSeriesClientConfirmation(
-                    { ...series, frequency: parsed.frequency },
-                    createdBookings,
-                    host
-                );
-                await mailService.sendRecurringSeriesHostNotification(
-                    { ...series, frequency: parsed.frequency },
-                    createdBookings,
-                    host
-                );
-            } catch (err) {
-                console.error('Series email error:', err);
-            }
-        });
-
         const clientPortalUrl = series.client_confirmation_token
             ? getClientSeriesPortalUrl(series.client_confirmation_token, req)
             : null;
+
+        setImmediate(async () => {
+            try {
+                await mailService.sendRecurringSeriesClientInvite(
+                    { ...series, frequency: parsed.frequency },
+                    createdBookings,
+                    host,
+                    clientPortalUrl
+                );
+                await mailService.sendRecurringSeriesHostPendingNotification(
+                    { ...series, frequency: parsed.frequency },
+                    createdBookings,
+                    host,
+                    clientPortalUrl
+                );
+            } catch (err) {
+                console.error('Series invite email error:', err);
+            }
+        });
 
         res.json({
             success: true,
