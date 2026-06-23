@@ -621,6 +621,64 @@ router.post('/account', requireLogin, async (req, res) => {
     }
 });
 
+router.get('/olinn/status', requireLogin, async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT olinn_webhook_enabled, olinn_webhook_url FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const row = result.rows[0];
+        res.json({
+            success: true,
+            enabled: Boolean(row.olinn_webhook_enabled),
+            webhook_url: row.olinn_webhook_url || ''
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to load OLINN settings' });
+    }
+});
+
+router.post('/olinn/settings', requireLogin, async (req, res) => {
+    try {
+        const body = req.body || {};
+        const enabled = Boolean(body.enabled);
+        const webhookUrl = typeof body.webhook_url === 'string' ? body.webhook_url.trim() : '';
+
+        if (enabled && !webhookUrl) {
+            return res.status(400).json({ error: 'Webhook URL is required when OLINN sync is enabled' });
+        }
+
+        if (webhookUrl) {
+            try {
+                const parsed = new URL(webhookUrl);
+                if (!['http:', 'https:'].includes(parsed.protocol)) {
+                    return res.status(400).json({ error: 'Webhook URL must use http or https' });
+                }
+            } catch {
+                return res.status(400).json({ error: 'Invalid webhook URL' });
+            }
+        }
+
+        await db.query(
+            `UPDATE users
+             SET olinn_webhook_enabled = $1,
+                 olinn_webhook_url = $2,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3`,
+            [enabled, webhookUrl || null, req.session.userId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update OLINN settings' });
+    }
+});
+
 // Configure multer for file uploads
 const uploadDir = path.join(__dirname, '../uploads/payment-proofs');
 if (!fs.existsSync(uploadDir)) {
@@ -899,7 +957,7 @@ router.get('/settings', requireLogin, async (req, res) => {
         }
 
         const userResult = await db.query(
-            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path FROM users WHERE id = $1',
+            'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path, olinn_webhook_enabled, olinn_webhook_url FROM users WHERE id = $1',
             [req.session.userId]
         );
 

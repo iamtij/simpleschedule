@@ -7,6 +7,7 @@ const { getLogoUploadDir } = require('../utils/logoUpload');
 const mailService = require('../services/mail');
 const smsService = require('../services/sms');
 const telegramService = require('../services/telegram');
+const olinnService = require('../services/olinn');
 const googleCalendarService = require('../services/googleCalendar');
 const timezone = require('../utils/timezone');
 const { checkUserAccess, isProActiveForFeatures } = require('../utils/subscription');
@@ -523,7 +524,7 @@ router.post('/:username/:duration', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled, olinn_webhook_enabled, olinn_webhook_url FROM users WHERE username = $1',
         [username]
     );
 
@@ -782,6 +783,12 @@ router.post('/:username/:duration', async (req, res) => {
         }
     }
 
+    setImmediate(() => {
+        olinnService.notifyNewBooking(booking, host).catch((err) => {
+            console.error('[OLINN] Webhook failed:', err?.message || err);
+        });
+    });
+
     // Return JSON response for AJAX handling
     res.json({
         success: true,
@@ -938,7 +945,7 @@ router.post('/:username', async (req, res) => {
     
     // Get the user ID from username
     const userResult = await db.query(
-        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled FROM users WHERE username = $1',
+        'SELECT id, full_name, email, username, meeting_link, is_pro, pro_expires_at, google_calendar_blocking_enabled, timezone, sms_phone, telegram_chat_id, telegram_notifications_enabled, olinn_webhook_enabled, olinn_webhook_url FROM users WHERE username = $1',
         [username]
     );
 
@@ -1176,6 +1183,12 @@ router.post('/:username', async (req, res) => {
             // Telegram notification failed, continue without it
         }
     }
+
+    setImmediate(() => {
+        olinnService.notifyNewBooking(booking, host).catch((err) => {
+            console.error('[OLINN] Webhook failed:', err?.message || err);
+        });
+    });
 
     // Return JSON response for AJAX handling
     res.json({

@@ -270,7 +270,7 @@ router.get('/settings', requireLogin, async (req, res) => {
     }
 
     const userResult = await db.query(
-      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path FROM users WHERE id = $1',
+      'SELECT id, email, username, full_name, display_name, meeting_link, buffer_minutes, sms_phone, timezone, booking_logo_path, olinn_webhook_enabled, olinn_webhook_url FROM users WHERE id = $1',
       [req.session.userId]
     );
 
