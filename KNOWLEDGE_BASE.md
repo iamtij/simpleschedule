@@ -342,6 +342,7 @@ Access is checked in this order:
 - Sends SMS via Semaphore API
 - Formats phone numbers for Philippine format
 - Sends booking confirmations and reminders
+- **Full implementation guide (portable):** [docs/SMS_IMPLEMENTATION.md](docs/SMS_IMPLEMENTATION.md)
 
 #### Google Calendar Service (`services/googleCalendar.js`)
 - OAuth 2.0 authentication
