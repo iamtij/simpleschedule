@@ -1,0 +1,32 @@
+<script>
+(function () {
+    if (new URLSearchParams(window.location.search).get('embed') !== '1') return;
+    document.body.style.background = '#ffffff';
+    document.body.style.paddingTop = '16px';
+    document.body.style.paddingBottom = '16px';
+    var mutual = document.querySelector('.isked-username-section');
+    if (mutual) mutual.style.display = 'none';
+    document.querySelectorAll('a[href^="/booking/"]').forEach(function (link) {
+        if (link.target === '_blank') return;
+        try {
+            var url = new URL(link.getAttribute('href'), window.location.origin);
+            if (!url.searchParams.has('embed')) {
+                url.searchParams.set('embed', '1');
+                link.setAttribute('href', url.pathname + url.search + url.hash);
+            }
+        } catch (err) {}
+    });
+    function send() {
+        var height = Math.max(
+            document.documentElement.scrollHeight,
+            document.body.scrollHeight
+        );
+        window.parent.postMessage({ source: 'isked-embed', height: height }, '*');
+    }
+    window.addEventListener('load', send);
+    window.addEventListener('resize', send);
+    if (window.ResizeObserver) new ResizeObserver(send).observe(document.body);
+    setTimeout(send, 300);
+    setTimeout(send, 1200);
+})();
+</script>

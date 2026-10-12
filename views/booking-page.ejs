@@ -969,7 +969,8 @@
                         
                         // Redirect to confirmation page or show success message
                         setTimeout(() => {
-                            window.location.href = `/booking/${username}/confirmation/${result.confirmation_uuid}`;
+                            const embedQuery = new URLSearchParams(window.location.search).get('embed') === '1' ? '?embed=1' : '';
+                            window.location.href = `/booking/${username}/confirmation/${result.confirmation_uuid}${embedQuery}`;
                         }, 2000);
                         
                     } else {
@@ -1550,5 +1551,6 @@
         }
 
     </script>
+    <%- include('partials/embed-resize') %>
 </body>
 </html>

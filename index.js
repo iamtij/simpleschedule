@@ -14,12 +14,22 @@ if (config.env === 'production') {
 const app = express();
 const db = require('./db');
 
+// Public booking pages are embedded on customer sites. Every other page stays unframeable.
+app.use((req, res, next) => {
+    const embeddable = req.path === '/booking' || req.path.startsWith('/booking/');
+    if (embeddable) {
+        res.setHeader('Content-Security-Policy', 'frame-ancestors *');
+    } else if (config.env === 'production') {
+        res.setHeader('X-Frame-Options', 'DENY');
+    }
+    next();
+});
+
 // Production security headers
 if (config.env === 'production') {
     app.set('trust proxy', 1); // Trust first proxy
     app.use((req, res, next) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('X-Frame-Options', 'DENY');
         res.setHeader('X-XSS-Protection', '1; mode=block');
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         next();

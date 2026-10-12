@@ -8,6 +8,7 @@
     <link href="/css/toast.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="/js/toast.js" defer></script>
+    <script src="/embed.js" defer></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -23,6 +24,10 @@
         }
         .accordion-content:not(.accordion-hidden) {
             max-height: 10000px;
+        }
+        #integrations-content:not(.accordion-hidden) {
+            max-height: none;
+            overflow: visible;
         }
         .accordion-content.accordion-hidden {
             max-height: 0;
@@ -622,6 +627,69 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Website embed -->
+                <div id="website-embed" class="border-t border-gray-200 pt-8 mt-8">
+                    <h3 class="text-md font-medium text-gray-900 mb-1">Website embed</h3>
+                    <p class="mt-1 text-sm text-gray-600 mb-4">
+                        Paste a snippet into your website so visitors can book without leaving the page.
+                    </p>
+                    <% const embedDurations = (availabilitySettings && availabilitySettings.meeting_durations || []).filter(function (d) { return d.is_active !== false && d.duration_minutes; }); %>
+                    <div id="embed-duration-wrap" class="mb-6 <%= embedDurations.length ? '' : 'hidden' %>">
+                        <label for="embed-page-select" class="block text-sm font-medium text-gray-700 mb-2">Booking page</label>
+                        <select id="embed-page-select" class="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Main booking page</option>
+                            <% embedDurations.forEach(function (d) { %>
+                            <option value="<%= d.duration_minutes %>"><%= d.duration_minutes %> minutes</option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Inline embed</h4>
+                            <p class="mt-1 text-sm text-gray-500 mb-2">Shows the scheduler in the page, under your own navigation.</p>
+                            <pre id="embed-code-inline" class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" class="embed-copy-btn inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50" data-embed-target="inline">Copy code</button>
+                                <button type="button" id="embed-preview-inline" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50">Preview</button>
+                            </div>
+                            <div id="embed-inline-preview-wrap" class="hidden mt-3">
+                                <iframe id="embed-inline-preview" data-isked-embed title="Inline booking preview" style="width:100%;height:640px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;"></iframe>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Popup button</h4>
+                            <p class="mt-1 text-sm text-gray-500 mb-2">Places a “Book a time” button where you paste the snippet. Clicking it opens the scheduler on top of your site.</p>
+                            <pre id="embed-code-popup" class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" class="embed-copy-btn inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50" data-embed-target="popup">Copy code</button>
+                                <button type="button" id="embed-preview-popup" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50">Preview</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Floating button</h4>
+                            <p class="mt-1 text-sm text-gray-500 mb-2">Adds a button fixed to the bottom-right corner of every page. Clicking it opens the same popup.</p>
+                            <pre id="embed-code-floating" class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" class="embed-copy-btn inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50" data-embed-target="floating">Copy code</button>
+                                <button type="button" id="embed-preview-floating" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50">Preview</button>
+                                <button type="button" id="embed-hide-floating" class="hidden inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50">Hide preview</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Text link</h4>
+                            <p class="mt-1 text-sm text-gray-500 mb-2">Opens the full booking page. Use this where scripts are stripped, such as email or a bio.</p>
+                            <pre id="embed-code-link" class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
+                            <div class="mt-2">
+                                <button type="button" class="embed-copy-btn inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50" data-embed-target="link">Copy code</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                             </div>
                     </div>
                 </div>
@@ -1116,6 +1184,7 @@
             initMeetingLinkEditing();
             initSmsPhoneEditing();
             initCopyLink();
+            initWebsiteEmbed();
             initBookingLogo();
             initAvailabilitySettings();
             // Delay date availability loading slightly to ensure DOM is ready
@@ -1307,6 +1376,120 @@
                 
                 document.body.removeChild(textArea);
             }
+        }
+
+        function initWebsiteEmbed() {
+            const inlineEl = document.getElementById('embed-code-inline');
+            const popupEl = document.getElementById('embed-code-popup');
+            const floatingEl = document.getElementById('embed-code-floating');
+            const linkEl = document.getElementById('embed-code-link');
+            if (!inlineEl || !popupEl || !floatingEl || !linkEl) return;
+
+            let embedUsername = <%- JSON.stringify(user.username || '') %>;
+
+            function pageUrl(withEmbed) {
+                const select = document.getElementById('embed-page-select');
+                const duration = select && select.value ? '/' + select.value : '';
+                const base = window.location.origin + '/booking/' + encodeURIComponent(embedUsername) + duration;
+                return withEmbed ? base + '?embed=1' : base;
+            }
+
+            function renderSnippets() {
+                const url = pageUrl(true);
+                const origin = window.location.origin;
+                inlineEl.textContent =
+                    '<iframe\n' +
+                    '  src="' + url + '"\n' +
+                    '  data-isked-embed\n' +
+                    '  style="width:100%;min-height:700px;border:0;"\n' +
+                    '  title="Book a time"></iframe>\n' +
+                    '<script src="' + origin + '/embed.js" async></' + 'script>';
+                popupEl.textContent =
+                    '<script\n' +
+                    '  src="' + origin + '/embed.js"\n' +
+                    '  data-url="' + url + '"\n' +
+                    '  data-type="popup"\n' +
+                    '  data-label="Book a time"\n' +
+                    '  async></' + 'script>';
+                floatingEl.textContent =
+                    '<script\n' +
+                    '  src="' + origin + '/embed.js"\n' +
+                    '  data-url="' + url + '"\n' +
+                    '  data-type="floating"\n' +
+                    '  data-label="Book a time"\n' +
+                    '  async></' + 'script>';
+                linkEl.textContent = '<a href="' + pageUrl(false) + '">Book a time</a>';
+
+                const preview = document.getElementById('embed-inline-preview');
+                const previewWrap = document.getElementById('embed-inline-preview-wrap');
+                if (preview && previewWrap && !previewWrap.classList.contains('hidden') && preview.getAttribute('src')) {
+                    preview.setAttribute('src', url);
+                }
+            }
+
+            window.updateEmbedSnippets = function (username) {
+                embedUsername = username;
+                renderSnippets();
+            };
+
+            const select = document.getElementById('embed-page-select');
+            if (select) select.addEventListener('change', renderSnippets);
+
+            document.querySelectorAll('.embed-copy-btn').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const key = button.getAttribute('data-embed-target');
+                    const el = document.getElementById('embed-code-' + key);
+                    if (!el) return;
+                    const text = el.textContent;
+                    const done = function () {
+                        if (typeof toast !== 'undefined' && toast.show) {
+                            toast.show({ type: 'success', title: 'Copied!', message: 'Embed code copied to clipboard' });
+                        }
+                        const original = button.textContent;
+                        button.textContent = 'Copied!';
+                        setTimeout(function () { button.textContent = original; }, 2000);
+                    };
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(text).then(done).catch(function () {});
+                    }
+                });
+            });
+
+            const previewInline = document.getElementById('embed-preview-inline');
+            if (previewInline) {
+                previewInline.addEventListener('click', function () {
+                    const wrap = document.getElementById('embed-inline-preview-wrap');
+                    const frame = document.getElementById('embed-inline-preview');
+                    if (!wrap || !frame) return;
+                    const show = wrap.classList.contains('hidden');
+                    wrap.classList.toggle('hidden', !show);
+                    previewInline.textContent = show ? 'Hide preview' : 'Preview';
+                    if (show) frame.setAttribute('src', pageUrl(true));
+                });
+            }
+
+            const previewPopup = document.getElementById('embed-preview-popup');
+            if (previewPopup) {
+                previewPopup.addEventListener('click', function () {
+                    if (window.IskedEmbed) window.IskedEmbed.open(pageUrl(true));
+                });
+            }
+
+            const previewFloating = document.getElementById('embed-preview-floating');
+            const hideFloating = document.getElementById('embed-hide-floating');
+            if (previewFloating && hideFloating) {
+                previewFloating.addEventListener('click', function () {
+                    if (!window.IskedEmbed) return;
+                    window.IskedEmbed.mountFloating(pageUrl(true), 'Book a time');
+                    hideFloating.classList.remove('hidden');
+                });
+                hideFloating.addEventListener('click', function () {
+                    if (window.IskedEmbed) window.IskedEmbed.removeFloating();
+                    hideFloating.classList.add('hidden');
+                });
+            }
+
+            renderSnippets();
         }
 
         // Booking Page Logo (Pro)
@@ -1599,6 +1782,9 @@
                         currentUsername = newUsername;
                         document.querySelector('#username-display input').value = newUsername;
                         document.getElementById('booking-link').value = `isked.app/booking/${newUsername}`;
+                        if (typeof window.updateEmbedSnippets === 'function') {
+                            window.updateEmbedSnippets(newUsername);
+                        }
                         hideEdit();
                         toast.show({
                             type: 'success',
