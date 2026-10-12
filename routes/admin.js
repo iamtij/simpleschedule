@@ -3,6 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const Coupon = require('../models/Coupon');
 const { isAdmin } = require('../middleware/auth');
@@ -916,7 +917,7 @@ router.post('/coupons/:id/send-email-to-users', requireAdmin, async (req, res) =
 // Update user
 router.put('/users/:userId', requireAdmin, async (req, res) => {
     const { userId } = req.params;
-    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type, manual_plan_type, recurring_clients_enabled } = req.body;
+    const { full_name, email, status, is_pro, pro_expires_at, pro_started_at, plan_type, manual_plan_type, recurring_clients_enabled, password, confirm_password } = req.body;
     
     try {
         // Get current user state to check if is_pro is changing from false to true
@@ -1010,6 +1011,20 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
 
         const recurringClientsEnabled = recurring_clients_enabled === true || recurring_clients_enabled === 'true';
 
+        const newPassword = typeof password === 'string' ? password : '';
+        const confirmPassword = typeof confirm_password === 'string' ? confirm_password : '';
+        let hashedPassword = null;
+
+        if (newPassword || confirmPassword) {
+            if (newPassword !== confirmPassword) {
+                return res.status(400).json({ error: 'Passwords do not match' });
+            }
+            if (newPassword.length < 8) {
+                return res.status(400).json({ error: 'Password must be at least 8 characters' });
+            }
+            hashedPassword = await bcrypt.hash(newPassword, 10);
+        }
+
         const result = await db.query(
             `UPDATE users 
              SET full_name = $1, 
@@ -1020,19 +1035,23 @@ router.put('/users/:userId', requireAdmin, async (req, res) => {
                  pro_started_at = $6,
                  plan_type = $7,
                  recurring_clients_enabled = $8,
+                 password = COALESCE($9, password),
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $9
+             WHERE id = $10
              RETURNING *`,
-            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, planTypeToSave, recurringClientsEnabled, userId]
+            [full_name, email, status === 'active', is_pro, calculatedExpiration, proStartedAt, planTypeToSave, recurringClientsEnabled, hashedPassword, userId]
         );
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        const updatedUser = { ...result.rows[0] };
+        delete updatedUser.password;
+
         res.json({
-            ...result.rows[0],
-            status: result.rows[0].status ? 'active' : 'inactive'
+            ...updatedUser,
+            status: updatedUser.status ? 'active' : 'inactive'
         });
     } catch (error) {
         console.error('Error updating user:', error);
