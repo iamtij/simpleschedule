@@ -3,7 +3,7 @@ const urlShortener = require('./urlShortener');
 const { isProActiveForFeatures } = require('../utils/subscription');
 
 const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
-const SEMAPHORE_SENDER = 'isked';
+const SEMAPHORE_SENDER = process.env.SEMAPHORE_SENDER_NAME || 'ISKED';
 const SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages';
 
 function formatPhoneNumber(phone) {
