@@ -47,7 +47,30 @@ function formatResendFromHeader() {
 }
 
 function formatMailgunFromHeader(domain) {
-    return `isked <postmaster@${domain}>`;
+    return `${FROM_NAME} <postmaster@${domain}>`;
+}
+
+function contentTypeForAttachment(att) {
+    if (att.contentType && String(att.contentType).trim()) {
+        return String(att.contentType).trim();
+    }
+    const name = att.filename || '';
+    if (/\.png$/i.test(name)) {
+        return 'image/png';
+    }
+    if (/\.jpe?g$/i.test(name)) {
+        return 'image/jpeg';
+    }
+    if (/\.gif$/i.test(name)) {
+        return 'image/gif';
+    }
+    if (/\.webp$/i.test(name)) {
+        return 'image/webp';
+    }
+    if (/\.pdf$/i.test(name)) {
+        return 'application/pdf';
+    }
+    return undefined;
 }
 
 function getMailgunClient() {
@@ -104,7 +127,7 @@ function logSendError(provider, context, error) {
  *   text: string,
  *   html: string,
  *   replyTo?: string | null,
- *   attachments?: Array<{ filename: string, data: Buffer }>,
+ *   attachments?: Array<{ filename: string, data: Buffer, contentType?: string }>,
  *   scheduledAt?: Date | null,
  * }} payload
  */
@@ -139,16 +162,23 @@ async function sendMessage(payload) {
             html: payload.html
         };
         if (payload.replyTo && String(payload.replyTo).trim()) {
-            emailPayload.reply_to = String(payload.replyTo).trim();
+            emailPayload.replyTo = String(payload.replyTo).trim();
         }
         if (payload.attachments && payload.attachments.length) {
-            emailPayload.attachments = payload.attachments.map((att) => ({
-                filename: att.filename,
-                content: att.data
-            }));
+            emailPayload.attachments = payload.attachments.map((att) => {
+                const mapped = {
+                    filename: att.filename,
+                    content: att.data
+                };
+                const contentType = contentTypeForAttachment(att);
+                if (contentType) {
+                    mapped.contentType = contentType;
+                }
+                return mapped;
+            });
         }
         if (payload.scheduledAt instanceof Date && !Number.isNaN(payload.scheduledAt.getTime())) {
-            emailPayload.scheduled_at = payload.scheduledAt.toISOString();
+            emailPayload.scheduledAt = payload.scheduledAt.toISOString();
         }
 
         const { data, error } = await resend.emails.send(emailPayload);

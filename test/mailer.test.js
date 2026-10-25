@@ -149,9 +149,53 @@ describe('mailer', () => {
                 });
 
                 assert.equal(captured.provider, 'mailgun');
-                assert.equal(mailer.formatMailgunFromHeader('mg.isked.app'), 'isked <postmaster@mg.isked.app>');
+                assert.equal(mailer.formatMailgunFromHeader('mg.isked.app'), 'ISKED <postmaster@mg.isked.app>');
             }
         );
+    });
+
+    it('Resend SDK serializes reply_to, scheduled_at, from, and attachments on the wire', async () => {
+        const originalFetch = global.fetch;
+        let requestBody;
+        global.fetch = async (url, options) => {
+            if (String(url).includes('/emails')) {
+                requestBody = JSON.parse(options.body);
+            }
+            return {
+                ok: true,
+                json: async () => ({ id: 'email-wire-1' })
+            };
+        };
+
+        try {
+            await withEnv({ RESEND_API_KEY: 're_test_wire_key', RESEND_FROM: undefined }, async () => {
+                const mailer = loadMailer();
+                mailer.clearTransportForTesting();
+
+                const scheduledAt = new Date('2026-12-01T10:00:00.000Z');
+                const pdfBytes = Buffer.from('%PDF-1.4 test');
+
+                await mailer.sendMessage({
+                    to: 'user@example.com',
+                    subject: 'Scheduled with reply',
+                    text: 'Plain body',
+                    html: '<p>Html body</p>',
+                    replyTo: 'team@smallsimplesteps.co',
+                    scheduledAt,
+                    attachments: [{ filename: 'proof.pdf', data: pdfBytes }]
+                });
+
+                assert.ok(requestBody, 'expected Resend POST body');
+                assert.equal(requestBody.from, 'ISKED <notify@isked.app>');
+                assert.equal(requestBody.reply_to, 'team@smallsimplesteps.co');
+                assert.equal(requestBody.scheduled_at, scheduledAt.toISOString());
+                assert.equal(requestBody.attachments.length, 1);
+                assert.equal(requestBody.attachments[0].filename, 'proof.pdf');
+                assert.equal(requestBody.attachments[0].contentType, 'application/pdf');
+            });
+        } finally {
+            global.fetch = originalFetch;
+        }
     });
 });
 
