@@ -10,6 +10,8 @@
     "migrate:railway": "bash scripts/migrate-railway.sh",
     "setup": "npm run migrate",
     "reminders": "node scripts/runReminders.js",
+    "test": "node --test test/*.test.js",
+    "lint": "node --check services/mailer.js services/mail.js test/mailer.test.js scripts/runReminders.js jobs/reminders.js",
     "favicons": "node scripts/generate-favicons.js",
     "og-image": "node scripts/generate-og-image.js"
   },
@@ -27,6 +29,7 @@
     "mailgun.js": "11.1.0",
     "multer": "2.0.2",
     "pg": "8.11.3",
+    "resend": "4.0.1",
     "sharp": "0.34.5"
   },
   "devDependencies": {

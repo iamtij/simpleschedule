@@ -1,29 +1,59 @@
-const FormData = require('form-data');
-const Mailgun = require('mailgun.js');
 const fs = require('fs');
 const timezone = require('../utils/timezone');
-
-const mailgun = new Mailgun(FormData);
-const mgConfig = {
-    username: 'api',
-    key: process.env.MAILGUN_API_KEY || 'key-yourkeyhere'
-};
-// Use EU API if MAILGUN_EU=true or MAILGUN_URL is set (Forbidden often = wrong region)
-if (process.env.MAILGUN_EU === 'true' || process.env.MAILGUN_URL) {
-    mgConfig.url = process.env.MAILGUN_URL || 'https://api.eu.mailgun.net';
-}
-const mg = mailgun.client(mgConfig);
+const mailer = require('./mailer');
 
 class MailService {
     constructor() {
-        if (!process.env.MAILGUN_DOMAIN || !process.env.MAILGUN_API_KEY) {
-            this.enabled = false;
-            console.error('[MAIL SERVICE] Disabled - Missing MAILGUN_DOMAIN or MAILGUN_API_KEY');
+        this.enabled = mailer.isEnabled();
+        this.domain = process.env.MAILGUN_DOMAIN || null;
+        if (!this.enabled) {
+            console.error('[MAIL SERVICE] Disabled - Set RESEND_API_KEY or MAILGUN_DOMAIN + MAILGUN_API_KEY');
         } else {
-            this.enabled = true;
-            this.domain = process.env.MAILGUN_DOMAIN;
-            console.error('[MAIL SERVICE] Enabled - Domain:', this.domain);
+            const provider = mailer.getProvider();
+            if (provider === 'resend') {
+                console.error('[MAIL SERVICE] Enabled - Provider: resend, from:', mailer.formatResendFromHeader());
+            } else {
+                console.error('[MAIL SERVICE] Enabled - Provider: mailgun, domain:', this.domain);
+            }
         }
+    }
+
+    /**
+     * @param {{
+     *   to: string | string[],
+     *   subject: string,
+     *   text: string,
+     *   html: string,
+     *   replyTo?: string | null,
+     *   attachments?: Array<{ filename: string, data: Buffer }>,
+     *   scheduledAt?: Date | null,
+     * }} payload
+     */
+    async _sendEmail(payload) {
+        return mailer.sendMessage(payload);
+    }
+
+    _mailgunMessageDataToPayload(messageData) {
+        const payload = {
+            to: messageData.to,
+            subject: messageData.subject,
+            text: messageData.text,
+            html: messageData.html
+        };
+        const replyTo = messageData.replyTo || messageData['h:Reply-To'];
+        if (replyTo) {
+            payload.replyTo = replyTo;
+        }
+        if (messageData.attachment && messageData.attachment.length) {
+            payload.attachments = messageData.attachment.map((att) => ({
+                filename: att.filename,
+                data: att.data
+            }));
+        }
+        if (messageData.scheduledAt) {
+            payload.scheduledAt = messageData.scheduledAt;
+        }
+        return payload;
     }
 
     async sendTestEmail(to) {
@@ -40,8 +70,7 @@ class MailService {
                                 This email demonstrates the new mobile-responsive design with centered layout and proper spacing.
                             </p>`;
             
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [to],
                 subject: 'Test Email from isked',
                 text: 'This is a test email from your scheduling application - isked.',
@@ -86,8 +115,7 @@ class MailService {
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [booking.client_email],
                 subject: `Appointment Confirmed with ${host.name || host.username}`,
                 text: `Hello ${booking.client_name},
@@ -151,8 +179,7 @@ ${calendarLink}`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [host.email],
                 subject: `New Appointment: ${booking.client_name}`,
                 text: `Hello ${host.name || host.username},
@@ -210,8 +237,7 @@ ${calendarLink}`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [booking.client_email],
                 subject: `Reminder: Your appointment starts in 30 minutes`,
                 text: `Hi ${booking.client_name},
@@ -269,8 +295,7 @@ See you soon!
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [host.email],
                 subject: `Reminder: ${booking.client_name} meets you in 30 minutes`,
                 text: `Hi ${host.name || host.username},
@@ -342,8 +367,7 @@ Manage the booking at ${dashboardUrl}.
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [booking.client_email],
                 subject: `Reminder: Your appointment starts in 1 hour`,
                 text: `Hi ${booking.client_name},
@@ -359,7 +383,7 @@ ${host.meeting_link ? `- Join link: ${host.meeting_link}
 See you soon!
 `,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -419,8 +443,7 @@ See you soon!
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [host.email],
                 subject: `Reminder: ${booking.client_name} meets you in 1 hour`,
                 text: `Hi ${host.name || host.username},
@@ -441,7 +464,7 @@ ${host.meeting_link ? `- Meeting link: ${host.meeting_link}
 Manage the booking at ${dashboardUrl}.
 `,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -493,8 +516,7 @@ Manage the booking at ${dashboardUrl}.
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [booking.client_email],
                 subject: `Reminder: Your appointment starts in 30 minutes`,
                 text: `Hi ${booking.client_name},
@@ -510,7 +532,7 @@ ${host.meeting_link ? `- Join link: ${host.meeting_link}
 See you soon!
 `,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -570,8 +592,7 @@ See you soon!
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [host.email],
                 subject: `Reminder: ${booking.client_name} meets you in 30 minutes`,
                 text: `Hi ${host.name || host.username},
@@ -592,7 +613,7 @@ ${host.meeting_link ? `- Meeting link: ${host.meeting_link}
 Manage the booking at ${dashboardUrl}.
 `,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -625,8 +646,7 @@ Manage the booking at ${dashboardUrl}.
                                 If you did not request this password reset, please ignore this email.
                             </p>`;
             
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [email],
                 subject: 'Reset Your Password - isked',
                 text: `Hello,
@@ -682,8 +702,7 @@ The isked Team`,
                                 If you have any questions or need assistance, feel free to reply to this email.
                             </p>`;
             
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [user.email],
                 subject: 'Welcome to isked! 🎉',
                 text: `Hello ${user.name},
@@ -743,8 +762,7 @@ The isked Team`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [adminEmail],
                 subject: `New Sign-Up: ${user.full_name || user.email}`,
                 text: `New user sign-up
@@ -838,8 +856,7 @@ View user: ${adminUrl}`,
                                 <a href="${adminUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">View User in Admin Dashboard</a>
                             </p>`;
 
-        return mg.messages.create(this.domain, {
-            from: `isked <postmaster@${this.domain}>`,
+        return this._sendEmail({
             to: [toEmail],
             subject: `${subjectPrefix}New Sign-Up: ${user.full_name || user.email}`,
             text: `New user sign-up\n\nUser Details:\n- Name: ${user.full_name || 'N/A'}\n- Email: ${user.email}\n- Username: ${user.username || 'N/A'}\n- User ID: ${user.id}\n\nAccount Status: 5-day free trial started\n\nView user: ${adminUrl}`,
@@ -880,7 +897,6 @@ View user: ${adminUrl}`,
                             </div>`;
 
         const messageData = {
-            from: `isked <postmaster@${this.domain}>`,
             to: [toEmail],
             subject: `${subjectPrefix}Payment Proof - ${user.display_name || user.full_name || user.email} - ${planName}`,
             text: `New payment proof submission:\n\nUser Details:\n- Name: ${user.display_name || user.full_name || 'N/A'}\n- Email: ${user.email}\n- Username: ${user.username || 'N/A'}\n\nSubscription Details:\n- Plan: ${planName}\n- Price: ${planPrice}\n\nView user: ${adminUrl}`,
@@ -896,7 +912,7 @@ View user: ${adminUrl}`,
             }
         }
 
-        return mg.messages.create(this.domain, messageData);
+        return this._sendEmail(this._mailgunMessageDataToPayload(messageData));
     }
 
     /**
@@ -938,8 +954,7 @@ View user: ${adminUrl}`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [toEmail],
                 subject: `${subjectPrefix}Trial Expiring Tomorrow: ${user.full_name || user.name || user.email}`,
                 text: `${subjectPrefix}Trial expiring tomorrow
@@ -1003,8 +1018,7 @@ View user: ${adminUrl}`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [adminEmail],
                 subject: `Trial Expiring Tomorrow: ${user.full_name || user.name || user.email}`,
                 text: `Trial expiring tomorrow
@@ -1019,7 +1033,7 @@ This user's 5-day free trial expires tomorrow. Consider reaching out to encourag
 
 View user: ${adminUrl}`,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -1284,10 +1298,9 @@ View user: ${adminUrl}`,
                             </p>`;
 
         try {
-            const result = await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            const result = await this._sendEmail({
                 to: [user.email],
-                'h:Reply-To': 'team@smallsimplesteps.co',
+                replyTo: 'team@smallsimplesteps.co',
                 subject: subject,
                 text: `Hello ${user.name || user.full_name || user.username},
 
@@ -1305,7 +1318,7 @@ This link will expire in 7 days. If you have any questions, feel free to reply t
 Best regards,
 The isked Team`,
                 html: this._generateEmailTemplate(content),
-                'o:deliverytime': rfc2822Time
+                scheduledAt: deliveryTime
             });
             return result;
         } catch (error) {
@@ -1382,7 +1395,6 @@ The isked Team`,
 
         try {
             const messageData = {
-                from: `isked <postmaster@${this.domain}>`,
                 to: [adminEmail],
                 subject: `Payment Proof - ${user.display_name || user.full_name || user.email} - ${planName}`,
                 text: `New payment proof submission:
@@ -1420,7 +1432,7 @@ View user profile: ${adminUrl}
                 }
             }
 
-            const result = await mg.messages.create(this.domain, messageData);
+            const result = await this._sendEmail(this._mailgunMessageDataToPayload(messageData));
             return result;
         } catch (error) {
             throw error;
@@ -1489,7 +1501,6 @@ View user profile: ${adminUrl}
 
         try {
             const messageData = {
-                from: `isked <postmaster@${this.domain}>`,
                 to: [to],
                 subject: processedSubject,
                 text: plainText,
@@ -1498,13 +1509,13 @@ View user profile: ${adminUrl}
 
             // Add reply-to header if provided
             if (replyTo && replyTo.trim()) {
-                messageData['h:Reply-To'] = replyTo.trim();
+                messageData.replyTo = replyTo.trim();
             }
 
-            const result = await mg.messages.create(this.domain, messageData);
+            const result = await this._sendEmail(this._mailgunMessageDataToPayload(messageData));
             
             // Log successful email send
-            const logMessage = `[EMAIL SENT] To: ${to} | Subject: ${processedSubject} | MessageID: ${result.id || 'N/A'} | Domain: ${this.domain}`;
+            const logMessage = `[EMAIL SENT] To: ${to} | Subject: ${processedSubject} | MessageID: ${result.id || 'N/A'} | Provider: ${result.provider || mailer.getProvider()}`;
             console.error(logMessage);
             
             // Also log to file for easier tracking
@@ -1594,8 +1605,7 @@ View user profile: ${adminUrl}
             </p>`;
 
         try {
-            return await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            return await this._sendEmail({
                 to: [series.client_email],
                 subject: `Please confirm your meetings with ${hostName}`,
                 text: `Hello ${series.client_name},\n\n${hostName} proposed ${bookings.length} meetings (${frequencyLabel}). Confirm each meeting before it is added to the calendar.\n\n${plainList}\n\nConfirm here:\n${portalUrl}\n\nCalendar invites and reminders are sent only after you confirm each date.`,
@@ -1632,8 +1642,7 @@ View user profile: ${adminUrl}
             </p>`;
 
         try {
-            return await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            return await this._sendEmail({
                 to: [host.email],
                 subject: `Recurring schedule created (awaiting confirmation): ${series.client_name}`,
                 text: `Hello ${hostName},\n\nYou created ${bookings.length} meetings with ${series.client_name} (${frequencyLabel}). They are pending client confirmation.\n\n${plainList}${portalUrl ? `\n\nClient link:\n${portalUrl}\n` : ''}\n\nView: ${dashboardUrl}`,
@@ -1680,8 +1689,7 @@ View user profile: ${adminUrl}
         const plainList = this._formatOccurrencesListPlain(bookings);
 
         try {
-            return await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            return await this._sendEmail({
                 to: [series.client_email],
                 subject: `Recurring appointments confirmed with ${hostName}`,
                 text: `Hello ${series.client_name},\n\nYour ${bookings.length} recurring appointments (${frequencyLabel}) with ${hostName} are confirmed.\n\nTime each session: ${formattedStart} - ${formattedEnd}\n${host.meeting_link ? `Meeting link: ${host.meeting_link}\n` : ''}\n${plainList}${portalUrl ? `\n\nView your schedule and add meetings to your calendar:\n${portalUrl}\n` : ''}\n\nThank you!`,
@@ -1720,8 +1728,7 @@ View user profile: ${adminUrl}
         const plainList = this._formatOccurrencesListPlain(bookings);
 
         try {
-            return await mg.messages.create(this.domain, {
-                from: `isked <postmaster@${this.domain}>`,
+            return await this._sendEmail({
                 to: [host.email],
                 subject: `Recurring schedule created: ${series.client_name}`,
                 text: `Hello ${hostName},\n\nYou created ${bookings.length} recurring meetings with ${series.client_name} (${frequencyLabel}).\n\n${plainList}\n\nView: ${dashboardUrl}`,

@@ -84,6 +84,16 @@ See `.env.example` for the variable names.
 - `RAILWAY_DATABASE_URL`: (optional, local `.env` only) Public Railway Postgres URL for `npm run migrate:railway`
 - `SESSION_SECRET`: Secret for session encryption
 - `LOGO_UPLOAD_DIR`: (optional) Path for booking logos. On Railway with a Volume mounted at `/data`, set to `/data/booking-logos` for persistent storage.
+- `RESEND_API_KEY`: Resend API key. When set, all transactional email (bookings, reminders, auth, admin) sends via Resend.
+- `RESEND_FROM`: (optional) From address for Resend. Defaults to `notify@isked.app` (header: `ISKED <notify@isked.app>`).
+- `MAILGUN_API_KEY` / `MAILGUN_DOMAIN`: Mailgun fallback when `RESEND_API_KEY` is not set.
+
+## Tests
+
+```bash
+npm test
+npm run lint
+```
 
 ## License
 

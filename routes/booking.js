@@ -763,7 +763,7 @@ router.post('/:username/:duration', async (req, res) => {
         console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
-    // Schedule 1-hour reminder emails via Mailgun; 30-min reminders via Railway cron (scripts/runReminders.js)
+    // Schedule 1-hour reminder emails via mailer (Resend or Mailgun); 30-min reminders via Railway cron (scripts/runReminders.js)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([
@@ -1164,7 +1164,7 @@ router.post('/:username', async (req, res) => {
         console.error('[BOOKING] Email/SMS notification failed:', notificationError?.message || notificationError);
     }
 
-    // Schedule 1-hour reminder emails via Mailgun; 30-min reminders via Railway cron (scripts/runReminders.js)
+    // Schedule 1-hour reminder emails via mailer (Resend or Mailgun); 30-min reminders via Railway cron (scripts/runReminders.js)
     try {
         const userTimezone = host.timezone || timezone.getDefaultTimezone();
         await Promise.all([

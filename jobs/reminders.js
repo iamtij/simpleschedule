@@ -273,7 +273,11 @@ async function processBooking(row) {
             }
         }
     } catch (error) {
-        // Failed to send reminder
+        console.error(
+            '[REMINDERS] Failed to send reminder for booking',
+            row.id,
+            error?.message || error
+        );
     }
 }
 
